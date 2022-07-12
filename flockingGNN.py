@@ -37,7 +37,7 @@ import numpy as np
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 matplotlib.rcParams['font.family'] = 'serif'
-matplotlib.rcParams['text.latex.preamble']=[r'\usepackage{amsmath}']
+# matplotlib.rcParams['text.latex.preamble']=[r'\usepackage{amsmath}']
 import matplotlib.pyplot as plt
 import pickle
 import datetime
@@ -47,17 +47,21 @@ import torch; torch.set_default_dtype(torch.float64)
 import torch.nn as nn
 import torch.optim as optim
 
+import sys
 #\\\ Own libraries:
-import alegnn.utils.dataTools as dataTools
-import alegnn.utils.graphML as gml
-import alegnn.modules.architecturesTime as architTime
-import alegnn.modules.model as model
-import alegnn.modules.training as training
-import alegnn.modules.evaluation as evaluation
+sys.path.append('./../graph-neural-networks/alegnn/modules') # add the path to the existing one
+sys.path.append('./../graph-neural-networks/alegnn/utils') # add the path to the existing one
+
+import dataTools as dataTools # alegnn.utils
+import graphML as gml # alegnn.utils
+import architecturesTime as architTime # alegnn.modules
+import model as model # alegnn.modules
+import training as training # alegnn.modules
+import evaluation as evaluation # alegnn.modules
 
 #\\\ Separate functions:
-from alegnn.utils.miscTools import writeVarValues
-from alegnn.utils.miscTools import saveSeed
+from miscTools import writeVarValues
+from miscTools import saveSeed
 
 # Start measuring time
 startRunTime = datetime.datetime.now()
@@ -231,10 +235,10 @@ nonlinearityOutput = torch.tanh
 nonlinearity = nn.Tanh # Chosen nonlinearity for nonlinear architectures
 
 # Select desired architectures
-doLocalFlt = True # Local filter (no nonlinearity)
+doLocalFlt = False # Local filter (no nonlinearity)
 doLocalGNN = True # Local GNN (include nonlinearity)
-doDlAggGNN = True
-doGraphRNN = True
+doDlAggGNN = False
+doGraphRNN = False
 
 modelList = []
 
@@ -455,7 +459,7 @@ if doLogging:
     logger = Visualizer(logsTB, name='visualResults')
     
 #\\\ Number of agents at test time
-nAgentsTest = np.linspace(nAgents, nAgentsMax, num = nSimPoints,dtype = np.int)
+nAgentsTest = np.linspace(nAgents, nAgentsMax, num = nSimPoints,dtype = np.int64)
 nAgentsTest = np.unique(nAgentsTest).tolist()
 nSimPoints = len(nAgentsTest)
 writeVarValues(varsFile, {'nAgentsTest': nAgentsTest}) # Save list
@@ -636,14 +640,6 @@ for realization in range(nRealizations):
         if nRealizations > 1:
             print(" for realization %d" % realization, end = '')
         print("...", flush = True)
-
-    # Generate the videos
-    data.saveVideo(datasetTrainTrajectoryDir, # Where to save them
-                    data.pos['train'], # Which positions to plot
-                    nVideos, # Number of videos to create
-                    commGraph = data.commGraph['train'], # Graph to plot
-                    vel = data.vel['train'], # Velocity arrows to plot
-                    videoSpeed = videoSpeed) # Change speed of animation
 
     #%%##################################################################
     #                                                                   #
@@ -868,13 +864,6 @@ for realization in range(nRealizations):
             if nRealizations > 1:
                 print(" for realization %d" % realization, end = '')
             print("...", flush = True)
-    
-        dataTest.saveVideo(datasetTestAgentTrajectoryDir[n],
-                           posTest,
-                           nVideos,
-                           commGraph = commGraphTest,
-                           vel = velTest,
-                           videoSpeed = videoSpeed)
         
         #\\\ EVAL
         #\\\\\\\\
