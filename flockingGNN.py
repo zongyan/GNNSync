@@ -140,7 +140,7 @@ initVelValue = 3. # Initial velocities are samples from an interval
 initMinDist = 0.1 # No two agents are located at a distance less than this
 accelMax = 10. # This is the maximum value of acceleration allowed
 
-nRealizations = 10 # Number of data realizations
+nRealizations = 1 # Number of data realizations
     # How many times we repeat the experiment
 
 #\\\ Save values:
@@ -1245,3 +1245,80 @@ with open(varsFile, 'a+') as file:
     file.write("Total time: %dh %dm %.2fs" % (totalRunTimeH,
                                               totalRunTimeM,
                                               totalRunTimeS))
+
+#%%
+
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+
+gnn_test = np.load('./gnn_test.npz') # the data file loaded from the example folder
+
+matplotlib.rc('figure', max_open_warning = 0)
+
+posTest = gnn_test['posTestBest']
+velTest = gnn_test['velTestBest']
+accelTest = gnn_test['accelTestBest']
+stateTest = gnn_test['stateTestBest']
+commGraphTest = gnn_test['commGraphTestBest']
+
+posOptim, velOptim, accelOptim = data.computeOptimalTrajectory(posTest[:,0,:,:], \
+                                                               posTest[:,0,:,:], \
+                                                                   duration=data.duration, \
+                                                                       samplingTime=data.samplingTime, \
+                                                                           repelDist=data.repelDist, \
+                                                                               accelMax=data.accelMax)
+
+# plot the velocity of all agents via the GNN method
+for i in range(0, 1, 1):
+    plt.figure()
+    plt.rcParams["figure.figsize"] = (6.4,4.8)
+    for j in range(0, 50, 1):
+        # the input and output features are two dimensions, which means that one 
+        # dimension is for x-axis velocity, the other one is for y-axis velocity 
+        plt.plot(np.arange(0, 200, 1), np.sqrt(velTest[i, :, 0, j]**2 + velTest[i, :, 1, j]**2)) 
+        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+    # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
+    plt.title(r'$\bf v_{gnn}$ for ' + str(50)+ ' agents (gnn controller)')
+    plt.grid()
+    plt.show()    
+# end for
+
+# plot the velocity of all agents via the centralised optimal controller
+for i in range(0, 1, 1):
+    plt.figure()
+    plt.rcParams["figure.figsize"] = (6.4,4.8)
+    for j in range(0, 50, 1):
+        # the input and output features are two dimensions, which means that one 
+        # dimension is for x-axis velocity, the other one is for y-axis velocity 
+        plt.plot(np.arange(0, 200, 1), np.sqrt(velOptim[i, :, 0, j]**2 + velOptim[i, :, 1, j]**2)) 
+        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+    # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
+    plt.title(r'$\bf v_{cc}$ for ' + str(50)+ ' agents (centralised controller)')
+    plt.grid()
+    plt.show()    
+# end for
+
+# plot the velocity difference of all agents by using the centralised optimal controller and GNN methods
+for i in range(0, 1, 1):
+    plt.figure()
+    plt.rcParams["figure.figsize"] = (6.4,4.8)
+    for j in range(0, 50, 1):
+        # the input and output features are two dimensions, which means that one 
+        # dimension is for x-axis velocity, the other one is for y-axis velocity 
+        vel_temp = np.sqrt(velTest[i, :, 0, j] ** 2 + velTest[i, :, 1, j] ** 2) \
+            - np.sqrt(velOptim[i, :, 0, j] ** 2 + velOptim[i, :, 1, j] ** 2)                
+        plt.plot(np.arange(0, 200, 1), vel_temp) 
+        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+    # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
+    plt.title(r'$\|{\bf v}_{gnn}\|_2 - \|{\bf v}_{cc}\|_2$')    
+    plt.grid()
+    plt.show()    
+# end for
+    
