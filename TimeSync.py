@@ -47,21 +47,16 @@ import torch; torch.set_default_dtype(torch.float64)
 import torch.nn as nn
 import torch.optim as optim
 
-import sys
-#\\\ Own libraries:
-sys.path.append('./../graph-neural-networks/alegnn/modules') # add the path to the existing one
-sys.path.append('./../graph-neural-networks/alegnn/utils') # add the path to the existing one
-
-import dataTools as dataTools # alegnn.utils
-import graphML as gml # alegnn.utils
-import architecturesTime as architTime # alegnn.modules
-import model as model # alegnn.modules
-import training as training # alegnn.modules
-import evaluation as evaluation # alegnn.modules
+import utils.dataTools as dataTools # alegnn.
+import utils.graphML as gml # alegnn.utils
+import modules.architecturesTime as architTime # alegnn.
+import modules.model as model # alegnn.modules
+import modules.training as training # alegnn.modules
+import modules.evaluation as evaluation # alegnn.modules
 
 #\\\ Separate functions:
-from miscTools import writeVarValues
-from miscTools import saveSeed
+from utils.miscTools import writeVarValues
+from utils.miscTools import saveSeed
 
 # Start measuring time
 startRunTime = datetime.datetime.now()

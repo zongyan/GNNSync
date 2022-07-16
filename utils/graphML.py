@@ -67,7 +67,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-import alegnn.utils.graphTools as graphTools
+import utils.graphTools as graphTools
 
 zeroTolerance = 1e-9 # Values below this number are considered zero.
 infiniteNumber = 1e12 # infinity equals this number
