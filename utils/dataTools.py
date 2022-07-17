@@ -75,7 +75,7 @@ def invertTensorEW(x):
     return xInv
 
 class Flocking():
-    def __init__(self, nAgents, commRadius, repelDist,
+    def __init__(self, nNodes, commRadius, repelDist,
                  nTrain, nValid, nTest,
                  duration, samplingTime,
                  initGeometry = 'circular',initVelValue = 3.,initMinDist = 0.1,
@@ -96,7 +96,7 @@ class Flocking():
         
         # Save the relevant input information
         #   Number of nodes
-        self.nAgents = nAgents
+        self.nNodes = nNodes
         self.commRadius = commRadius
         self.repelDist = repelDist
         #   Number of samples
@@ -133,7 +133,7 @@ class Flocking():
         
         # Compute the initial positions, (421, 2, 50)
         initPosAll, initVelAll = self.computeInitialPositions(
-                                          self.nAgents, nSamples, self.commRadius,
+                                          self.nNodes, nSamples, self.commRadius,
                                           minDist = self.initMinDist,
                                           geometry = self.initGeometry,
                                           xMaxInitVel = self.initVelValue,
@@ -259,25 +259,25 @@ class Flocking():
     def computeStates(self, pos, vel, graphMatrix, **kwargs):
         
         # We get the following inputs.
-        # positions: nSamples x tSamples x 2 x nAgents
-        # velocities: nSamples x tSamples x 2 x nAgents
-        # graphMatrix: nSaples x tSamples x nAgents x nAgents
+        # positions: nSamples x tSamples x 2 x nNodes
+        # velocities: nSamples x tSamples x 2 x nNodes
+        # graphMatrix: nSaples x tSamples x nNodes x nNodes
         
         # And we want to build the state, which is a vector of dimension 6 on 
         # each node, that is, the output shape is
-        #   nSamples x tSamples x 6 x nAgents
+        #   nSamples x tSamples x 6 x nNodes
                 
         # Check correct dimensions
         assert len(pos.shape) == len(vel.shape) == len(graphMatrix.shape) == 4
         nSamples = pos.shape[0]
         tSamples = pos.shape[1]
         assert pos.shape[2] == 2
-        nAgents = pos.shape[3]
+        nNodes = pos.shape[3]
         assert vel.shape[0] == graphMatrix.shape[0] == nSamples
         assert vel.shape[1] == graphMatrix.shape[1] == tSamples
         assert vel.shape[2] == 2
         assert vel.shape[3] == graphMatrix.shape[2] == graphMatrix.shape[3] \
-                == nAgents
+                == nNodes
                 
         # If we have a lot of batches and a particularly long sequence, this
         # is bound to fail, memory-wise, so let's do it time instant by time
@@ -310,7 +310,7 @@ class Flocking():
         batchIndex = [0] + batchIndex
         
         # Create the output state variable
-        state = np.zeros((nSamples, tSamples, 6, nAgents))
+        state = np.zeros((nSamples, tSamples, 6, nNodes))
         
         for b in range(nBatches):
             
@@ -328,10 +328,10 @@ class Flocking():
                     # positions, for each agent, for each time instant
                     posDiff, posDistSq = \
                                      self.computeDifferences(posBatch[:,t,:,:])
-                    #   posDiff: batchSize[b] x 2 x nAgents x nAgents
-                    #   posDistSq: batchSize[b] x nAgents x nAgents
+                    #   posDiff: batchSize[b] x 2 x nNodes x nNodes
+                    #   posDistSq: batchSize[b] x nNodes x nNodes
                     velDiff, _ = self.computeDifferences(velBatch[:,t,:,:])
-                    #   velDiff: batchSize[b] x 2 x nAgents x nAgents
+                    #   velDiff: batchSize[b] x 2 x nNodes x nNodes
                     
                     # Next, we need to get ride of all those places where there are
                     # no neighborhoods. That is given by the nonzero elements of the 
@@ -339,15 +339,15 @@ class Flocking():
                     graphMatrixTime = (np.abs(graphMatrixBatch[:,t,:,:])\
                                                                >zeroTolerance)\
                                                              .astype(pos.dtype)
-                    #   graphMatrix: batchSize[b] x nAgents x nAgents
+                    #   graphMatrix: batchSize[b] x nNodes x nNodes
                     # We also need to invert the squares of the distances
                     posDistSqInv = invertTensorEW(posDistSq)
-                    #   posDistSqInv: batchSize[b] x nAgents x nAgents
+                    #   posDistSqInv: batchSize[b] x nNodes x nNodes
                     
                     # Now we add the extra dimensions so that all the 
                     # multiplications are adequate
                     graphMatrixTime = np.expand_dims(graphMatrixTime, 1)
-                    #   graphMatrix: batchSize[b] x 1 x nAgents x nAgents
+                    #   graphMatrix: batchSize[b] x 1 x nNodes x nNodes
                     
                     # Then, we can get rid of non-neighbors
                     posDiff = posDiff * graphMatrixTime
@@ -357,12 +357,12 @@ class Flocking():
                     
                     # Finally, we can compute the states
                     stateVel = np.sum(velDiff, axis = 3)
-                    #   stateVel: batchSize[b] x 2 x nAgents
+                    #   stateVel: batchSize[b] x 2 x nNodes
                     statePosFourth = np.sum(posDiff * (posDistSqInv ** 2),
                                             axis = 3)
-                    #   statePosFourth: batchSize[b] x 2 x nAgents
+                    #   statePosFourth: batchSize[b] x 2 x nNodes
                     statePosSq = np.sum(posDiff * posDistSqInv, axis = 3)
-                    #   statePosSq: batchSize[b] x 2 x nAgents
+                    #   statePosSq: batchSize[b] x 2 x nNodes
                     
                     # Concatentate the states and return the result
                     state[batchIndex[b]:batchIndex[b+1],t,:,:] = \
@@ -370,7 +370,7 @@ class Flocking():
                                                                 statePosFourth,
                                                                 statePosSq),
                                                                axis = 1)
-                    #   batchSize[b] x 6 x nAgents
+                    #   batchSize[b] x 6 x nNodes
                     
                     # Sample percentage count
                     percentageCount = int(100*(t+1+b*tSamples)\
@@ -390,25 +390,25 @@ class Flocking():
                 # Now, we need to compute the differences, in velocities and in 
                 # positions, for each agent, for each time instante
                 posDiff, posDistSq = self.computeDifferences(posBatch)
-                #   posDiff: batchSize[b] x tSamples x 2 x nAgents x nAgents
-                #   posDistSq: batchSize[b] x tSamples x nAgents x nAgents
+                #   posDiff: batchSize[b] x tSamples x 2 x nNodes x nNodes
+                #   posDistSq: batchSize[b] x tSamples x nNodes x nNodes
                 velDiff, _ = self.computeDifferences(velBatch)
-                #   velDiff: batchSize[b] x tSamples x 2 x nAgents x nAgents
+                #   velDiff: batchSize[b] x tSamples x 2 x nNodes x nNodes
                 
                 # Next, we need to get ride of all those places where there are
                 # no neighborhoods. That is given by the nonzero elements of the 
                 # graph matrix.
                 graphMatrixBatch = (np.abs(graphMatrixBatch) > zeroTolerance)\
                                                              .astype(pos.dtype)
-                #   graphMatrix: batchSize[b] x tSamples x nAgents x nAgents
+                #   graphMatrix: batchSize[b] x tSamples x nNodes x nNodes
                 # We also need to invert the squares of the distances
                 posDistSqInv = invertTensorEW(posDistSq)
-                #   posDistSqInv: batchSize[b] x tSamples x nAgents x nAgents
+                #   posDistSqInv: batchSize[b] x tSamples x nNodes x nNodes
                 
                 # Now we add the extra dimensions so that all the multiplications
                 # are adequate
                 graphMatrixBatch = np.expand_dims(graphMatrixBatch, 2)
-                #   graphMatrix:batchSize[b] x tSamples x 1 x nAgents x nAgents
+                #   graphMatrix:batchSize[b] x tSamples x 1 x nNodes x nNodes
                 
                 # Then, we can get rid of non-neighbors
                 posDiff = posDiff * graphMatrixBatch
@@ -418,11 +418,11 @@ class Flocking():
                 
                 # Finally, we can compute the states
                 stateVel = np.sum(velDiff, axis = 4)
-                #   stateVel: batchSize[b] x tSamples x 2 x nAgents
+                #   stateVel: batchSize[b] x tSamples x 2 x nNodes
                 statePosFourth = np.sum(posDiff * (posDistSqInv ** 2), axis = 4)
-                #   statePosFourth: batchSize[b] x tSamples x 2 x nAgents
+                #   statePosFourth: batchSize[b] x tSamples x 2 x nNodes
                 statePosSq = np.sum(posDiff * posDistSqInv, axis = 4)
-                #   statePosSq: batchSize[b] x tSamples x 2 x nAgents
+                #   statePosSq: batchSize[b] x tSamples x 2 x nNodes
                 
                 # Concatentate the states and return the result
                 state[batchIndex[b]:batchIndex[b+1]] = \
@@ -430,7 +430,7 @@ class Flocking():
                                                                 statePosFourth,
                                                                 statePosSq),
                                                                axis = 2)
-                #   state: batchSize[b] x tSamples x 6 x nAgents
+                #   state: batchSize[b] x tSamples x 6 x nNodes
                                                 
                 # Sample percentage count
                 percentageCount = int(100*(b+1)/nBatches)
@@ -455,16 +455,16 @@ class Flocking():
         # Take in the position and the communication radius, and return the
         # trajectory of communication graphs
         # Input will be of shape
-        #   nSamples x tSamples x 2 x nAgents
+        #   nSamples x tSamples x 2 x nNodes
         # Output will be of shape
-        #   nSamples x tSamples x nAgents x nAgents
+        #   nSamples x tSamples x nNodes x nNodes
         
         assert commRadius > 0
         assert len(pos.shape) == 4
         nSamples = pos.shape[0]
         tSamples = pos.shape[1]
         assert pos.shape[2] == 2
-        nAgents = pos.shape[3]
+        nNodes = pos.shape[3]
         
         # Graph type options
         #   Kernel type (only Gaussian implemented so far)
@@ -516,7 +516,7 @@ class Flocking():
         batchIndex = [0] + batchIndex
         
         # Create the output state variable
-        graphMatrix = np.zeros((nSamples, tSamples, nAgents, nAgents))
+        graphMatrix = np.zeros((nSamples, tSamples, nNodes, nNodes))
         
         for b in range(nBatches):
             
@@ -542,7 +542,7 @@ class Flocking():
                     graphMatrixTime[distSq > (commRadius ** 2)] = 0.
                     # Set the diagonal elements to zero
                     graphMatrixTime[:,\
-                                    np.arange(0,nAgents),np.arange(0,nAgents)]\
+                                    np.arange(0,nNodes),np.arange(0,nNodes)]\
                                                                            = 0.
                     # If it is unweighted, force all nonzero values to be 1
                     if not weighted:
@@ -599,7 +599,7 @@ class Flocking():
                 graphMatrixBatch[distSq > (commRadius ** 2)] = 0.
                 # Set the diagonal elements to zero
                 graphMatrixBatch[:,:,
-                                 np.arange(0,nAgents),np.arange(0,nAgents)] =0.
+                                 np.arange(0,nNodes),np.arange(0,nNodes)] =0.
                 # If it is unweighted, force all nonzero values to be 1
                 if not weighted:
                     graphMatrixBatch = (graphMatrixBatch > zeroTolerance)\
@@ -720,16 +720,16 @@ class Flocking():
             nSamples = vel.shape[0]
             tSamples = vel.shape[1]
             assert vel.shape[2] == 2
-            nAgents = vel.shape[3]
+            nNodes = vel.shape[3]
         elif accel is not None and initVel is not None:
             assert len(accel.shape) == 4 and len(initVel.shape) == 3
             nSamples = accel.shape[0]
             tSamples = accel.shape[1]
             assert accel.shape[2] == 2
-            nAgents = accel.shape[3]
+            nNodes = accel.shape[3]
             assert initVel.shape[0] == nSamples
             assert initVel.shape[1] == 2
-            assert initVel.shape[2] == nAgents
+            assert initVel.shape[2] == nNodes
             
             # Now that we know we have a accel and init velocity, compute the
             # velocity trajectory
@@ -738,13 +738,13 @@ class Flocking():
                 # Check that initVel is also torch
                 assert 'torch' in repr(initVel.dtype)
                 # Create the tensor to save the velocity trajectory
-                vel = torch.zeros(nSamples,tSamples,2,nAgents,
+                vel = torch.zeros(nSamples,tSamples,2,nNodes,
                                   dtype = accel.dtype, device = accel.device)
                 # Add the initial velocity
                 vel[:,0,:,:] = initVel.clone().detach()
             else:
                 # Create the space
-                vel = np.zeros((nSamples, tSamples, 2, nAgents),
+                vel = np.zeros((nSamples, tSamples, 2, nNodes),
                                dtype=accel.dtype)
                 # Add the initial velocity
                 vel[:,0,:,:] = initVel.copy()
@@ -764,10 +764,10 @@ class Flocking():
             # Compute the difference in velocity between each agent and the
             # mean velocity
             diffVel = vel - avgVel.unsqueeze(3) 
-            #   nSamples x tSamples x 2 x nAgents
+            #   nSamples x tSamples x 2 x nNodes
             # Compute the MSE velocity
             diffVelNorm = torch.sum(diffVel ** 2, dim = 2) 
-            #   nSamples x tSamples x nAgents
+            #   nSamples x tSamples x nNodes
             # Average over agents
             diffVelAvg = torch.mean(diffVelNorm, dim = 2) # nSamples x tSamples
             # Sum over time
@@ -778,10 +778,10 @@ class Flocking():
             # Repeat for numpy
             avgVel = np.mean(vel, axis = 3) # nSamples x tSamples x 2
             diffVel = vel - np.tile(np.expand_dims(avgVel, 3),
-                                    (1, 1, 1, nAgents))
-            #   nSamples x tSamples x 2 x nAgents
+                                    (1, 1, 1, nNodes))
+            #   nSamples x tSamples x 2 x nNodes
             diffVelNorm = np.sum(diffVel ** 2, axis = 2)
-            #   nSamples x tSamples x nAgents
+            #   nSamples x tSamples x nNodes
             diffVelAvg = np.mean(diffVelNorm, axis = 2) # nSamples x tSamples
             costPerSample = np.sum(diffVelAvg, axis = 1) # nSamples
             cost = np.mean(costPerSample) # scalar
@@ -790,17 +790,17 @@ class Flocking():
     
     def computeTrajectory(self, initPos, initVel, duration, **kwargs):
         
-        # Check initPos is of shape batchSize x 2 x nAgents
+        # Check initPos is of shape batchSize x 2 x nNodes
         assert len(initPos.shape) == 3
         batchSize = initPos.shape[0]
         assert initPos.shape[1]
-        nAgents = initPos.shape[2]
+        nNodes = initPos.shape[2]
         
-        # Check initVel is of shape batchSize x 2 x nAgents
+        # Check initVel is of shape batchSize x 2 x nNodes
         assert len(initVel.shape) == 3
         assert initVel.shape[0] == batchSize
         assert initVel.shape[1] == 2
-        assert initVel.shape[2] == nAgents
+        assert initVel.shape[2] == nNodes
         
         # Check what kind of data it is
         #   This is because all the functions are numpy, but if this was
@@ -830,23 +830,23 @@ class Flocking():
             useArchit = True
         elif 'accel' in kwargs.keys():
             accel = kwargs['accel']
-            # accel has to be of shape batchSize x tSamples x 2 x nAgents
+            # accel has to be of shape batchSize x tSamples x 2 x nNodes
             assert len(accel.shape) == 4
             assert accel.shape[0] == batchSize
             assert accel.shape[1] == tSamples
             assert accel.shape[2] == 2
-            assert accel.shape[3] == nAgents
+            assert accel.shape[3] == nNodes
             if useTorch:
                 assert 'torch' in repr(accel.dtype)
             useAccel = True
         
         # Now create the outputs that will be filled afterwards
-        pos = np.zeros((batchSize, tSamples, 2, nAgents), dtype = np.float)
-        vel = np.zeros((batchSize, tSamples, 2, nAgents), dtype = np.float)
+        pos = np.zeros((batchSize, tSamples, 2, nNodes), dtype = np.float)
+        vel = np.zeros((batchSize, tSamples, 2, nNodes), dtype = np.float)
         if useArchit:
-            accel = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float)
-            state = np.zeros((batchSize, tSamples, 6, nAgents), dtype=np.float)
-            graph = np.zeros((batchSize, tSamples, nAgents, nAgents),
+            accel = np.zeros((batchSize, tSamples, 2, nNodes), dtype=np.float)
+            state = np.zeros((batchSize, tSamples, 6, nNodes), dtype=np.float)
+            graph = np.zeros((batchSize, tSamples, nNodes, nNodes),
                              dtype = np.float)
             
         # Assign the initial positions and velocities
@@ -956,13 +956,13 @@ class Flocking():
     def computeDifferences(self, u):
         
         # Takes as input a tensor of shape
-        #   nSamples x tSamples x 2 x nAgents
+        #   nSamples x tSamples x 2 x nNodes
         # or of shape
-        #   nSamples x 2 x nAgents
+        #   nSamples x 2 x nNodes
         # And returns the elementwise difference u_i - u_j of shape
-        #   nSamples (x tSamples) x 2 x nAgents x nAgents
+        #   nSamples (x tSamples) x 2 x nNodes x nNodes
         # And the distance squared ||u_i - u_j||^2 of shape
-        #   nSamples (x tSamples) x nAgents x nAgents
+        #   nSamples (x tSamples) x nNodes x nNodes
         
         # Check dimensions
         assert len(u.shape) == 3 or len(u.shape) == 4
@@ -976,29 +976,29 @@ class Flocking():
             hasTimeDim = True
         
         # Now we have that pos always has shape
-        #   nSamples x tSamples x 2 x nAgents
+        #   nSamples x tSamples x 2 x nNodes
         nSamples = u.shape[0]
         tSamples = u.shape[1]
         assert u.shape[2] == 2
-        nAgents = u.shape[3]
+        nNodes = u.shape[3]
         
         # Compute the difference along each axis. For this, we subtract a
         # column vector from a row vector. The difference tensor on each
-        # position will have shape nSamples x tSamples x nAgents x nAgents
+        # position will have shape nSamples x tSamples x nNodes x nNodes
         # and then we add the extra dimension to concatenate and obtain a final
-        # tensor of shape nSamples x tSamples x 2 x nAgents x nAgents
+        # tensor of shape nSamples x tSamples x 2 x nNodes x nNodes
         # First, axis x
         #   Reshape as column and row vector, respectively
-        uCol_x = u[:,:,0,:].reshape((nSamples, tSamples, nAgents, 1))
-        uRow_x = u[:,:,0,:].reshape((nSamples, tSamples, 1, nAgents))
+        uCol_x = u[:,:,0,:].reshape((nSamples, tSamples, nNodes, 1))
+        uRow_x = u[:,:,0,:].reshape((nSamples, tSamples, 1, nNodes))
         #   Subtract them
-        uDiff_x = uCol_x - uRow_x # nSamples x tSamples x nAgents x nAgents
+        uDiff_x = uCol_x - uRow_x # nSamples x tSamples x nNodes x nNodes
         # Second, for axis y
-        uCol_y = u[:,:,1,:].reshape((nSamples, tSamples, nAgents, 1))
-        uRow_y = u[:,:,1,:].reshape((nSamples, tSamples, 1, nAgents))
-        uDiff_y = uCol_y - uRow_y # nSamples x tSamples x nAgents x nAgents
+        uCol_y = u[:,:,1,:].reshape((nSamples, tSamples, nNodes, 1))
+        uRow_y = u[:,:,1,:].reshape((nSamples, tSamples, 1, nNodes))
+        uDiff_y = uCol_y - uRow_y # nSamples x tSamples x nNodes x nNodes
         # Third, compute the distance tensor of shape
-        #   nSamples x tSamples x nAgents x nAgents
+        #   nSamples x tSamples x nNodes x nNodes
         uDistSq = uDiff_x ** 2 + uDiff_y ** 2
         # Finally, concatenate to obtain the tensor of differences
         #   Add the extra dimension in the position
@@ -1006,15 +1006,15 @@ class Flocking():
         uDiff_y = np.expand_dims(uDiff_y, 2)
         #   And concatenate them
         uDiff = np.concatenate((uDiff_x, uDiff_y), 2)
-        #   nSamples x tSamples x 2 x nAgents x nAgents
+        #   nSamples x tSamples x 2 x nNodes x nNodes
             
         # Get rid of the time dimension if we don't need it
         if not hasTimeDim:
             # (This fails if tSamples > 1)
             uDistSq = uDistSq.squeeze(1)
-            #   nSamples x nAgents x nAgents
+            #   nSamples x nNodes x nNodes
             uDiff = uDiff.squeeze(1)
-            #   nSamples x 2 x nAgents x nAgents
+            #   nSamples x 2 x nNodes x nNodes
             
         return uDiff, uDistSq
  
@@ -1030,22 +1030,22 @@ class Flocking():
         # for each agent i=1,...,N, where v_{i} is the velocity and r_{i} the
         # position.
         
-        # Check that initPos and initVel as nSamples x 2 x nAgents arrays
+        # Check that initPos and initVel as nSamples x 2 x nNodes arrays
         assert len(initPos.shape) == len(initVel.shape) == 3
         nSamples = initPos.shape[0]
         assert initPos.shape[1] == initVel.shape[1] == 2
-        nAgents = initPos.shape[2]
+        nNodes = initPos.shape[2]
         assert initVel.shape[0] == nSamples
-        assert initVel.shape[2] == nAgents
+        assert initVel.shape[2] == nNodes
         
         # time
         time = np.arange(0, duration, samplingTime)
         tSamples = len(time) # number of time samples
         
         # Create arrays to store the trajectory
-        pos = np.zeros((nSamples, tSamples, 2, nAgents))
-        vel = np.zeros((nSamples, tSamples, 2, nAgents))
-        accel = np.zeros((nSamples, tSamples, 2, nAgents))
+        pos = np.zeros((nSamples, tSamples, 2, nNodes))
+        vel = np.zeros((nSamples, tSamples, 2, nNodes))
+        accel = np.zeros((nSamples, tSamples, 2, nNodes))
         
         # Initial settings
         pos[:,0,:,:] = initPos
@@ -1062,11 +1062,11 @@ class Flocking():
             # Compute the optimal acceleration
             #   Compute the distance between all elements (positions)
             ijDiffPos, ijDistSq = self.computeDifferences(pos[:,t-1,:,:])
-            #       ijDiffPos: nSamples x 2 x nAgents x nAgents
-            #       ijDistSq:  nSamples x nAgents x nAgents
+            #       ijDiffPos: nSamples x 2 x nNodes x nNodes
+            #       ijDistSq:  nSamples x nNodes x nNodes
             #   And also the difference in velocities
             ijDiffVel, _ = self.computeDifferences(vel[:,t-1,:,:])
-            #       ijDiffVel: nSamples x 2 x nAgents x nAgents
+            #       ijDiffVel: nSamples x 2 x nNodes x nNodes
             #   The last element we need to compute the acceleration is the
             #   gradient. Note that the gradient only counts when the distance 
             #   is smaller than the repel distance
@@ -1116,7 +1116,7 @@ class Flocking():
             
         return pos, vel, accel
 
-    def computeInitialPositions(self, nAgents, nSamples, commRadius,
+    def computeInitialPositions(self, nNodes, nSamples, commRadius,
                                 minDist = 0.1, geometry = 'rectangular',
                                 **kwargs):
         
@@ -1150,16 +1150,16 @@ class Flocking():
             # one other agent within commRadius.
             
             # How many agents per axis
-            nAgentsPerAxis = int(np.ceil(np.sqrt(nAgents)))
+            nNodesPerAxis = int(np.ceil(np.sqrt(nNodes)))
             
-            axisFixedPos = np.arange(-(nAgentsPerAxis * distFixed)/2,
-                                       (nAgentsPerAxis * distFixed)/2,
+            axisFixedPos = np.arange(-(nNodesPerAxis * distFixed)/2,
+                                       (nNodesPerAxis * distFixed)/2,
                                       step = distFixed)
             
             # Repeat the positions in the same order (x coordinate)
-            xFixedPos = np.tile(axisFixedPos, nAgentsPerAxis)
+            xFixedPos = np.tile(axisFixedPos, nNodesPerAxis)
             # Repeat each element (y coordinate)
-            yFixedPos = np.repeat(axisFixedPos, nAgentsPerAxis)
+            yFixedPos = np.repeat(axisFixedPos, nNodesPerAxis)
             
             # Concatenate this to obtain the positions
             fixedPos = np.concatenate((np.expand_dims(xFixedPos, 0),
@@ -1167,16 +1167,16 @@ class Flocking():
                                       axis = 0)
             
             # Get rid of unnecessary agents
-            fixedPos = fixedPos[:, 0:nAgents]
+            fixedPos = fixedPos[:, 0:nNodes]
             # And repeat for the number of samples we want to generate
             fixedPos = np.repeat(np.expand_dims(fixedPos, 0), nSamples,
                                  axis = 0)
-            #   nSamples x 2 x nAgents
+            #   nSamples x 2 x nNodes
             
             # Now generate the noise
             perturbPos = np.random.uniform(low = -distPerturb,
                                            high = distPerturb,
-                                           size = (nSamples, 2, nAgents))
+                                           size = (nSamples, 2, nNodes))
             
             # Initial positions
             initPos = fixedPos + perturbPos
@@ -1186,15 +1186,15 @@ class Flocking():
             # Radius for the grid
             rFixed = (commRadius + minDist)/2.
             rPerturb = (commRadius - minDist)/4.
-            fixedRadius = np.arange(0, rFixed * nAgents, step = rFixed)+rFixed
+            fixedRadius = np.arange(0, rFixed * nNodes, step = rFixed)+rFixed
             
             # Angles for the grid
             aFixed = (commRadius/fixedRadius + minDist/fixedRadius)/2.
             for a in range(len(aFixed)):
                 # How many times does aFixed[a] fits within 2pi?
-                nAgentsPerCircle = 2 * np.pi // aFixed[a]
+                nNodesPerCircle = 2 * np.pi // aFixed[a]
                 # And now divide 2*np.pi by this number
-                aFixed[a] = 2 * np.pi / nAgentsPerCircle
+                aFixed[a] = 2 * np.pi / nNodesPerCircle
             #   Fixed angle difference for each value of fixedRadius
             
             # Now, let's get the radius, angle coordinates for each agents
@@ -1202,7 +1202,7 @@ class Flocking():
             initAngles = np.empty((0))
             agentsSoFar = 0 # Number of agents located so far
             n = 0 # Index for radius
-            while agentsSoFar < nAgents:
+            while agentsSoFar < nNodes:
                 thisRadius = fixedRadius[n]
                 thisAngles = np.arange(0, 2*np.pi, step = aFixed[n])
                 agentsSoFar += len(thisAngles)
@@ -1214,8 +1214,8 @@ class Flocking():
                 assert len(initRadius) == agentsSoFar
                 
             # Restrict to the number of agents we need
-            initRadius = initRadius[0:nAgents]
-            initAngles = initAngles[0:nAgents]
+            initRadius = initRadius[0:nNodes]
+            initAngles = initAngles[0:nNodes]
             
             # Add the number of samples
             initRadius = np.repeat(np.expand_dims(initRadius, 0), nSamples,
@@ -1225,7 +1225,7 @@ class Flocking():
             
             # Add the noise
             #   First, to the angles
-            for n in range(nAgents):
+            for n in range(nNodes):
                 # Get the radius (the angle noise depends on the radius); so
                 # far the radius is the same for all samples
                 thisRadius = initRadius[0,n]
@@ -1237,10 +1237,10 @@ class Flocking():
             #   Then, to the radius
             initRadius += np.random.uniform(low = -rPerturb,
                                             high = rPerturb,
-                                            size = (nSamples, nAgents))
+                                            size = (nSamples, nNodes))
             
             # And finally, get the positions in the cartesian coordinates
-            initPos = np.zeros((nSamples, 2, nAgents))
+            initPos = np.zeros((nSamples, 2, nNodes))
             initPos[:, 0, :] = initRadius * np.cos(initAngles)
             initPos[:, 1, :] = initRadius * np.sin(initAngles)
             
@@ -1266,7 +1266,7 @@ class Flocking():
                                                      self.commRadius,
                                                      False,
                                                      doPrint = False)
-        graphMatrix = graphMatrix.squeeze(1) # nSamples x nAgents x nAgents  
+        graphMatrix = graphMatrix.squeeze(1) # nSamples x nNodes x nNodes  
         
         #   Binarize the matrix
         graphMatrix = (np.abs(graphMatrix) > zeroTolerance)\
@@ -1292,9 +1292,9 @@ class Flocking():
         
         # And sample the velocities
         xInitVel = np.random.uniform(low = -xMaxInitVel, high = xMaxInitVel,
-                                     size = (nSamples, 1, nAgents))
+                                     size = (nSamples, 1, nNodes))
         yInitVel = np.random.uniform(low = -yMaxInitVel, high = yMaxInitVel,
-                                     size = (nSamples, 1, nAgents))
+                                     size = (nSamples, 1, nNodes))
         # Add bias
         xVelBias = np.random.uniform(low = -xMaxInitVel, high = xMaxInitVel,
                                      size = (nSamples))
@@ -1304,7 +1304,7 @@ class Flocking():
         # And concatenate them
         velBias = np.concatenate((xVelBias, yVelBias)).reshape((nSamples,2,1))
         initVel = np.concatenate((xInitVel, yInitVel), axis = 1) + velBias
-        #   nSamples x 2 x nAgents
+        #   nSamples x 2 x nNodes
         
         return initPos, initVel # initPos=(421, 2, 50), initVel=(421, 2, 50)
     

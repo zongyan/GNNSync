@@ -59,9 +59,3 @@ class Model:
                                          self.name + 'Optim' + label + '.ckpt')
         self.archit.load_state_dict(torch.load(architLoadFile))
         self.optim.load_state_dict(torch.load(optimLoadFile))
-
-    def getTrainingOptions(self):
-        
-        return self.trainer.trainingOptions \
-                        if 'trainingOptions' in dir(self.trainer) \
-                    else None
