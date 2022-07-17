@@ -19,40 +19,6 @@ import utils.graphTools as graph
 
 zeroTolerance = 1e-9 # Values below this number are considered zero.
 
-def normalizeData(x, ax):
-    """
-    normalizeData(x, ax): normalize data x (subtract mean and divide by standard 
-    deviation) along the specified axis ax
-    """
-    
-    thisShape = x.shape # get the shape
-    assert ax < len(thisShape) # check that the axis that we want to normalize
-        # is there
-    dataType = type(x) # get data type so that we don't have to convert
-
-    if 'numpy' in repr(dataType):
-
-        # Compute the statistics
-        xMean = np.mean(x, axis = ax)
-        xDev = np.std(x, axis = ax)
-        # Add back the dimension we just took out
-        xMean = np.expand_dims(xMean, ax)
-        xDev = np.expand_dims(xDev, ax)
-
-    elif 'torch' in repr(dataType):
-
-        # Compute the statistics
-        xMean = torch.mean(x, dim = ax)
-        xDev = torch.std(x, dim = ax)
-        # Add back the dimension we just took out
-        xMean = xMean.unsqueeze(ax)
-        xDev = xDev.unsqueeze(ax)
-
-    # Subtract mean and divide by standard deviation
-    x = (x - xMean) / xDev
-
-    return x
-
 def changeDataType(x, dataType):
     """
     changeDataType(x, dataType): change the dataType of variable x into dataType
@@ -108,26 +74,15 @@ def invertTensorEW(x):
     
     return xInv
 
-class _data:
-    # Internal supraclass from which all data sets will inherit.
-    # There are certain methods that all Data classes must have:
-    #   getSamples(), expandDims(), to() and astype().
-    # To avoid coding this methods over and over again, we create a class from
-    # which the data can inherit this basic methods.
-    
-    # All the signals are always assumed to be graph signals that are written
-    #   nDataPoints (x nFeatures) x nNodes
-    # If we have one feature, we have the expandDims() that adds a x1 so that
-    # it can be readily processed by architectures/functions that always assume
-    # a 3-dimensional signal.
-    
-    def __init__(self):
-        # Minimal set of attributes that all data classes should have
-        self.dataType = None
-        self.device = None
-        self.nTrain = None
-        self.nValid = None
-        self.nTest = None
+class Flocking():
+    def __init__(self, nAgents, commRadius, repelDist,
+                 nTrain, nValid, nTest,
+                 duration, samplingTime,
+                 initGeometry = 'circular',initVelValue = 3.,initMinDist = 0.1,
+                 accelMax = 10.,
+                 normalizeGraph = True,
+                 dataType = np.float64, device = 'cpu'):
+        
         self.samples = {}
         self.samples['train'] = {}
         self.samples['train']['signals'] = None
@@ -137,127 +92,8 @@ class _data:
         self.samples['valid']['targets'] = None
         self.samples['test'] = {}
         self.samples['test']['signals'] = None
-        self.samples['test']['targets'] = None
+        self.samples['test']['targets'] = None        
         
-    def getSamples(self, samplesType, *args):
-        # samplesType: train, valid, test
-        # args: 0 args, give back all
-        # args: 1 arg: if int, give that number of samples, chosen at random
-        # args: 1 arg: if list, give those samples precisely.
-        # Check that the type is one of the possible ones
-        assert samplesType == 'train' or samplesType == 'valid' \
-                    or samplesType == 'test'
-        # Check that the number of extra arguments fits
-        assert len(args) <= 1
-        # If there are no arguments, just return all the desired samples
-        x = self.samples[samplesType]['signals']
-        y = self.samples[samplesType]['targets']
-        # If there's an argument, we have to check whether it is an int or a
-        # list
-        if len(args) == 1:
-            # If it is an int, just return that number of randomly chosen
-            # samples.
-            if type(args[0]) == int:
-                nSamples = x.shape[0] # total number of samples
-                # We can't return more samples than there are available
-                assert args[0] <= nSamples
-                # Randomly choose args[0] indices
-                selectedIndices = np.random.choice(nSamples, size = args[0],
-                                                   replace = False)
-                # Select the corresponding samples
-                xSelected = x[selectedIndices]
-                y = y[selectedIndices]
-            else:
-                # The fact that we put else here instead of elif type()==list
-                # allows for np.array to be used as indices as well. In general,
-                # any variable with the ability to index.
-                xSelected = x[args[0]]
-                # And assign the labels
-                y = y[args[0]]
-                
-            # If we only selected a single element, then the nDataPoints dim
-            # has been left out. So if we have less dimensions, we have to
-            # put it back
-            if len(xSelected.shape) < len(x.shape):
-                if 'torch' in self.dataType:
-                    x = xSelected.unsqueeze(0)
-                else:
-                    x = np.expand_dims(xSelected, axis = 0)
-            else:
-                x = xSelected
-
-        return x, y
-        
-    def astype(self, dataType):
-        # This changes the type for the minimal attributes (samples). This 
-        # methods should still be initialized within the data classes, if more
-        # attributes are used.
-        
-        # The labels could be integers as created from the dataset, so if they
-        # are, we need to be sure they are integers also after conversion. 
-        # To do this we need to match the desired dataType to its int 
-        # counterpart. Typical examples are:
-        #   numpy.float64 -> numpy.int64
-        #   numpy.float32 -> numpy.int32
-        #   torch.float64 -> torch.int64
-        #   torch.float32 -> torch.int32
-        
-        targetType = str(self.samples['train']['targets'].dtype)
-        if 'int' in targetType:
-            if 'numpy' in repr(dataType):
-                if '64' in targetType:
-                    targetType = np.int64
-                elif '32' in targetType:
-                    targetType = np.int32
-            elif 'torch' in repr(dataType):
-                if '64' in targetType:
-                    targetType = torch.int64
-                elif '32' in targetType:
-                    targetType = torch.int32
-        else: # If there is no int, just stick with the given dataType
-            targetType = dataType
-        
-        # Now that we have selected the dataType, and the corresponding
-        # labelType, we can proceed to convert the data into the corresponding
-        # type
-        for key in self.samples.keys():
-            self.samples[key]['signals'] = changeDataType(
-                                                   self.samples[key]['signals'],
-                                                   dataType)
-            self.samples[key]['targets'] = changeDataType(
-                                                   self.samples[key]['targets'],
-                                                   targetType)
-
-        # Update attribute
-        if dataType is not self.dataType:
-            self.dataType = dataType
-
-    def to(self, device):
-        # This changes the type for the minimal attributes (samples). This 
-        # methods should still be initialized within the data classes, if more
-        # attributes are used.
-        # This can only be done if they are torch tensors
-        if 'torch' in repr(self.dataType):
-            for key in self.samples.keys():
-                for secondKey in self.samples[key].keys():
-                    self.samples[key][secondKey] \
-                                      = self.samples[key][secondKey].to(device)
-
-            # If the device changed, save it.
-            if device is not self.device:
-                self.device = device
-
-class Flocking(_data):
-    def __init__(self, nAgents, commRadius, repelDist,
-                 nTrain, nValid, nTest,
-                 duration, samplingTime,
-                 initGeometry = 'circular',initVelValue = 3.,initMinDist = 0.1,
-                 accelMax = 10.,
-                 normalizeGraph = True,
-                 dataType = np.float64, device = 'cpu'):
-        
-        # Initialize parent class
-        super().__init__()
         # Save the relevant input information
         #   Number of nodes
         self.nAgents = nAgents
@@ -1471,4 +1307,112 @@ class Flocking(_data):
         #   nSamples x 2 x nAgents
         
         return initPos, initVel # initPos=(421, 2, 50), initVel=(421, 2, 50)
+    
+    def getSamples(self, samplesType, *args):
+        # samplesType: train, valid, test
+        # args: 0 args, give back all
+        # args: 1 arg: if int, give that number of samples, chosen at random
+        # args: 1 arg: if list, give those samples precisely.
+        # Check that the type is one of the possible ones
+        assert samplesType == 'train' or samplesType == 'valid' \
+                    or samplesType == 'test'
+        # Check that the number of extra arguments fits
+        assert len(args) <= 1
+        # If there are no arguments, just return all the desired samples
+        x = self.samples[samplesType]['signals']
+        y = self.samples[samplesType]['targets']
+        # If there's an argument, we have to check whether it is an int or a
+        # list
+        if len(args) == 1:
+            # If it is an int, just return that number of randomly chosen
+            # samples.
+            if type(args[0]) == int:
+                nSamples = x.shape[0] # total number of samples
+                # We can't return more samples than there are available
+                assert args[0] <= nSamples
+                # Randomly choose args[0] indices
+                selectedIndices = np.random.choice(nSamples, size = args[0],
+                                                   replace = False)
+                # Select the corresponding samples
+                xSelected = x[selectedIndices]
+                y = y[selectedIndices]
+            else:
+                # The fact that we put else here instead of elif type()==list
+                # allows for np.array to be used as indices as well. In general,
+                # any variable with the ability to index.
+                xSelected = x[args[0]]
+                # And assign the labels
+                y = y[args[0]]
+                
+            # If we only selected a single element, then the nDataPoints dim
+            # has been left out. So if we have less dimensions, we have to
+            # put it back
+            if len(xSelected.shape) < len(x.shape):
+                if 'torch' in self.dataType:
+                    x = xSelected.unsqueeze(0)
+                else:
+                    x = np.expand_dims(xSelected, axis = 0)
+            else:
+                x = xSelected
+
+        return x, y
+        
+    def astype(self, dataType):
+        # This changes the type for the minimal attributes (samples). This 
+        # methods should still be initialized within the data classes, if more
+        # attributes are used.
+        
+        # The labels could be integers as created from the dataset, so if they
+        # are, we need to be sure they are integers also after conversion. 
+        # To do this we need to match the desired dataType to its int 
+        # counterpart. Typical examples are:
+        #   numpy.float64 -> numpy.int64
+        #   numpy.float32 -> numpy.int32
+        #   torch.float64 -> torch.int64
+        #   torch.float32 -> torch.int32
+        
+        targetType = str(self.samples['train']['targets'].dtype)
+        if 'int' in targetType:
+            if 'numpy' in repr(dataType):
+                if '64' in targetType:
+                    targetType = np.int64
+                elif '32' in targetType:
+                    targetType = np.int32
+            elif 'torch' in repr(dataType):
+                if '64' in targetType:
+                    targetType = torch.int64
+                elif '32' in targetType:
+                    targetType = torch.int32
+        else: # If there is no int, just stick with the given dataType
+            targetType = dataType
+        
+        # Now that we have selected the dataType, and the corresponding
+        # labelType, we can proceed to convert the data into the corresponding
+        # type
+        for key in self.samples.keys():
+            self.samples[key]['signals'] = changeDataType(
+                                                   self.samples[key]['signals'],
+                                                   dataType)
+            self.samples[key]['targets'] = changeDataType(
+                                                   self.samples[key]['targets'],
+                                                   targetType)
+
+        # Update attribute
+        if dataType is not self.dataType:
+            self.dataType = dataType
+
+    def to(self, device):
+        # This changes the type for the minimal attributes (samples). This 
+        # methods should still be initialized within the data classes, if more
+        # attributes are used.
+        # This can only be done if they are torch tensors
+        if 'torch' in repr(self.dataType):
+            for key in self.samples.keys():
+                for secondKey in self.samples[key].keys():
+                    self.samples[key][secondKey] \
+                                      = self.samples[key][secondKey].to(device)
+
+            # If the device changed, save it.
+            if device is not self.device:
+                self.device = device    
             
