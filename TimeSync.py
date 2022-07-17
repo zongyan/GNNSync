@@ -1,29 +1,6 @@
 # Created on Tue Jul 12 16:18:24 2022
 # Yan Zong, y.zong@cranfield.ac.uk
 
-# Learn decentralized controllers for time synchronisation in wireless network. 
-# There is a network consist of large number of wireless nodes equipped with 
-# non-identical and time-verying clocks, and we want them to share a common sense 
-# of timing among all the nodes. We learn a decentralized controller by using 
-# imitation learning.
-
-# In this simulation, the number of wireless nodes is fixed for training, but 
-# can be set to a different number for testing.
-
-# Outputs:
-# - Text file with all the hyperparameters selected for the run and the 
-#   corresponding results (hyperparameters.txt)
-# - Pickle file with the random seeds of both torch and numpy for accurate
-#   reproduction of results (randomSeedUsed.pkl)
-# - The parameters of the trained models, for both the Best and the Last
-#   instance of each model (savedModels/)
-# - The figures of loss and evaluation through the training iterations for
-#   each model (figs/ and trainVars/)
-# - Videos for some of the trajectories in the dataset, following the optimal
-#   centralized controller (datasetTrajectories/)
-# - Videos for some of the learned trajectories following the controles 
-#   learned by each model (learnedTrajectories/)
-
 #%%######################################################
 ###                  IMPORTING                  #########
 #########################################################
@@ -48,7 +25,6 @@ import modules.training as training
 import modules.evaluation as evaluation
 
 from utils.miscTools import writeVarValues
-from utils.miscTools import saveSeed
 
 startRunTime = datetime.datetime.now()
 
@@ -60,7 +36,7 @@ thisFilename = 'TimeSync' # the general name of all related files
 
 nNodes = 50 # the number of nodes at training time
 
-saveDirRoot = './experiments' # the relative location
+saveDirRoot = 'experiments' # the relative location
 saveDir = os.path.join(saveDirRoot, thisFilename) # dir where to save all results from each run
 
 # create .txt to store the values of the setting parameters
@@ -71,12 +47,13 @@ saveDir = saveDir + '-%03d-' % nNodes + today
 # create directory
 if not os.path.exists(saveDir):
     os.makedirs(saveDir)
+# end if 
 
 # create the file where all the (hyper)parameters and results will be saved.
 varsFile = os.path.join(saveDir,'hyperparameters.txt')
 with open(varsFile, 'w+') as file:
     file.write('%s\n\n' % datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
-
+# end with 
 # save seeds for reproducibility
 # pytorch seeds
 torchState = torch.get_rng_state()
@@ -96,6 +73,22 @@ randomStates[1]['seed'] = torchSeed
 pathToSeed = os.path.join(saveDir, 'randomSeedUsed.pkl')
 with open(pathToSeed, 'wb') as seedFile:
     pickle.dump({'randomStates': randomStates}, seedFile)
+    
+# load the random seeds for both torch and numpy
+# loadDir = saveDir
+# pathToSeed = os.path.join(loadDir, 'randomSeedUsed.pkl')
+# with open(pathToSeed, 'rb') as seedFile:
+#     randomStates = pickle.load(seedFile)
+#     randomStates = randomStates['randomStates']
+# for module in randomStates:
+#     thisModule = module['module']
+#     if thisModule == 'numpy':
+#         np.random.RandomState().set_state(module['state'])
+#     elif thisModule == 'torch':
+#         torch.set_rng_state(module['state'])
+#         torch.manual_seed(module['seed'])    
+#     # end if 
+# # end for
 
 ########
 # DATA #
@@ -153,9 +146,7 @@ trainer = training.TrainerFlocking
 evaluator = evaluation.evaluateFlocking
 
 # overall training options
-# probExpert = 0.993 # Probability of choosing the expert in DAGger -- NOT use
-#DAGgerType = 'fixedBatch' # 'replaceTimeBatch', 'randomEpoch'
-nEpochs = 30 # Number of epochs
+nEpochs = 1 # Number of epochs
 batchSize = 20 # Batch size
 doLearningRateDecay = False # Learning rate decay
 learningRateDecayRate = 0.9 # Rate
@@ -179,56 +170,29 @@ with open(varsFile, 'a+') as file:
 # ARCHITECTURES #
 #################
 
-# In this section, we determine the (hyper)parameters of models that we are
-# going to train. This only sets the parameters. The architectures need to be
-# created later below. Do not forget to add the name of the architecture
-# to modelList.
-
-# If the hyperparameter dictionary is called 'hParams' + name, then it can be
-# picked up immediately later on, and there's no need to recode anything after
-# the section 'Setup' (except for setting the number of nodes in the 'N'
-# variable after it has been coded).
-
-# The name of the keys in the hyperparameter dictionary have to be the same
-# as the names of the variables in the architecture call, because they will
-# be called by unpacking the dictionary.
-
-#nFeatures = 32 # Number of features in all architectures
-#nFilterTaps = 4 # Number of filter taps in all architectures
-# [[The hyperparameters are for each architecture, and they were chosen 
-#   following the results of the hyperparameter search]]
 nonlinearityHidden = torch.tanh
 nonlinearityOutput = torch.tanh
-nonlinearity = nn.Tanh # Chosen nonlinearity for nonlinear architectures
+nonlinearity = nn.Tanh # chosen nonlinearity for nonlinear architectures
 
 modelList = []
     
-#\\\ Basic parameters for the Local GNN architecture
-
 hParamsLocalGNN = {} # hyperparameters (hParams) for the Local GNN (LclGNN)
 
 hParamsLocalGNN['name'] = 'LocalGNN'
-# Chosen architecture
 hParamsLocalGNN['archit'] = architTime.LocalGNN_DB
 hParamsLocalGNN['device'] = 'cuda:0' if (torch.cuda.is_available()) else 'cpu'
-
-# Graph convolutional parameters
 hParamsLocalGNN['dimNodeSignals'] = [6, 64] # Features per layer
 hParamsLocalGNN['nFilterTaps'] = [3] # Number of filter taps
 hParamsLocalGNN['bias'] = True # Decide whether to include a bias term
-# Nonlinearity
 hParamsLocalGNN['nonlinearity'] = nonlinearity # Selected nonlinearity
-    # is affected by the summary
-# Readout layer: local linear combination of features
+                                               # is affected by the summary
 hParamsLocalGNN['dimReadout'] = [2] # Dimension of the fully connected
-    # layers after the GCN layers (map); this fully connected layer
-    # is applied only at each node, without any further exchanges nor 
-    # considering all nodes at once, making the architecture entirely
-    # local.
-# Graph structure
+                                    # layers after the GCN layers (map); this fully connected layer
+                                    # is applied only at each node, without any further exchanges nor 
+                                    # considering all nodes at once, making the architecture entirely
+                                    # local.
 hParamsLocalGNN['dimEdgeFeatures'] = 1 # Scalar edge weights
 
-#\\\ Save Values:    
 with open(varsFile, 'a+') as file:
     for key in hParamsLocalGNN.keys():
         file.write('%s = %s\n' % (key, hParamsLocalGNN[key]))
@@ -236,16 +200,10 @@ with open(varsFile, 'a+') as file:
 
 modelList += [hParamsLocalGNN['name']]
 
-    
-
-
-
 ###########
 # LOGGING #
 ###########
 
-# Options:
-doSaveVars = True # Save (pickle) useful variables
 # Parameters:
 printInterval = 1 # After how many training steps, print the partial results
 #   0 means to never print partial results while training
@@ -259,8 +217,7 @@ markerShape = 'o' # Shape of the markers
 markerSize = 3 # Size of the markers
 
 del varValues
-varValues = {'doSaveVars': doSaveVars, \
-             'saveDir': saveDir, 'printInterval': printInterval, 'figSize': figSize, \
+varValues = {'printInterval': printInterval, 'figSize': figSize, \
                  'lineWidth': lineWidth, 'markerShape': markerShape, 'markerSize': markerSize}
     
 with open(varsFile, 'a+') as file:
@@ -330,9 +287,6 @@ for n in range(nSimPoints):
 
 trainingOptions = {}
 
-if doSaveVars:
-    trainingOptions['saveDir'] = saveDir
-
 trainingOptions['printInterval'] = printInterval
 
 if doLearningRateDecay:
@@ -367,17 +321,6 @@ for n in range(nSimPoints):
     datasetTestAgentTrajectoryDir[n] = os.path.join(datasetTestTrajectoryDir,
                                                     '%03d' % nNodesTest[n])
     
-#%%##################################################################
-#                                                                   #
-#                    DATA SPLIT REALIZATION                         #
-#                                                                   #
-#####################################################################
-
-# On top of the rest of the training options, we pass the identification
-# of this specific data split realization.
-
-print("", flush = True)
-
 #%%##################################################################
 #                                                                   #
 #                    DATA HANDLING                                  #
@@ -559,10 +502,7 @@ for thisModel in modelsGNN.keys():
         if m in thisModel:
             modelName = m
 
-    thisTrainVars = modelsGNN[thisModel].train(data,
-                                               nEpochs,
-                                               batchSize,
-                                               **trainingOptsPerModel[m])
+    modelsGNN[thisModel].train(data, nEpochs, batchSize, **trainingOptsPerModel[m])
 
 #%%##################################################################
 #                                                                   #
