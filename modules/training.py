@@ -162,14 +162,8 @@ class TrainerFlocking:
         
         # Get back the training options
         assert 'trainingOptions' in dir(self)
-        assert 'doLogging' in self.trainingOptions.keys()
-        doLogging = self.trainingOptions['doLogging']
-        assert 'logger' in self.trainingOptions.keys()
-        logger = self.trainingOptions['logger']
         assert 'doSaveVars' in self.trainingOptions.keys()
         doSaveVars = self.trainingOptions['doSaveVars']
-        assert 'doPrint' in self.trainingOptions.keys()
-        doPrint = self.trainingOptions['doPrint']
         assert 'printInterval' in self.trainingOptions.keys()
         printInterval = self.trainingOptions['printInterval']
         assert 'doLearningRateDecay' in self.trainingOptions.keys()
@@ -329,16 +323,13 @@ class TrainerFlocking:
 
                 timeElapsed = abs(endTime - startTime).total_seconds()
 
-                # Logging values
-                if doLogging:
-                    lossTrainTB = lossValueTrain.item()
                 # Save values
                 if doSaveVars:
                     lossTrain += [lossValueTrain.item()]
                     timeTrain += [timeElapsed]
 
                 # Print:
-                if doPrint and printInterval > 0:
+                if printInterval > 0:
                     if (epoch * nBatches + batch) % printInterval == 0:
                         print("\t(E: %2d, B: %3d) %7.4f - %6.4fs" % (
                                 epoch+1, batch+1,
@@ -359,15 +350,6 @@ class TrainerFlocking:
                 del yTrain
                 del initVelTrain
                 del lossValueTrain
-
-                #\\\\\\\
-                #\\\ TB LOGGING (for each batch)
-                #\\\\\\\
-
-                if doLogging:
-                    logger.scalar_summary(mode = 'Training',
-                                          epoch = epoch * nBatches + batch,
-                                          **{'lossTrain': lossTrainTB})
 
                 #\\\\\\\
                 #\\\ VALIDATION
@@ -397,31 +379,22 @@ class TrainerFlocking:
 
                     timeElapsed = abs(endTime - startTime).total_seconds()
 
-                    # Logging values
-                    if doLogging:
-                        evalValidTB = accValid
                     # Save values
                     if doSaveVars:
                         evalValid += [accValid]
                         timeValid += [timeElapsed]
 
                     # Print:
-                    if doPrint:
-                        print("\t(E: %2d, B: %3d) %8.4f - %6.4fs" % (
-                                epoch+1, batch+1,
-                                accValid, 
-                                timeElapsed), end = ' ')
-                        print("[VALIDATION", end = '')
-                        if graphNo > -1:
-                            print(".%d" % graphNo, end = '')
-                            if realizationNo > -1:
-                                print("/%d" % realizationNo, end = '')
-                        print(" (%s)]" % self.model.name)
-
-                    if doLogging:
-                        logger.scalar_summary(mode = 'Validation',
-                                          epoch = epoch * nBatches + batch,
-                                          **{'evalValid': evalValidTB})
+                    print("\t(E: %2d, B: %3d) %8.4f - %6.4fs" % (
+                            epoch+1, batch+1,
+                            accValid, 
+                            timeElapsed), end = ' ')
+                    print("[VALIDATION", end = '')
+                    if graphNo > -1:
+                        print(".%d" % graphNo, end = '')
+                        if realizationNo > -1:
+                            print("/%d" % realizationNo, end = '')
+                    print(" (%s)]" % self.model.name)
 
                     # No previous best option, so let's record the first trial
                     # as the best option
@@ -438,9 +411,8 @@ class TrainerFlocking:
                         if thisValidScore < bestScore:
                             bestScore = thisValidScore
                             bestEpoch, bestBatch = epoch, batch
-                            if doPrint:
-                                print("\t=> New best achieved: %.4f" % \
-                                          (bestScore))
+                            print("\t=> New best achieved: %.4f" % \
+                                      (bestScore))
                             self.model.save(label = 'Best')
                             # Now that we have found a best that is not the
                             # initial one, we can start counting the lag (if
@@ -514,15 +486,14 @@ class TrainerFlocking:
         if nEpochs == 0:
             self.model.save(label = 'Best')
             self.model.save(label = 'Last')
-            if doPrint:
-                print("\nWARNING: No training. Best and Last models are the same.\n")
+            print("\nWARNING: No training. Best and Last models are the same.\n")
 
         # After training is done, reload best model before proceeding to
         # evaluation:
         self.model.load(label = 'Best')
 
         #\\\ Print out best:
-        if doPrint and nEpochs > 0:
+        if nEpochs > 0:
             print("\t=> Best validation achieved (E: %d, B: %d): %.4f" % (
                     bestEpoch + 1, bestBatch + 1, bestScore))
 
