@@ -1,125 +1,10 @@
-# 2020/02/25~
-# Fernando Gama, fgama@seas.upenn.edu
-# Luana Ruiz, rubruiz@seas.upenn.edu
-"""
-evaluation.py Evaluation Module
-
-Methods for evaluating the models.
-
-evaluate: evaluate a model
-evaluateSingleNode: evaluate a model that has a single node forward
-evaluateFlocking: evaluate a model using the flocking cost
-"""
-
 import os
 import torch
 import pickle
 import numpy as np
 
-def evaluate(model, data, **kwargs):
-    """
-    evaluate: evaluate a model using classification error
-    
-    Input:
-        model (model class): class from Modules.model
-        data (data class): a data class from the Utils.dataTools; it needs to
-            have a getSamples method and an evaluate method.
-        doPrint (optional, bool): if True prints results
-    
-    Output:
-        evalVars (dict): 'errorBest' contains the error rate for the best
-            model, and 'errorLast' contains the error rate for the last model
-    """
-
-    # Get the device we're working on
-    device = model.device
-    
-    if 'doSaveVars' in kwargs.keys():
-        doSaveVars = kwargs['doSaveVars']
-    else:
-        doSaveVars = True
-
-    ########
-    # DATA #
-    ########
-
-    xTest, yTest = data.getSamples('test')
-    xTest = xTest.to(device)
-    yTest = yTest.to(device)
-
-    ##############
-    # BEST MODEL #
-    ##############
-
-    model.load(label = 'Best')
-
-    with torch.no_grad():
-        # Process the samples
-        yHatTest = model.archit(xTest)
-        # yHatTest is of shape
-        #   testSize x numberOfClasses
-        # We compute the error
-        costBest = data.evaluate(yHatTest, yTest)
-
-    ##############
-    # LAST MODEL #
-    ##############
-
-    model.load(label = 'Last')
-
-    with torch.no_grad():
-        # Process the samples
-        yHatTest = model.archit(xTest)
-        # yHatTest is of shape
-        #   testSize x numberOfClasses
-        # We compute the error
-        costLast = data.evaluate(yHatTest, yTest)
-
-    evalVars = {}
-    evalVars['costBest'] = costBest.item()
-    evalVars['costLast'] = costLast.item()
-    
-    if doSaveVars:
-        saveDirVars = os.path.join(model.saveDir, 'evalVars')
-        if not os.path.exists(saveDirVars):
-            os.makedirs(saveDirVars)
-        pathToFile = os.path.join(saveDirVars, model.name + 'evalVars.pkl')
-        with open(pathToFile, 'wb') as evalVarsFile:
-            pickle.dump(evalVars, evalVarsFile)
-
-    return evalVars
-
 def evaluateFlocking(model, data, **kwargs):
-    """
-    evaluateClassif: evaluate a model using the flocking cost of velocity 
-        variacne of the team
-    
-    Input:
-        model (model class): class from Modules.model
-        data (data class): the data class that generates the flocking data
-        doPrint (optional; bool, default: True): if True prints results
-        nVideos (optional; int, default: 3): number of videos to save
-        graphNo (optional): identify the run with a number
-        realizationNo (optional): identify the run with another number
-    
-    Output:
-        evalVars (dict):
-            'costBestFull': cost of the best model over the full trajectory
-            'costBestEnd': cost of the best model at the end of the trajectory
-            'costLastFull': cost of the last model over the full trajectory
-            'costLastEnd': cost of the last model at the end of the trajectory
-    """
-    
-    if 'doPrint' in kwargs.keys():
-        doPrint = kwargs['doPrint']
-    else:
-        doPrint = True
-        
-    if 'nVideos' in kwargs.keys():
-        nVideos = kwargs['nVideos']
-    else:
-        nVideos = 3
-        
+                    
     if 'graphNo' in kwargs.keys():
         graphNo = kwargs['graphNo']
     else:
@@ -161,8 +46,8 @@ def evaluateFlocking(model, data, **kwargs):
     np.savez(SavedPath, posTestBest=posTestBest, velTestBest=velTestBest, \
              accelTestBest=accelTestBest, stateTestBest=stateTestBest, \
                  commGraphTestBest=commGraphTestBest)
-    print("\tSaved the test data to the following path: ./gnn_test.npz", end = ' ', flush = True)
-    print("\tOK")
+    print("\tSaved the test data to the following path: ./gnn_test.npz", end = ' ')
+    print("OK", flush = True)
 
     ##############
     # LAST MODEL #
@@ -170,9 +55,8 @@ def evaluateFlocking(model, data, **kwargs):
 
     model.load(label = 'Last')
 
-    if doPrint:
-        print("\tComputing learned trajectory for last model...",
-              end = ' ', flush = True)
+    print("\tComputing learned trajectory for last model...",
+          end = ' ', flush = True)
 
     posTestLast, \
     velTestLast, \
@@ -181,8 +65,7 @@ def evaluateFlocking(model, data, **kwargs):
     commGraphTestLast = \
         data.computeTrajectory(initPosTest, initVelTest, data.duration, archit = model.archit)
 
-    if doPrint:
-        print("OK")
+    print("OK")
 
     ###########
     # PREVIEW #
@@ -210,12 +93,10 @@ def evaluateFlocking(model, data, **kwargs):
     if not os.path.exists(learnedTrajectoriesDir):
         os.mkdir(learnedTrajectoriesDir)
 
-    if doPrint:
-        print("\tPreview data...",
-              end = ' ', flush = True)
+    print("\tPreview data...",
+          end = ' ', flush = True)
 
-    if doPrint:
-        print("OK", flush = True)
+    print("OK", flush = True)
 
     #\\\\\\\\\\\\\\\\\\
     #\\\ EVALUATION \\\

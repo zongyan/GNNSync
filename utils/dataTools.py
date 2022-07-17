@@ -2425,7 +2425,7 @@ class Flocking(_data):
             
             
     """
-    
+    ##################################################################################################
     def __init__(self, nAgents, commRadius, repelDist,
                  nTrain, nValid, nTest,
                  duration, samplingTime,
@@ -2601,7 +2601,7 @@ class Flocking(_data):
     def expandDims(self):
         # Just avoid the 'expandDims' method in the parent class
         pass
-        
+    ########################################################################################################    
     def computeStates(self, pos, vel, graphMatrix, **kwargs):
         
         # We get the following inputs.
@@ -2794,7 +2794,7 @@ class Flocking(_data):
         print('\b \b' * 4, end = '', flush = True)
         
         return state
-        
+    #########################################################################################    
     def computeCommunicationGraph(self, pos, commRadius, normalizeGraph,
                                   **kwargs):
         
@@ -2988,7 +2988,7 @@ class Flocking(_data):
         print('\b \b' * 4, end = '', flush = True)
             
         return graphMatrix
-    
+    #####################################################################################
     def getData(self, name, samplesType, *args):
         
         # samplesType: train, valid, test
@@ -3363,7 +3363,7 @@ class Flocking(_data):
             #   nSamples x 2 x nAgents x nAgents
             
         return uDiff, uDistSq
-        
+    ################################################################################    
     def computeOptimalTrajectory(self, initPos, initVel, duration, 
                                  samplingTime, repelDist,
                                  accelMax = 100.):
@@ -3461,7 +3461,7 @@ class Flocking(_data):
         print('\b \b' * 4, end = '', flush = True)
             
         return pos, vel, accel
-        
+    ##################################################################################################    
     def computeInitialPositions(self, nAgents, nSamples, commRadius,
                                 minDist = 0.1, geometry = 'rectangular',
                                 **kwargs):
