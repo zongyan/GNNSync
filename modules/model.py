@@ -65,31 +65,3 @@ class Model:
         return self.trainer.trainingOptions \
                         if 'trainingOptions' in dir(self.trainer) \
                     else None
-
-    def __repr__(self):
-        reprString  = "Name: %s\n" % (self.name)
-        reprString += "Number of learnable parameters: %d\n"%(self.nParameters)
-        reprString += "\n"
-        reprString += "Model architecture:\n"
-        reprString += "----- -------------\n"
-        reprString += "\n"
-        reprString += repr(self.archit) + "\n"
-        reprString += "\n"
-        reprString += "Loss function:\n"
-        reprString += "---- ---------\n"
-        reprString += "\n"
-        reprString += repr(self.loss) + "\n"
-        reprString += "\n"
-        reprString += "Optimizer:\n"
-        reprString += "----------\n"
-        reprString += "\n"
-        reprString += repr(self.optim) + "\n"
-        reprString += "Training algorithm:\n"
-        reprString += "-------- ----------\n"
-        reprString += "\n"
-        reprString += repr(self.trainer) + "\n"
-        reprString += "Evaluation algorithm:\n"
-        reprString += "---------- ----------\n"
-        reprString += "\n"
-        reprString += repr(self.evaluator) + "\n"
-        return reprString
