@@ -46,7 +46,7 @@ def evaluateFlocking(model, data, **kwargs):
     np.savez(SavedPath, posTestBest=posTestBest, velTestBest=velTestBest, \
              accelTestBest=accelTestBest, stateTestBest=stateTestBest, \
                  commGraphTestBest=commGraphTestBest)
-    print("\tSaved the test data to the following path: ./gnn_test.npz", end = ' ')
+    print("\tSaved the test data to the following path: ./gnn_test.npz...", end = ' ')
     print("OK", flush = True)
 
     ##############

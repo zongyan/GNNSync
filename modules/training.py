@@ -272,13 +272,12 @@ class TrainerFlocking:
             if doLearningRateDecay:
                 learningRateScheduler.step()
 
-                if doPrint:
-                    # All the optimization have the same learning rate, so just
-                    # print one of them
-                    # TODO: Actually, they might be different, so I will need to
-                    # print all of them.
-                    print("Epoch %d, learning rate = %.8f" % (epoch+1,
-                          learningRateScheduler.optim.param_groups[0]['lr']))
+                # All the optimization have the same learning rate, so just
+                # print one of them
+                # TODO: Actually, they might be different, so I will need to
+                # print all of them.
+                print("Epoch %d, learning rate = %.8f" % (epoch+1,
+                      learningRateScheduler.optim.param_groups[0]['lr']))
                     
             # Initialize counter
             batch = 0 # batch counter
