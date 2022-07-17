@@ -2431,7 +2431,7 @@ class Flocking(_data):
                  duration, samplingTime,
                  initGeometry = 'circular',initVelValue = 3.,initMinDist = 0.1,
                  accelMax = 10.,
-                 normalizeGraph = True, doPrint = True,
+                 normalizeGraph = True,
                  dataType = np.float64, device = 'cpu'):
         
         # Initialize parent class
@@ -2461,8 +2461,6 @@ class Flocking(_data):
         self.normalizeGraph = normalizeGraph
         self.dataType = dataType
         self.device = device
-        #   Options
-        self.doPrint = doPrint
         
         #   Places to store the data
         self.initPos = None
@@ -2473,10 +2471,9 @@ class Flocking(_data):
         self.commGraph = None
         self.state = None
         
-        if self.doPrint:
-            print("\tComputing initial conditions...", end = ' ', flush = True)
+        print("\tComputing initial conditions...", end = ' ', flush = True)
         
-        # Compute the initial positions
+        # Compute the initial positions, (421, 2, 50)
         initPosAll, initVelAll = self.computeInitialPositions(
                                           self.nAgents, nSamples, self.commRadius,
                                           minDist = self.initMinDist,
@@ -2489,11 +2486,10 @@ class Flocking(_data):
         self.initPos = {}
         self.initVel = {}
         
-        if self.doPrint:
-            print("OK", flush = True)
-            # Erase the label first, then print it
-            print("\tComputing the optimal trajectories...",
-                  end=' ', flush=True)
+        print("OK", flush = True)
+        # Erase the label first, then print it
+        print("\tComputing the optimal trajectories...",
+              end=' ', flush=True)
         
         # Compute the optimal trajectory
         posAll, velAll, accelAll = self.computeOptimalTrajectory(
@@ -2505,11 +2501,10 @@ class Flocking(_data):
         self.vel = {}
         self.accel = {}
         
-        if self.doPrint:
-            print("OK", flush = True)
-            # Erase the label first, then print it
-            print("\tComputing the communication graphs...",
-                  end=' ', flush=True)
+        print("OK", flush = True)
+        # Erase the label first, then print it
+        print("\tComputing the communication graphs...",
+              end=' ', flush=True)
         
         # Compute communication graph
         commGraphAll = self.computeCommunicationGraph(posAll, self.commRadius,
@@ -2517,19 +2512,17 @@ class Flocking(_data):
         
         self.commGraph = {}
         
-        if self.doPrint:
-            print("OK", flush = True)
-            # Erase the label first, then print it
-            print("\tComputing the agent states...", end = ' ', flush = True)
+        print("OK", flush = True)
+        # Erase the label first, then print it
+        print("\tComputing the agent states...", end = ' ', flush = True)
         
         # Compute the states
         stateAll = self.computeStates(posAll, velAll, commGraphAll)
         
         self.state = {}
         
-        if self.doPrint:
-            # Erase the label
-            print("OK", flush = True)
+        # Erase the label
+        print("OK", flush = True)
         
         # Separate the states into training, validation and testing samples
         # and save them
@@ -2619,14 +2612,7 @@ class Flocking(_data):
         # And we want to build the state, which is a vector of dimension 6 on 
         # each node, that is, the output shape is
         #   nSamples x tSamples x 6 x nAgents
-        
-        # The print for this one can be settled independently, if not, use the
-        # default of the data object
-        if 'doPrint' in kwargs.keys():
-            doPrint = kwargs['doPrint']
-        else:
-            doPrint = self.doPrint
-        
+                
         # Check correct dimensions
         assert len(pos.shape) == len(vel.shape) == len(graphMatrix.shape) == 4
         nSamples = pos.shape[0]
@@ -2732,19 +2718,18 @@ class Flocking(_data):
                                                                axis = 1)
                     #   batchSize[b] x 6 x nAgents
                     
-                    if doPrint:
-                        # Sample percentage count
-                        percentageCount = int(100*(t+1+b*tSamples)\
-                                                          /(nBatches*tSamples))
-                        
-                        if t == 0 and b == 0:
-                            # It's the first one, so just print it
-                            print("%3d%%" % percentageCount,
-                                  end = '', flush = True)
-                        else:
-                            # Erase the previous characters
-                            print('\b \b' * 4 + "%3d%%" % percentageCount,
-                                  end = '', flush = True)
+                    # Sample percentage count
+                    percentageCount = int(100*(t+1+b*tSamples)\
+                                                      /(nBatches*tSamples))
+                    
+                    if t == 0 and b == 0:
+                        # It's the first one, so just print it
+                        print("%3d%%" % percentageCount,
+                              end = '', flush = True)
+                    else:
+                        # Erase the previous characters
+                        print('\b \b' * 4 + "%3d%%" % percentageCount,
+                              end = '', flush = True)
                 
             else:
                 
@@ -2793,23 +2778,20 @@ class Flocking(_data):
                                                                axis = 2)
                 #   state: batchSize[b] x tSamples x 6 x nAgents
                                                 
-                if doPrint:
-                    # Sample percentage count
-                    percentageCount = int(100*(b+1)/nBatches)
-                    
-                    if b == 0:
-                        # It's the first one, so just print it
-                        print("%3d%%" % percentageCount,
-                              end = '', flush = True)
-                    else:
-                        # Erase the previous characters
-                        print('\b \b' * 4 + "%3d%%" % percentageCount,
-                              end = '', flush = True)
+                # Sample percentage count
+                percentageCount = int(100*(b+1)/nBatches)
+                
+                if b == 0:
+                    # It's the first one, so just print it
+                    print("%3d%%" % percentageCount,
+                          end = '', flush = True)
+                else:
+                    # Erase the previous characters
+                    print('\b \b' * 4 + "%3d%%" % percentageCount,
+                          end = '', flush = True)
                         
-        # Print
-        if doPrint:
-            # Erase the percentage
-            print('\b \b' * 4, end = '', flush = True)
+        # Erase the percentage
+        print('\b \b' * 4, end = '', flush = True)
         
         return state
         
@@ -2848,14 +2830,7 @@ class Flocking(_data):
                 kernelScale = kwargs['kernelScale']
             else:
                 kernelScale = 1.
-        
-        # The print for this one can be settled independently, if not, use the
-        # default of the data object
-        if 'doPrint' in kwargs.keys():
-            doPrint = kwargs['doPrint']
-        else:
-            doPrint = self.doPrint
-                
+                        
         # If we have a lot of batches and a particularly long sequence, this
         # is bound to fail, memory-wise, so let's do it time instant by time
         # instant if we have a large number of time instants, and split the
@@ -2944,19 +2919,18 @@ class Flocking(_data):
                     graphMatrix[batchIndex[b]:batchIndex[b+1],t,:,:] = \
                                                                 graphMatrixTime
                     
-                    if doPrint:
-                        # Sample percentage count
-                        percentageCount = int(100*(t+1+b*tSamples)\
-                                                          /(nBatches*tSamples))
-                        
-                        if t == 0 and b == 0:
-                            # It's the first one, so just print it
-                            print("%3d%%" % percentageCount,
-                                  end = '', flush = True)
-                        else:
-                            # Erase the previous characters
-                            print('\b \b' * 4 + "%3d%%" % percentageCount,
-                                  end = '', flush = True)
+                    # Sample percentage count
+                    percentageCount = int(100*(t+1+b*tSamples)\
+                                                      /(nBatches*tSamples))
+                    
+                    if t == 0 and b == 0:
+                        # It's the first one, so just print it
+                        print("%3d%%" % percentageCount,
+                              end = '', flush = True)
+                    else:
+                        # Erase the previous characters
+                        print('\b \b' * 4 + "%3d%%" % percentageCount,
+                              end = '', flush = True)
                 
             else:
                 # Let's start by computing the distance squared
@@ -2998,23 +2972,20 @@ class Flocking(_data):
                 # Store
                 graphMatrix[batchIndex[b]:batchIndex[b+1]] = graphMatrixBatch
                 
-                if doPrint:
-                    # Sample percentage count
-                    percentageCount = int(100*(b+1)/nBatches)
+                # Sample percentage count
+                percentageCount = int(100*(b+1)/nBatches)
+                
+                if b == 0:
+                    # It's the first one, so just print it
+                    print("%3d%%" % percentageCount,
+                          end = '', flush = True)
+                else:
+                    # Erase the previous characters
+                    print('\b \b' * 4 + "%3d%%" % percentageCount,
+                          end = '', flush = True)
                     
-                    if b == 0:
-                        # It's the first one, so just print it
-                        print("%3d%%" % percentageCount,
-                              end = '', flush = True)
-                    else:
-                        # Erase the previous characters
-                        print('\b \b' * 4 + "%3d%%" % percentageCount,
-                              end = '', flush = True)
-                    
-        # Print
-        if doPrint:
-            # Erase the percentage
-            print('\b \b' * 4, end = '', flush = True)
+        # Erase the percentage
+        print('\b \b' * 4, end = '', flush = True)
             
         return graphMatrix
     
@@ -3214,12 +3185,6 @@ class Flocking(_data):
             if useTorch:
                 assert 'torch' in repr(accel.dtype)
             useAccel = True
-            
-        # Decide on printing or not:
-        if 'doPrint' in kwargs.keys():
-            doPrint = kwargs['doPrint']
-        else:
-            doPrint = self.doPrint # Use default
         
         # Now create the outputs that will be filled afterwards
         pos = np.zeros((batchSize, tSamples, 2, nAgents), dtype = np.float)
@@ -3240,11 +3205,10 @@ class Flocking(_data):
             pos[:,0,:,:] = initPos.copy()
             vel[:,0,:,:] = initVel.copy()
             
-        if doPrint:
-            # Sample percentage count
-            percentageCount = int(100/tSamples)
-            # Print new value
-            print("%3d%%" % percentageCount, end = '', flush = True)
+        # Sample percentage count
+        percentageCount = int(100/tSamples)
+        # Print new value
+        print("%3d%%" % percentageCount, end = '', flush = True)
             
         # Now, let's get started:
         for t in range(1, tSamples):
@@ -3291,12 +3255,11 @@ class Flocking(_data):
             pos[:,t,:,:] = accel[:,t-1,:,:] * (self.samplingTime ** 2)/2 + \
                             vel[:,t-1,:,:] * self.samplingTime + pos[:,t-1,:,:]
             
-            if doPrint:
-                # Sample percentage count
-                percentageCount = int(100*(t+1)/tSamples)
-                # Erase previous value and print new value
-                print('\b \b' * 4 + "%3d%%" % percentageCount,
-                      end = '', flush = True)
+            # Sample percentage count
+            percentageCount = int(100*(t+1)/tSamples)
+            # Erase previous value and print new value
+            print('\b \b' * 4 + "%3d%%" % percentageCount,
+                  end = '', flush = True)
                 
         # And we're missing the last values of graph, state and accel, so
         # let's compute them for completeness
@@ -3321,10 +3284,8 @@ class Flocking(_data):
         # And save it
         accel[:,-1,:,:] = thisAccel
                 
-        # Print
-        if doPrint:
-            # Erase the percentage
-            print('\b \b' * 4, end = '', flush = True)
+        # Erase the percentage
+        print('\b \b' * 4, end = '', flush = True)
             
         # After we have finished, turn it back into tensor, if required
         if useTorch:
@@ -3436,11 +3397,10 @@ class Flocking(_data):
         pos[:,0,:,:] = initPos
         vel[:,0,:,:] = initVel
         
-        if self.doPrint:
-            # Sample percentage count
-            percentageCount = int(100/tSamples)
-            # Print new value
-            print("%3d%%" % percentageCount, end = '', flush = True)
+        # Sample percentage count
+        percentageCount = int(100/tSamples)
+        # Print new value
+        print("%3d%%" % percentageCount, end = '', flush = True)
         
         # For each time instant
         for t in range(1,tSamples):
@@ -3491,17 +3451,14 @@ class Flocking(_data):
             pos[:,t,:,:] = accel[:,t-1,:,:] * (samplingTime ** 2)/2 + \
                                  vel[:,t-1,:,:] * samplingTime + pos[:,t-1,:,:]
             
-            if self.doPrint:
-                # Sample percentage count
-                percentageCount = int(100*(t+1)/tSamples)
-                # Erase previous pecentage and print new value
-                print('\b \b' * 4 + "%3d%%" % percentageCount,
-                      end = '', flush = True)
+            # Sample percentage count
+            percentageCount = int(100*(t+1)/tSamples)
+            # Erase previous pecentage and print new value
+            print('\b \b' * 4 + "%3d%%" % percentageCount,
+                  end = '', flush = True)
                 
-        # Print
-        if self.doPrint:
-            # Erase the percentage
-            print('\b \b' * 4, end = '', flush = True)
+        # Erase the percentage
+        print('\b \b' * 4, end = '', flush = True)
             
         return pos, vel, accel
         
@@ -3695,7 +3652,7 @@ class Flocking(_data):
         initVel = np.concatenate((xInitVel, yInitVel), axis = 1) + velBias
         #   nSamples x 2 x nAgents
         
-        return initPos, initVel
+        return initPos, initVel # initPos=(421, 2, 50), initVel=(421, 2, 50)
         
         
     def saveVideo(self, saveDir, pos, *args, 
