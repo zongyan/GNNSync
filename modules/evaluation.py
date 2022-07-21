@@ -3,7 +3,7 @@ import torch
 import pickle
 import numpy as np
 
-def evaluateFlocking(model, data, **kwargs):
+def evaluate(model, data, **kwargs):
                     
     if 'graphNo' in kwargs.keys():
         graphNo = kwargs['graphNo']

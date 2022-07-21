@@ -17,6 +17,8 @@ import torch
 
 import utils.graphTools as graph
 
+import networkx as netwk # ver 2.8.4
+
 zeroTolerance = 1e-9 # Values below this number are considered zero.
 
 def changeDataType(x, dataType):
@@ -74,80 +76,249 @@ def invertTensorEW(x):
     
     return xInv
 
-class Flocking():
-    def __init__(self, nNodes, commRadius, repelDist,
+class initClockNetwk():
+    def __init__(self, nNodes,
                  nTrain, nValid, nTest,
-                 duration, samplingTime,
-                 initGeometry = 'circular',initVelValue = 3.,initMinDist = 0.1,
-                 accelMax = 10.,
-                 normalizeGraph = True,
+                 duration, samplingTimeScale,
+                 initOffsetValue, initSkewValue,                 
+                 normaliseGraph = True,
                  dataType = np.float64, device = 'cpu'):
         
-        self.samples = {}
-        self.samples['train'] = {}
+        self.samples = {} # create a dict
+        self.samples['train'] = {} # create a dict in the above samples dict 
         self.samples['train']['signals'] = None
         self.samples['train']['targets'] = None
-        self.samples['valid'] = {}
+        self.samples['valid'] = {} # create a dict in the above samples dict
         self.samples['valid']['signals'] = None
         self.samples['valid']['targets'] = None
-        self.samples['test'] = {}
+        self.samples['test'] = {} # create a dict in the above samples dict
         self.samples['test']['signals'] = None
         self.samples['test']['targets'] = None        
+        """
+        我们初始化clock offset skew可以是和网络的拓扑结构分开的，只要注意好维度问题即可。
+        我们可以先考虑进去这个noise的问题，但是在刚开始仿真的时候，并不会考虑这个噪声
+        的问题，而是等到后期的时候，再考虑这个噪声的问题
         
-        # Save the relevant input information
-        #   Number of nodes
+        需要考虑，如果以后test就是重新创建的时候，也许就是需要考虑不同的节点个数，图的状态了。
+        所以到底是使用self版本，还是不需要使用self版本，就是需要重点关注一下，
+        同时的呢，就是需要想一下，估计还是需要封装行数，因为后期就是需要test创建的时候
+        会使用到
+        
+        """
+        # save the relevant input information
+        # number of nodes
         self.nNodes = nNodes
-        self.commRadius = commRadius
-        self.repelDist = repelDist
-        #   Number of samples
+        # number of samples
         self.nTrain = nTrain
         self.nValid = nValid
         self.nTest = nTest
         nSamples = nTrain + nValid + nTest
-        #   Geometry
-        self.mapWidth = None
-        self.mapHeight = None
-        #   Agents
-        self.initGeometry = initGeometry
-        self.initVelValue = initVelValue
-        self.initMinDist = initMinDist
-        self.accelMax = accelMax
-        #   Duration of the trajectory
+        # simulation duration
         self.duration = float(duration)
-        self.samplingTime = samplingTime
-        #   Data
-        self.normalizeGraph = normalizeGraph
+        self.samplingTimeScale = samplingTimeScale        
+        # agents
+        self.initOffsetValue = initOffsetValue
+        self.initSkewValue = initSkewValue
+        # data
+        self.normaliseGraph = normaliseGraph
         self.dataType = dataType
         self.device = device
-        
-        #   Places to store the data
-        self.initPos = None
-        self.initVel = None
-        self.pos = None
-        self.vel = None
-        self.accel = None
+        # places to store the data
+        self.initOffset = None
+        self.initSkew = None
         self.commGraph = None
-        self.state = None
         
         print("\tComputing initial conditions...", end = ' ', flush = True)
         
-        # Compute the initial positions, (421, 2, 50)
-        initPosAll, initVelAll = self.computeInitialPositions(
-                                          self.nNodes, nSamples, self.commRadius,
-                                          minDist = self.initMinDist,
-                                          geometry = self.initGeometry,
-                                          xMaxInitVel = self.initVelValue,
-                                          yMaxInitVel = self.initVelValue
-                                                              )
-        #   Once we have all positions and velocities, we will need to split 
-        #   them in the corresponding datasets (train, valid and test)
-        self.initPos = {}
-        self.initVel = {}
+        # repeat and reshape to obtain the offsets and skews                                          
+        fixedOffsetTmp = np.repeat(self.initOffsetValue, nSamples*self.nNodes, axis = 0)     
+        fixedOffset = fixedOffsetTmp.reshape(nSamples, self.nNodes)             
+        
+        fixedSkewTmp = np.repeat(self.initSkewValue, nSamples*self.nNodes, axis = 0)     
+        fixedSkew = fixedSkewTmp.reshape(nSamples, self.nNodes)                             
+        
+        # generate the noises
+        offsetPerturb = 2e+5 # us
+        skewPerturb = 25 # ppm        
+        perturbOffset = np.random.uniform(low = -offsetPerturb,
+                                          high = offsetPerturb,
+                                          size = (nSamples, self.nNodes))
+        
+        perturbSkew = np.random.uniform(low = -skewPerturb,
+                                        high = skewPerturb,
+                                        size = (nSamples, self.nNodes))        
+        
+        # compute the initial clock offsets and skews    
+        initOffsetAll = fixedOffset + perturbOffset     
+        initSkewAll = fixedSkew + perturbSkew
+                
+        # split all the initial clock offsets and skews in the corresponding 
+        # datasets (train, valid and test)
+        self.initOffset = {}
+        self.initSkew = {}
         
         print("OK", flush = True)
-        # Erase the label first, then print it
-        print("\tComputing the optimal trajectories...",
+        print("\tComputing the network topologies...",
               end=' ', flush=True)
+        
+        # compute communication graph
+                
+        commGraphAll = np.zeros((nSamples, nNodes, nNodes))
+        
+        for i in range(nSamples):
+            networkTopology = netwk.random_tree(nNodes, seed=np.random, create_using=netwk.DiGraph)            
+            # networkTopology = netwk.random_tree(nNodes, seed=np.random, create_using=netwk.Graph)
+            networkTopologyMatrix = netwk.adjacency_matrix(networkTopology).todense()            
+            # # calculate the eigenvalues
+            # W = np.linalg.eigvals(networkTopologyMatrix)            
+            # maxEigenvalue = np.max(np.real(W))
+            # # 需要区分在使用不同的graph，digraph的时候，可能会出现特征值=0的情况
+            # # normalise
+            # networkTopologyMatrix = networkTopologyMatrix / maxEigenvalue                                    
+            commGraphAll[i, :, :] = networkTopologyMatrix
+        # end for
+                
+        self.commNetwk = {}
+        
+        print("OK", flush = True)   
+        print("\tComputing the centralised optimal synchronisation trajectories...",
+              end=' ', flush=True)
+        
+        
+
+        # The optimal trajectory is given by
+        # u_{i} = - \sum_{j=1}^{N} (v_{i} - v_{j})
+        #         + 2 \sum_{j=1}^{N} (r_{i} - r_{j}) *
+        #                                 (1/\|r_{i}\|^{4} + 1/\|r_{j}\|^{2}) *
+        #                                 1{\|r_{ij}\| < R}
+        # for each agent i=1,...,N, where v_{i} is the velocity and r_{i} the
+        # position.
+        
+        # 我前面应该就是需要修改代码了，因为前面的clock offset，skew都是两个维度的
+        # 最好是修改成为3个维度，多加一个feature的维度，虽然feature就是1 ，没有任何de@
+        # 的区别。另外的呢，就是这个
+        # 对于计算来说，应该是4个维度，就是需要有一个时间的维度
+        # time
+        time = np.arange(0, duration, samplingTimeScale)
+        tSamples = len(time) # number of time samples
+        
+        # create arrays to store the offset and skew
+        offset = np.zeros((nSamples, tSamples, 1, nNodes))
+        skew = np.zeros((nSamples, tSamples, 1, nNodes))
+        integralOffset = np.zeros((nSamples, tSamples, 1, nNodes))
+        integralSkew = np.zeros((nSamples, tSamples, 1, nNodes))    
+        correctionOffset = np.zeros((nSamples, tSamples, 1, nNodes))
+        correctionSkew = np.zeros((nSamples, tSamples, 1, nNodes))
+        
+        # initial settings
+        offset[:,0,:,:] = initOffsetAll
+        skew[:,0,:,:] = initSkewAll
+        
+        # sample percentage count
+        percentageCount = int(100/tSamples)
+        # print new value
+        print("%3d%%" % percentageCount, end = '', flush = True)
+        
+        gainOffset1=1
+        gainOffset2=1
+        gainOffset3=1
+        gainOffset4=1
+                
+        gainSkew1=1
+        gainSkew2=1
+        gainSkew3=1
+        gainSkew4=1
+        
+        
+        
+        # for each time instant
+        for t in range(1, tSamples):
+            
+            # compute the clock offset and skew correction input
+            #   compute the the clock offset differences between all elements
+            ijDiffOffset, _ = self.computeDifferences(offset[:,t-1,:,:]) # 也是可以正常的使用的了，但是注意我们只有一个feature，就是需要做精简
+            #       ijDiffOffset: nSamples x 1 x nNodes x nNodes
+            #   and also the difference in clock skews
+            ijDiffSkew, _ = self.computeDifferences(skew[:,t-1,:,:])
+            #       ijDiffSkew: nSamples x 1 x nNodes x nNodes
+
+            # update the clock offset and skew correction input
+            #   update clock offset correction value
+            integralOffset[:,t,:,:] = gainOffset1 * integralOffset[:,t-1,:,:] + gainOffset2 * np.sum(ijDiffOffset, axis=3)
+            correctionOffset[:,t,:,:] = gainOffset3 * integralOffset[:,t-1,:,:] + gainOffset4 * np.sum(ijDiffOffset, axis=3)
+            #   Update clock skew correction value
+            integralSkew[:,t,:,:] = gainSkew1 * integralSkew[:,t-1,:,:] + gainSkew2 * np.sum(ijDiffSkew, axis=3)
+            correctionSkew[:,t,:,:] = gainSkew3 * integralSkew[:,t-1,:,:] + gainSkew4 * np.sum(ijDiffSkew, axis=3)            
+            
+            # update the values Todo: still need the noises by yan zong
+            #   update clock offset 
+            offset[:,t,:,:] = offset[:,t-1,:,:] + skew[:,t-1,:,:] * samplingTimeScale + correctionOffset[:,t-1,:,:]
+            #   update clock skew 
+            skew[:,t,:,:] = skew[:,t-1,:,:] + correctionSkew[:,t-1,:,:]              
+            
+            # sample percentage count
+            percentageCount = int(100*(t+1)/tSamples)
+            # remove previous pecentage and print new value
+            print('\b \b' * 4 + "%3d%%" % percentageCount, end = '', flush = True)
+                
+        # erase the percentage
+        print('\b \b' * 4, end = '', flush = True)            
+
+
+            
+            #   The last element we need to compute the acceleration is the
+            #   gradient. Note that the gradient only counts when the distance 
+            #   is smaller than the repel distance
+            #       This is the mask to consider each of the differences
+            repelMask = (ijDistSq < (repelDist**2)).astype(ijDiffPos.dtype)
+            #       Apply the mask to the relevant differences
+            ijDiffPos = ijDiffPos * np.expand_dims(repelMask, 1)
+            #       Compute the constant (1/||r_ij||^4 + 1/||r_ij||^2)
+            ijDistSqInv = invertTensorEW(ijDistSq)
+            #       Add the extra dimension
+            ijDistSqInv = np.expand_dims(ijDistSqInv, 1)
+            #   Compute the acceleration
+            accel[:,t-1,:,:] = \
+                    -np.sum(ijDiffVel, axis = 3) \
+                    +2* np.sum(ijDiffPos * (ijDistSqInv ** 2 + ijDistSqInv),
+                               axis = 3)
+                    
+            # Finally, note that if the agents are too close together, the
+            # acceleration will be very big to get them as far apart as
+            # possible, and this is physically impossible.
+            # So let's add a limitation to the maximum aceleration
+
+            # Find the places where the acceleration is big
+            thisAccel = accel[:,t-1,:,:].copy()
+            # Values that exceed accelMax, force them to be accelMax
+            thisAccel[accel[:,t-1,:,:] > accelMax] = accelMax
+            # Values that are smaller than -accelMax, force them to be accelMax
+            thisAccel[accel[:,t-1,:,:] < -accelMax] = -accelMax
+            # And put it back
+            accel[:,t-1,:,:] = thisAccel
+            
+            # Update the values
+            #   Update velocity
+            vel[:,t,:,:] = accel[:,t-1,:,:] * samplingTime + vel[:,t-1,:,:]
+            #   Update the position
+            pos[:,t,:,:] = accel[:,t-1,:,:] * (samplingTime ** 2)/2 + \
+                                 vel[:,t-1,:,:] * samplingTime + pos[:,t-1,:,:]
+            
+            # Sample percentage count
+            percentageCount = int(100*(t+1)/tSamples)
+            # Erase previous pecentage and print new value
+            print('\b \b' * 4 + "%3d%%" % percentageCount,
+                  end = '', flush = True)
+                
+        # Erase the percentage
+        print('\b \b' * 4, end = '', flush = True)
+            
+        return pos, vel, accel
+
+
+        
+        
+        
         
         # Compute the optimal trajectory
         posAll, velAll, accelAll = self.computeOptimalTrajectory(
@@ -155,13 +326,11 @@ class Flocking():
                                         self.samplingTime, self.repelDist,
                                         accelMax = self.accelMax)
         
-        self.pos = {}
-        self.vel = {}
-        self.accel = {}
+        self.offset = {}
+        self.skew = {}
         
         print("OK", flush = True)
-        # Erase the label first, then print it
-        print("\tComputing the communication graphs...",
+        print("\tComputing the communication network topologies...",
               end=' ', flush=True)
         
         # Compute communication graph
@@ -1261,7 +1430,7 @@ class Flocking():
         
         assert minDistSq >= minDist ** 2
         
-        #   Now the number of neighbors
+        #   Now the number of neighbors -- still confused is this necesary in this function
         graphMatrix = self.computeCommunicationGraph(np.expand_dims(initPos,1),
                                                      self.commRadius,
                                                      False,

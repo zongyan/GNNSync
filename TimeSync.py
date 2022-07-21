@@ -1,9 +1,4 @@
-# Created on Tue Jul 12 16:18:24 2022
-# Yan Zong, y.zong@cranfield.ac.uk
-
-#%%######################################################
-###                  IMPORTING                  #########
-#########################################################
+#%% importing 
 
 import os
 import numpy as np
@@ -28,9 +23,7 @@ from utils.miscTools import writeVarValues
 
 startRunTime = datetime.datetime.now()
 
-#%%###############################################################
-###                  SETTING PARAMETERS                  #########
-##################################################################
+#%%parameters setting
 
 thisFilename = 'TimeSync' # the general name of all related files
 
@@ -39,13 +32,13 @@ nNodes = 50 # the number of nodes at training time
 saveDirRoot = 'experiments' # the relative location
 saveDir = os.path.join(saveDirRoot, thisFilename) # dir where to save all results from each run
 
-# create .txt to store the values of the setting parameters
+# create .txt to store the values of the setting parameters.
+# append date and time to avoid several runs of overwritting each other.
 today = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-# append date and time of the run to the directory, to avoid several runs of
-# overwritting each other.
+
 saveDir = saveDir + '-%03d-' % nNodes + today
-# create directory
-if not os.path.exists(saveDir):
+
+if not os.path.exists(saveDir): # create directory
     os.makedirs(saveDir)
 # end if 
 
@@ -54,13 +47,14 @@ varsFile = os.path.join(saveDir,'hyperparameters.txt')
 with open(varsFile, 'w+') as file:
     file.write('%s\n\n' % datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
 # end with 
+
 # save seeds for reproducibility
 # pytorch seeds
 torchState = torch.get_rng_state()
 torchSeed = torch.initial_seed()
 # numpy seeds
 numpyState = np.random.RandomState().get_state()
-# collect all random states
+
 randomStates = [] # create a list 
 randomStates.append({}) # create a dictionary in the list 
 randomStates[0]['module'] = 'numpy'
@@ -69,18 +63,19 @@ randomStates.append({}) # create a dictionary in the list
 randomStates[1]['module'] = 'torch'
 randomStates[1]['state'] = torchState
 randomStates[1]['seed'] = torchSeed
+
 # save the random seeds of both torch and numpy as a pickle file for reproduction
 pathToSeed = os.path.join(saveDir, 'randomSeedUsed.pkl')
 with open(pathToSeed, 'wb') as seedFile:
     pickle.dump({'randomStates': randomStates}, seedFile)
     
-# load the random seeds for both torch and numpy
+# # load the random seeds for both torch and numpy
 # loadDir = saveDir
 # pathToSeed = os.path.join(loadDir, 'randomSeedUsed.pkl')
 # with open(pathToSeed, 'rb') as seedFile:
 #     randomStates = pickle.load(seedFile)
 #     randomStates = randomStates['randomStates']
-# for module in randomStates:
+# for module in randomStates: # a listing consist of two dictionaries
 #     thisModule = module['module']
 #     if thisModule == 'numpy':
 #         np.random.RandomState().set_state(module['state'])
@@ -91,34 +86,20 @@ with open(pathToSeed, 'wb') as seedFile:
 # # end for
 
 ########
-# DATA #
+# Data #
 ########
 
-nNodesMax = nNodes # Maximum number of agents to test the solution
-nSimPoints = 1 # Number of simulations between nNodes and nNodesMax -- NOT use
-               # At test time, the architectures trained on nNodes will be tested on a
-               # varying number of agents, starting at nNodes all the way to nNodesMax;
-               # the number of simulations for different number of agents is given by
-               # nSimPoints, i.e. if nNodes = 50, nNodesMax = 100 and nSimPoints = 3, 
-               # then the architectures are trained on 50, 75 and 100 agents.
-commRadius = 2. # Communication radius -- NOT use
-repelDist = 1. # Minimum distance before activating repelling potential -- NOT use
 nTrain = 400 # number of training samples
 nValid = 20 # number of valid samples
 nTest = 20 # number of testing samples
-duration = 2. # simulation duration
-samplingTimeScale = 0.01 # sampling timescale, according to Giorgi2011
-initGeometry = 'circular' # Geometry of initial positions -- NOT use
-initVelValue = 3. # Initial velocities are samples from an interval -- NEED to modify according to MATLAB
-    # [-initVelValue, initVelValue]
-initMinDist = 0.1 # No two agents are located at a distance less than this -- NOT use
-accelMax = 10. # This is the maximum value of acceleration allowed -- DO we need this 
+duration = 2. # simulation duration, unit: second 
+samplingTimeScale = 0.01 # sampling timescale, unit: second, according to Giorgi2011
+initOffsetValue = 6e+5 # initial clock offset = 600 us
+initSkewValue = 50 # initial clock skew = 50 ppm
 
-varValues = {'nNodes': nNodes, 'nNodesMax': nNodesMax, 'nSimPoints': nSimPoints, \
-             'commRadius': commRadius, 'repelDist': repelDist, 'nTrain': nTrain, \
-                 'nValid': nValid, 'nTest': nTest, 'duration': duration, \
-                     'samplingTimeScale': samplingTimeScale, 'initGeometry': initGeometry, \
-                         'initVelValue': initVelValue, 'initMinDist': initMinDist, 'accelMax': accelMax}
+varValues = {'nNodes': nNodes, 'nTrain': nTrain, 'nValid': nValid, 'nTest': nTest, \
+             'duration': duration, 'samplingTimeScale': samplingTimeScale, \
+                 'initOffsetValue': initOffsetValue, 'initSkewValue': initSkewValue}
 
 # save values:
 with open(varsFile, 'a+') as file:
@@ -127,34 +108,34 @@ with open(varsFile, 'a+') as file:
     file.write('\n')    
 
 ############
-# TRAINING #
+# Training #
 ############
 
 # model training options
-optimAlg = 'ADAM' # Options: 'SGD', 'ADAM', 'RMSprop'
-learningRate = 0.0005 # In all options
-beta1 = 0.9 # beta1 if 'ADAM', alpha if 'RMSprop'
-beta2 = 0.999 # ADAM option only
+optimAlg = 'ADAM'
+learningRate = 0.0005 
+beta1 = 0.9 # beta1 for adam
+beta2 = 0.999 # beta2 for adam only
 
 # loss function
 lossFunction = nn.MSELoss
 
 # training algorithm
-trainer = training.TrainerFlocking
+trainer = training.Trainer
 
 # evaluation algorithm
-evaluator = evaluation.evaluateFlocking
+evaluator = evaluation.evaluate
 
 # overall training options
-nEpochs = 1 # Number of epochs
-batchSize = 20 # Batch size
-doLearningRateDecay = False # Learning rate decay
-learningRateDecayRate = 0.9 # Rate
-learningRateDecayPeriod = 1 # How many epochs after which update the lr
-validationInterval = 5 # How many training steps to do the validation
+nEpochs = 1 # number of epochs
+batchSize = 20 # batch size
+doLearningRateDecay = False # learning rate decay
+learningRateDecayRate = 0.9 # rate 
+learningRateDecayPeriod = 1 # how many epochs after which update the lr
+validationInterval = 5 # how many training steps to do the validation
 
 del varValues
-varValues = {'optimizationAlgorithm': optimAlg, 'learningRate': learningRate, \
+varValues = {'optimisationAlgorithm': optimAlg, 'learningRate': learningRate, \
              'beta1': beta1, 'beta2': beta2, 'lossFunction': lossFunction, \
                  'trainer': trainer, 'evaluator': evaluator, 'nEpochs': nEpochs, \
                      'batchSize': batchSize, 'doLearningRateDecay': doLearningRateDecay, \
@@ -167,7 +148,7 @@ with open(varsFile, 'a+') as file:
     file.write('\n')    
     
 #################
-# ARCHITECTURES #
+# Architectures #
 #################
 
 nonlinearityHidden = torch.tanh
@@ -176,108 +157,58 @@ nonlinearity = nn.Tanh # chosen nonlinearity for nonlinear architectures
 
 modelList = []
     
-hParamsLocalGNN = {} # hyperparameters (hParams) for the Local GNN (LclGNN)
+hParamsGNN = {} # hyperparameters (hParams) for GNN 
 
-hParamsLocalGNN['name'] = 'LocalGNN'
-hParamsLocalGNN['archit'] = architTime.LocalGNN_DB
-hParamsLocalGNN['device'] = 'cuda:0' if (torch.cuda.is_available()) else 'cpu'
-hParamsLocalGNN['dimNodeSignals'] = [6, 64] # Features per layer
-hParamsLocalGNN['nFilterTaps'] = [3] # Number of filter taps
-hParamsLocalGNN['bias'] = True # Decide whether to include a bias term
-hParamsLocalGNN['nonlinearity'] = nonlinearity # Selected nonlinearity
-                                               # is affected by the summary
-hParamsLocalGNN['dimReadout'] = [2] # Dimension of the fully connected
-                                    # layers after the GCN layers (map); this fully connected layer
-                                    # is applied only at each node, without any further exchanges nor 
-                                    # considering all nodes at once, making the architecture entirely
-                                    # local.
-hParamsLocalGNN['dimEdgeFeatures'] = 1 # Scalar edge weights
+hParamsGNN['name'] = 'GNN'
+hParamsGNN['archit'] = architTime.LocalGNN_DB
+hParamsGNN['device'] = 'cuda:0' if (torch.cuda.is_available()) else 'cpu'
+hParamsGNN['dimNodeSignals'] = [2, 32] # features per layer
+hParamsGNN['nFilterTaps'] = [3] # number of filter taps, i.e. three-hop neighbours' infor 
+hParamsGNN['bias'] = True # decide whether to include a bias term
+hParamsGNN['nonlinearity'] = nonlinearity
+                                            
+hParamsGNN['dimReadout'] = [2] # Dimension of the fully connected layers after 
+                               # the GCN layers (map); this fully connected layer
+                               # is applied only at each node, without any 
+                               # further exchanges nor  considering all nodes at 
+                               # once, making the architecture entirely local.
+hParamsGNN['dimEdgeFeatures'] = 1 # scalar edge weights
 
 with open(varsFile, 'a+') as file:
-    for key in hParamsLocalGNN.keys():
-        file.write('%s = %s\n' % (key, hParamsLocalGNN[key]))
+    for key in hParamsGNN.keys():
+        file.write('%s = %s\n' % (key, hParamsGNN[key]))
     file.write('\n')
 
-modelList += [hParamsLocalGNN['name']]
+modelList += [hParamsGNN['name']]
 
 ###########
-# LOGGING #
+# Logging #
 ###########
 
-# Parameters:
-printInterval = 1 # After how many training steps, print the partial results
-#   0 means to never print partial results while training
-xAxisMultiplierTrain = 10 # How many training steps in between those shown in
-    # the plot, i.e., one training step every xAxisMultiplierTrain is shown.
-xAxisMultiplierValid = 2 # How many validation steps in between those shown,
-    # same as above.
-figSize = 5 # Overall size of the figure that contains the plot
-lineWidth = 2 # Width of the plot lines
-markerShape = 'o' # Shape of the markers
-markerSize = 3 # Size of the markers
+printInterval = 1 # after how many training steps, print the partial results
+                  # 0 means to never print partial results while training
 
 del varValues
-varValues = {'printInterval': printInterval, 'figSize': figSize, \
-                 'lineWidth': lineWidth, 'markerShape': markerShape, 'markerSize': markerSize}
+varValues = {'printInterval': printInterval}
     
 with open(varsFile, 'a+') as file:
     for key in varValues.keys():
         file.write('%s = %s\n' % (key, varValues[key]))
     file.write('\n')    
 
-#%%##################################################################
-#                                                                   #
-#                    SETUP                                          #
-#                                                                   #
-#####################################################################
+#%% setup 
 
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
 
-print("Selected devices:")
+print("Selected devices: ")
 for thisModel in modelList:
     hParamsDict = eval('hParams' + thisModel)
     print("\t%s: %s" % (thisModel, hParamsDict['device']))
-    
-#\\\ Number of agents at test time
-nNodesTest = np.linspace(nNodes, nNodesMax, num = nSimPoints,dtype = np.int64) # -- NOT use
-nNodesTest = np.unique(nNodesTest).tolist() # -- NOT use
-nSimPoints = len(nNodesTest) # -- NOT use, but need to add in the future
-writeVarValues(varsFile, {'nNodesTest': nNodesTest}) # Save list # -- NOT use
-
-#\\\ Save variables during evaluation.
-# We will save all the evaluations obtained for each of the trained models.
-# The first list is one for each value of nNodes that we want to simulate 
-# (i.e. these are test results, so if we test for different number of agents,
-# we need to save the results for each of them). Each element in the list will
-# be a dictionary (i.e. for each testing case, we have a dictionary).
-# It basically is a dictionary, containing a list. The key of the
-# dictionary determines the model, then the first list index determines
-# which split realization. Then, this will be converted to numpy to compute
-# mean and standard deviation (across the split dimension).
-# We're saving the cost of the full trajectory, as well as the cost at the end
-# instant.
-costBestFull = [None] * nSimPoints # -- NOT use
-costBestEnd = [None] * nSimPoints # -- NOT use
-costLastFull = [None] * nSimPoints # -- NOT use
-costLastEnd = [None] * nSimPoints # -- NOT use
-costOptFull = [None] * nSimPoints # -- NOT use
-costOptEnd = [None] * nSimPoints # -- NOT use
-for n in range(nSimPoints):
-    costBestFull[n] = {} # Accuracy for the best model (full trajectory)
-    costBestEnd[n] = {} # Accuracy for the best model (end time)
-    costLastFull[n] = {} # Accuracy for the last model
-    costLastEnd[n] = {} # Accuracy for the last model
-    for thisModel in modelList: # Create an element for each split realization,
-        costBestFull[n][thisModel] = [None]
-        costBestEnd[n][thisModel] = [None]
-        costLastFull[n][thisModel] = [None]
-        costLastEnd[n][thisModel] = [None]
-    costOptFull[n] = [None] # Accuracy for optimal controller
-    costOptEnd[n] = [None] # Accuracy for optimal controller
+# end for     
 
 ####################
-# TRAINING OPTIONS #
+# Training options #
 ####################
 
 # Training phase. It has a lot of options that are input through a
@@ -292,70 +223,35 @@ trainingOptions['printInterval'] = printInterval
 if doLearningRateDecay:
     trainingOptions['learningRateDecayRate'] = learningRateDecayRate
     trainingOptions['learningRateDecayPeriod'] = learningRateDecayPeriod
+# end if 
 trainingOptions['validationInterval'] = validationInterval
-
-# And in case each model has specific training options (aka 'DAGger'), then
-# we create a separate dictionary per model.
-
-trainingOptsPerModel= {}
-
-# Create relevant dirs: we need directories to save the videos of the dataset
-# that involve the optimal centralized controllers, and we also need videos
-# for the learned trajectory of each model. Note that all of these depend on
-# each realization, so we will be saving videos for each realization.
-# Here, we create all those directories.
-datasetTrajectoryDir = os.path.join(saveDir,'datasetTrajectories')
-if not os.path.exists(datasetTrajectoryDir):
-    os.makedirs(datasetTrajectoryDir)
     
-datasetTrainTrajectoryDir = os.path.join(datasetTrajectoryDir,'train')
-if not os.path.exists(datasetTrainTrajectoryDir):
-    os.makedirs(datasetTrainTrajectoryDir)
-    
-datasetTestTrajectoryDir = os.path.join(datasetTrajectoryDir,'test')
-if not os.path.exists(datasetTestTrajectoryDir):
-    os.makedirs(datasetTestTrajectoryDir)
-
-datasetTestAgentTrajectoryDir = [None] * nSimPoints
-for n in range(nSimPoints):    
-    datasetTestAgentTrajectoryDir[n] = os.path.join(datasetTestTrajectoryDir,
-                                                    '%03d' % nNodesTest[n])
-    
-#%%##################################################################
-#                                                                   #
-#                    DATA HANDLING                                  #
-#                                                                   #
-#####################################################################
+#%% data handling 
 
 ############
-# DATASETS #
+# Datasets #
 ############
 
 print("Generating data", end = '')
 print("...", flush = True)
 
 #   Generate the dataset
-data = dataTools.Flocking(
+data = dataTools.initClockNetwk(
             # Structure
             nNodes,
-            commRadius,
-            repelDist,
             # Samples
             nTrain,
             nValid,
-            1, # We do not care about testing, we will re-generate the
-               # dataset for testing
+            1, # no need care about testing, will re-generate the dataset for testing
             # Time
             duration,
             samplingTimeScale,
             # Initial conditions
-            initGeometry = initGeometry,
-            initVelValue = initVelValue,
-            initMinDist = initMinDist,
-            accelMax = accelMax)
+            initOffsetValue = initOffsetValue,
+            initSkewValue = initSkewValue)
 
 ###########
-# PREVIEW #
+# Preview #
 ###########
 
 print("Preview data", end = '')

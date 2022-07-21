@@ -6,7 +6,7 @@ import datetime
 
 from utils.dataTools import invertTensorEW
 
-class TrainerFlocking:
+class Trainer:
     def __init__(self, model, data, nEpochs, batchSize, **kwargs):
         
         self.model = model
