@@ -80,7 +80,8 @@ class initClockNetwk():
     def __init__(self, nNodes,
                  nTrain, nValid, nTest,
                  duration, samplingTimeScale,
-                 initOffsetValue, initSkewValue,                 
+                 initOffsetValue, initSkewValue,
+                 gainOffset, gainSkew,                 
                  netwkType='digraph', normaliseGraph=False,
                  dataType = np.float64, device = 'cpu'):
         
@@ -119,6 +120,8 @@ class initClockNetwk():
         # agents
         self.initOffsetValue = initOffsetValue
         self.initSkewValue = initSkewValue
+        self.gainOffset = gainOffset 
+        self.gainSkew = gainSkew
         # data
         self.netwkType = netwkType        
         self.normaliseGraph = normaliseGraph
@@ -132,7 +135,7 @@ class initClockNetwk():
         print("\tComputing initial conditions...", end = ' ', flush = True)
         
         # compute the initial clock offsets and skews
-        initOffsetAll, initSkewAll = computeInitialOffsetsSkews(self.nNodes, \
+        initOffsetAll, initSkewAll = self.computeInitialOffsetsSkews(self.nNodes, \
                                                                 nSamples, \
                                                                 self.initOffsetValue, \
                                                                 self.initSkewValue)     
@@ -148,7 +151,7 @@ class initClockNetwk():
 
         # compute communication graph           
         # when network topology is directed graph, 'normaliseGraph' does NOT work
-        commGraphAll = computeNetworkTopologies(self.nNodes, nSamples, \
+        commGraphAll = self.computeNetworkTopologies(self.nNodes, nSamples, \
                                                 self.netwkType, \
                                                 self.normaliseGraph)      
                                         
@@ -158,163 +161,25 @@ class initClockNetwk():
         print("\tComputing the centralised optimal synchronisation trajectories...",
               end=' ', flush=True)
         
-        
+        # realise time synchronisation via the centralised dynamic controller
+        offsetAll, skewAll, offsetCorrectionAll, skewCorrectionAll = self.computeViaCentralisedDynamicController(
+                                                                     self.nNodes, nSamples, 
+                                                                     initOffsetAll, initSkewAll,
+                                                                     self.gainOffset, self.gainSkew,
+                                                                     self.duration, self.samplingTimeScale)   
 
-        # The optimal trajectory is given by
-        # u_{i} = - \sum_{j=1}^{N} (v_{i} - v_{j})
-        #         + 2 \sum_{j=1}^{N} (r_{i} - r_{j}) *
-        #                                 (1/\|r_{i}\|^{4} + 1/\|r_{j}\|^{2}) *
-        #                                 1{\|r_{ij}\| < R}
-        # for each agent i=1,...,N, where v_{i} is the velocity and r_{i} the
-        # position.
-        
-        # 我前面应该就是需要修改代码了，因为前面的clock offset，skew都是两个维度的
-        # 最好是修改成为3个维度，多加一个feature的维度，虽然feature就是1 ，没有任何de@
-        # 的区别。另外的呢，就是这个
-        # 对于计算来说，应该是4个维度，就是需要有一个时间的维度
-        # time
-        time = np.arange(0, duration, samplingTimeScale)
-        tSamples = len(time) # number of time samples
-        
-        # create arrays to store the offset and skew
-        offset = np.zeros((nSamples, tSamples, 1, nNodes))
-        skew = np.zeros((nSamples, tSamples, 1, nNodes))
-        integralOffset = np.zeros((nSamples, tSamples, 1, nNodes))
-        integralSkew = np.zeros((nSamples, tSamples, 1, nNodes))    
-        correctionOffset = np.zeros((nSamples, tSamples, 1, nNodes))
-        correctionSkew = np.zeros((nSamples, tSamples, 1, nNodes))
-        
-        # initial settings
-        offset[:,0,:,:] = initOffsetAll
-        skew[:,0,:,:] = initSkewAll
-        
-        # sample percentage count
-        percentageCount = int(100/tSamples)
-        # print new value
-        print("%3d%%" % percentageCount, end = '', flush = True)
-        
-        gainOffset1=1
-        gainOffset2=1
-        gainOffset3=1
-        gainOffset4=1
-                
-        gainSkew1=1
-        gainSkew2=1
-        gainSkew3=1
-        gainSkew4=1
-        
-        
-        
-        # for each time instant
-        for t in range(1, tSamples):
-            
-            # compute the clock offset and skew correction input
-            #   compute the the clock offset differences between all elements
-            ijDiffOffset, _ = self.computeDifferences(offset[:,t-1,:,:]) # 也是可以正常的使用的了，但是注意我们只有一个feature，就是需要做精简
-            #       ijDiffOffset: nSamples x 1 x nNodes x nNodes
-            #   and also the difference in clock skews
-            ijDiffSkew, _ = self.computeDifferences(skew[:,t-1,:,:])
-            #       ijDiffSkew: nSamples x 1 x nNodes x nNodes
-
-            # update the clock offset and skew correction input
-            #   update clock offset correction value
-            integralOffset[:,t,:,:] = gainOffset1 * integralOffset[:,t-1,:,:] + gainOffset2 * np.sum(ijDiffOffset, axis=3)
-            correctionOffset[:,t,:,:] = gainOffset3 * integralOffset[:,t-1,:,:] + gainOffset4 * np.sum(ijDiffOffset, axis=3)
-            #   Update clock skew correction value
-            integralSkew[:,t,:,:] = gainSkew1 * integralSkew[:,t-1,:,:] + gainSkew2 * np.sum(ijDiffSkew, axis=3)
-            correctionSkew[:,t,:,:] = gainSkew3 * integralSkew[:,t-1,:,:] + gainSkew4 * np.sum(ijDiffSkew, axis=3)            
-            
-            # update the values Todo: still need the noises by yan zong
-            #   update clock offset 
-            offset[:,t,:,:] = offset[:,t-1,:,:] + skew[:,t-1,:,:] * samplingTimeScale + correctionOffset[:,t-1,:,:]
-            #   update clock skew 
-            skew[:,t,:,:] = skew[:,t-1,:,:] + correctionSkew[:,t-1,:,:]              
-            
-            # sample percentage count
-            percentageCount = int(100*(t+1)/tSamples)
-            # remove previous pecentage and print new value
-            print('\b \b' * 4 + "%3d%%" % percentageCount, end = '', flush = True)
-                
-        # erase the percentage
-        print('\b \b' * 4, end = '', flush = True)            
-
-
-            
-            #   The last element we need to compute the acceleration is the
-            #   gradient. Note that the gradient only counts when the distance 
-            #   is smaller than the repel distance
-            #       This is the mask to consider each of the differences
-            repelMask = (ijDistSq < (repelDist**2)).astype(ijDiffPos.dtype)
-            #       Apply the mask to the relevant differences
-            ijDiffPos = ijDiffPos * np.expand_dims(repelMask, 1)
-            #       Compute the constant (1/||r_ij||^4 + 1/||r_ij||^2)
-            ijDistSqInv = invertTensorEW(ijDistSq)
-            #       Add the extra dimension
-            ijDistSqInv = np.expand_dims(ijDistSqInv, 1)
-            #   Compute the acceleration
-            accel[:,t-1,:,:] = \
-                    -np.sum(ijDiffVel, axis = 3) \
-                    +2* np.sum(ijDiffPos * (ijDistSqInv ** 2 + ijDistSqInv),
-                               axis = 3)
-                    
-            # Finally, note that if the agents are too close together, the
-            # acceleration will be very big to get them as far apart as
-            # possible, and this is physically impossible.
-            # So let's add a limitation to the maximum aceleration
-
-            # Find the places where the acceleration is big
-            thisAccel = accel[:,t-1,:,:].copy()
-            # Values that exceed accelMax, force them to be accelMax
-            thisAccel[accel[:,t-1,:,:] > accelMax] = accelMax
-            # Values that are smaller than -accelMax, force them to be accelMax
-            thisAccel[accel[:,t-1,:,:] < -accelMax] = -accelMax
-            # And put it back
-            accel[:,t-1,:,:] = thisAccel
-            
-            # Update the values
-            #   Update velocity
-            vel[:,t,:,:] = accel[:,t-1,:,:] * samplingTime + vel[:,t-1,:,:]
-            #   Update the position
-            pos[:,t,:,:] = accel[:,t-1,:,:] * (samplingTime ** 2)/2 + \
-                                 vel[:,t-1,:,:] * samplingTime + pos[:,t-1,:,:]
-            
-            # Sample percentage count
-            percentageCount = int(100*(t+1)/tSamples)
-            # Erase previous pecentage and print new value
-            print('\b \b' * 4 + "%3d%%" % percentageCount,
-                  end = '', flush = True)
-                
-        # Erase the percentage
-        print('\b \b' * 4, end = '', flush = True)
-            
-        return pos, vel, accel
-
-
-        
-        
-        
-        
-        # Compute the optimal trajectory
-        posAll, velAll, accelAll = self.computeOptimalTrajectory(
-                                        initPosAll, initVelAll, self.duration,
-                                        self.samplingTime, self.repelDist,
-                                        accelMax = self.accelMax)
         
         self.offset = {}
         self.skew = {}
+        self.offsetCorrection = {}
+        self.skewCorrection = {}        
         
         print("OK", flush = True)
         print("\tComputing the communication network topologies...",
               end=' ', flush=True)
         
-        # Compute communication graph
-        commGraphAll = self.computeCommunicationGraph(posAll, self.commRadius,
-                                                      self.normalizeGraph)
-        
-        self.commGraph = {}
-        
-        print("OK", flush = True)
-        # Erase the label first, then print it
+
+
         print("\tComputing the agent states...", end = ' ', flush = True)
         
         # Compute the states
@@ -1134,69 +999,102 @@ class initClockNetwk():
     
     def computeDifferences(self, u):
         
-        # Takes as input a tensor of shape
-        #   nSamples x tSamples x 2 x nNodes
-        # or of shape
-        #   nSamples x 2 x nNodes
-        # And returns the elementwise difference u_i - u_j of shape
-        #   nSamples (x tSamples) x 2 x nNodes x nNodes
-        # And the distance squared ||u_i - u_j||^2 of shape
-        #   nSamples (x tSamples) x nNodes x nNodes
+        # take as input a tensor of shape
+        #   nSamples x tSamples x 1 x nNodes
+        # and return the elementwise difference u_i - u_j of shape
+        #   nSamples x tSamples x 1 x nNodes x nNodes
         
-        # Check dimensions
-        assert len(u.shape) == 3 or len(u.shape) == 4
-        # If it has shape 3, which means it's only a single time instant, then
-        # add the extra dimension so we move along assuming we have multiple
-        # time instants
-        if len(u.shape) == 3:
-            u = np.expand_dims(u, 1)
-            hasTimeDim = False
-        else:
-            hasTimeDim = True
+        # check dimensions
+        assert len(u.shape) == 4
         
-        # Now we have that pos always has shape
-        #   nSamples x tSamples x 2 x nNodes
+        # now we have that offset or skew always has shape
+        #   nSamples x tSamples x 1 x nNodes
         nSamples = u.shape[0]
         tSamples = u.shape[1]
-        assert u.shape[2] == 2
+        assert u.shape[2] == 1
         nNodes = u.shape[3]
         
-        # Compute the difference along each axis. For this, we subtract a
-        # column vector from a row vector. The difference tensor on each
-        # position will have shape nSamples x tSamples x nNodes x nNodes
-        # and then we add the extra dimension to concatenate and obtain a final
-        # tensor of shape nSamples x tSamples x 2 x nNodes x nNodes
-        # First, axis x
-        #   Reshape as column and row vector, respectively
-        uCol_x = u[:,:,0,:].reshape((nSamples, tSamples, nNodes, 1))
-        uRow_x = u[:,:,0,:].reshape((nSamples, tSamples, 1, nNodes))
-        #   Subtract them
-        uDiff_x = uCol_x - uRow_x # nSamples x tSamples x nNodes x nNodes
-        # Second, for axis y
-        uCol_y = u[:,:,1,:].reshape((nSamples, tSamples, nNodes, 1))
-        uRow_y = u[:,:,1,:].reshape((nSamples, tSamples, 1, nNodes))
-        uDiff_y = uCol_y - uRow_y # nSamples x tSamples x nNodes x nNodes
-        # Third, compute the distance tensor of shape
-        #   nSamples x tSamples x nNodes x nNodes
-        uDistSq = uDiff_x ** 2 + uDiff_y ** 2
-        # Finally, concatenate to obtain the tensor of differences
+        # compute the difference along each axis. For this, we subtract a
+        # column vector from a row vector. The difference tensor on offset 
+        # will have shape nSamples x tSamples x nNodes x nNodes
+        # and then we add the extra dimension to obtain a final
+        # tensor of shape nSamples x tSamples x 1 x nNodes x nNodes
+        #   reshape as column and row vector, respectively
+        uCol = u[:,:,0,:].reshape((nSamples, tSamples, nNodes, 1))
+        uRow = u[:,:,0,:].reshape((nSamples, tSamples, 1, nNodes))
+        #   subtract them
+        uDiff = uCol - uRow # nSamples x tSamples x nNodes x nNodes
+        # finally, concatenate to obtain the tensor of differences
         #   Add the extra dimension in the position
-        uDiff_x = np.expand_dims(uDiff_x, 2)
-        uDiff_y = np.expand_dims(uDiff_y, 2)
-        #   And concatenate them
-        uDiff = np.concatenate((uDiff_x, uDiff_y), 2)
-        #   nSamples x tSamples x 2 x nNodes x nNodes
+        uDiff = np.expand_dims(uDiff, 2)
+        #   nSamples x tSamples x 1 x nNodes x nNodes
+                        
+        return uDiff
+
+    def computeViaCentralisedDynamicController(self, nNodes, nSamples, 
+                                               initOffset, initSkew,
+                                               gainOffset, gainSkew,
+                                               duration, samplingTimeScale):    
+        
+        # the centralised dynamic controller is given accoring to Zong2022b_TIE,
+        # see equ (14) in the above paper (http://yzong.com/pub/Zong2022b.pdf)
+
+        # time
+        time = np.arange(0, duration, samplingTimeScale)
+        tSamples = len(time) # number of time samples
+        
+        # create arrays to store the offset and skew
+        offset = np.zeros((nSamples, tSamples, 1, nNodes))
+        skew = np.zeros((nSamples, tSamples, 1, nNodes))
+        integralOffset = np.zeros((nSamples, tSamples, 1, nNodes))
+        integralSkew = np.zeros((nSamples, tSamples, 1, nNodes))    
+        correctionOffset = np.zeros((nSamples, tSamples, 1, nNodes))
+        correctionSkew = np.zeros((nSamples, tSamples, 1, nNodes))
+        
+        # initial settings
+        offset[:,0,:,:] = initOffset
+        skew[:,0,:,:] = initSkew
+        
+        # sample percentage count
+        percentageCount = int(100/tSamples)
+        # print new value
+        print("%3d%%" % percentageCount, end = '', flush = True)
+        
+        # for each time instant
+        for t in range(1, tSamples):
             
-        # Get rid of the time dimension if we don't need it
-        if not hasTimeDim:
-            # (This fails if tSamples > 1)
-            uDistSq = uDistSq.squeeze(1)
-            #   nSamples x nNodes x nNodes
-            uDiff = uDiff.squeeze(1)
-            #   nSamples x 2 x nNodes x nNodes
+            # compute the clock offset and skew correction input
+            #   compute the the clock offset differences between all elements
+            ijDiffOffset, _ = self.computeDifferences(offset[:,t-1,:,:])
+            #       ijDiffOffset: nSamples x 1 x 1 x nNodes x nNodes
+            #   and also the difference in clock skews
+            ijDiffSkew, _ = self.computeDifferences(skew[:,t-1,:,:])
+            #       ijDiffSkew: nSamples x 1 x 1 x nNodes x nNodes
+
+            # update the clock offset and skew correction input
+            #   update clock offset correction value
+            integralOffset[:,t,:,:] = gainOffset[0] * integralOffset[:,t-1,:,:] + gainOffset[1] * np.sum(ijDiffOffset, axis=4)
+            correctionOffset[:,t,:,:] = gainOffset[3] * integralOffset[:,t-1,:,:] + gainOffset[3] * np.sum(ijDiffOffset, axis=4)
+            #   Update clock skew correction value
+            integralSkew[:,t,:,:] = gainSkew[0] * integralSkew[:,t-1,:,:] + gainSkew[1] * np.sum(ijDiffSkew, axis=3)
+            correctionSkew[:,t,:,:] = gainSkew[2] * integralSkew[:,t-1,:,:] + gainSkew[3] * np.sum(ijDiffSkew, axis=3)            
             
-        return uDiff, uDistSq
- 
+            # update the values Todo: noises will be required in the future work
+            #   update clock offset 
+            offset[:,t,:,:] = offset[:,t-1,:,:] + skew[:,t-1,:,:] * samplingTimeScale + correctionOffset[:,t-1,:,:]
+            #   update clock skew 
+            skew[:,t,:,:] = skew[:,t-1,:,:] + correctionSkew[:,t-1,:,:]              
+            
+            # sample percentage count
+            percentageCount = int(100*(t+1)/tSamples)
+            # remove previous pecentage and print new value
+            print('\b \b' * 4 + "%3d%%" % percentageCount, end = '', flush = True)
+                
+        # erase the percentage
+        print('\b \b' * 4, end = '', flush = True)    
+        
+        return offset, skew, correctionOffset, correctionSkew
+
     def computeOptimalTrajectory(self, initPos, initVel, duration, 
                                  samplingTime, repelDist,
                                  accelMax = 100.):
