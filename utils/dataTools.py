@@ -81,7 +81,7 @@ class initClockNetwk():
                  nTrain, nValid, nTest,
                  duration, samplingTimeScale,
                  initOffsetValue, initSkewValue,                 
-                 normaliseGraph = True,
+                 netwkType='digraph', normaliseGraph=False,
                  dataType = np.float64, device = 'cpu'):
         
         self.samples = {} # create a dict
@@ -103,7 +103,7 @@ class initClockNetwk():
         所以到底是使用self版本，还是不需要使用self版本，就是需要重点关注一下，
         同时的呢，就是需要想一下，估计还是需要封装行数，因为后期就是需要test创建的时候
         会使用到
-        
+        在转变成函数形式的时候，参考一下这里的实例代码
         """
         # save the relevant input information
         # number of nodes
@@ -120,6 +120,7 @@ class initClockNetwk():
         self.initOffsetValue = initOffsetValue
         self.initSkewValue = initSkewValue
         # data
+        self.netwkType = netwkType        
         self.normaliseGraph = normaliseGraph
         self.dataType = dataType
         self.device = device
@@ -130,28 +131,12 @@ class initClockNetwk():
         
         print("\tComputing initial conditions...", end = ' ', flush = True)
         
-        # repeat and reshape to obtain the offsets and skews                                          
-        fixedOffsetTmp = np.repeat(self.initOffsetValue, nSamples*self.nNodes, axis = 0)     
-        fixedOffset = fixedOffsetTmp.reshape(nSamples, self.nNodes)             
-        
-        fixedSkewTmp = np.repeat(self.initSkewValue, nSamples*self.nNodes, axis = 0)     
-        fixedSkew = fixedSkewTmp.reshape(nSamples, self.nNodes)                             
-        
-        # generate the noises
-        offsetPerturb = 2e+5 # us
-        skewPerturb = 25 # ppm        
-        perturbOffset = np.random.uniform(low = -offsetPerturb,
-                                          high = offsetPerturb,
-                                          size = (nSamples, self.nNodes))
-        
-        perturbSkew = np.random.uniform(low = -skewPerturb,
-                                        high = skewPerturb,
-                                        size = (nSamples, self.nNodes))        
-        
-        # compute the initial clock offsets and skews    
-        initOffsetAll = fixedOffset + perturbOffset     
-        initSkewAll = fixedSkew + perturbSkew
-                
+        # compute the initial clock offsets and skews
+        initOffsetAll, initSkewAll = computeInitialOffsetsSkews(self.nNodes, \
+                                                                nSamples, \
+                                                                self.initOffsetValue, \
+                                                                self.initSkewValue)     
+                                
         # split all the initial clock offsets and skews in the corresponding 
         # datasets (train, valid and test)
         self.initOffset = {}
@@ -160,24 +145,13 @@ class initClockNetwk():
         print("OK", flush = True)
         print("\tComputing the network topologies...",
               end=' ', flush=True)
-        
-        # compute communication graph
-                
-        commGraphAll = np.zeros((nSamples, nNodes, nNodes))
-        
-        for i in range(nSamples):
-            networkTopology = netwk.random_tree(nNodes, seed=np.random, create_using=netwk.DiGraph)            
-            # networkTopology = netwk.random_tree(nNodes, seed=np.random, create_using=netwk.Graph)
-            networkTopologyMatrix = netwk.adjacency_matrix(networkTopology).todense()            
-            # # calculate the eigenvalues
-            # W = np.linalg.eigvals(networkTopologyMatrix)            
-            # maxEigenvalue = np.max(np.real(W))
-            # # 需要区分在使用不同的graph，digraph的时候，可能会出现特征值=0的情况
-            # # normalise
-            # networkTopologyMatrix = networkTopologyMatrix / maxEigenvalue                                    
-            commGraphAll[i, :, :] = networkTopologyMatrix
-        # end for
-                
+
+        # compute communication graph           
+        # when network topology is directed graph, 'normaliseGraph' does NOT work
+        commGraphAll = computeNetworkTopologies(self.nNodes, nSamples, \
+                                                self.netwkType, \
+                                                self.normaliseGraph)      
+                                        
         self.commNetwk = {}
         
         print("OK", flush = True)   
@@ -617,6 +591,42 @@ class initClockNetwk():
         print('\b \b' * 4, end = '', flush = True)
         
         return state
+
+    def computeNetworkTopologies(self, nNodes, nSamples, netwkType='digraph', normaliseGraph=False):
+
+        assert netwkType == 'digraph' or netwkType == 'bigraph'        
+             
+        commGraph = np.zeros((nSamples, nNodes, nNodes))
+        
+        if netwkType=='digraph':
+            for i in range(nSamples):
+                networkTopology = netwk.random_tree(nNodes, seed=np.random, create_using=netwk.DiGraph)            
+                # calculate the adjacency matrix
+                networkTopologyMatrix = netwk.adjacency_matrix(networkTopology).todense()            
+                # the maximum eigenvalue is zero, no normalisation
+                commGraph[i, :, :] = networkTopologyMatrix
+            # end for                    
+        elif netwkType=='bigraph':
+            for i in range(nSamples):
+                networkTopology = netwk.random_tree(nNodes, seed=np.random, create_using=netwk.Graph)            
+                # calculate the adjacency matrix
+                networkTopologyMatrix = netwk.adjacency_matrix(networkTopology).todense()            
+                if normaliseGraph==True:
+                    # calculate the eigenvalues
+                    W = np.linalg.eigvals(networkTopologyMatrix)            
+                    maxEigenvalue = np.max(np.real(W))
+                    # normalise
+                    networkTopologyMatrix = networkTopologyMatrix / maxEigenvalue                                                    
+                    commGraph[i, :, :] = networkTopologyMatrix
+                # end if 
+            # end for                    
+        # end if    
+        
+        # add the time dimension, but the network is constant during the experiments
+        commGraph = np.expand_dims(commGraph, 1) # nSamples x time x feature x nNodes
+        
+        return commGraph
+
 
     def computeCommunicationGraph(self, pos, commRadius, normalizeGraph,
                                   **kwargs):
@@ -1284,6 +1294,38 @@ class initClockNetwk():
         print('\b \b' * 4, end = '', flush = True)
             
         return pos, vel, accel
+
+    def computeInitialOffsetsSkews(self, nNodes, nSamples, 
+                                   initOffsetValue, initSkewValue,
+                                   offsetPerturb=2e+5, # us
+                                   skewPerturb=25 # ppm
+                                   ):
+
+        # repeat and reshape to obtain the offsets and skews                                          
+        fixedOffsetTmp = np.repeat(initOffsetValue, nSamples*nNodes, axis = 0)     
+        fixedOffset = fixedOffsetTmp.reshape(nSamples, nNodes)             
+        
+        fixedSkewTmp = np.repeat(initSkewValue, nSamples*nNodes, axis = 0)     
+        fixedSkew = fixedSkewTmp.reshape(nSamples, nNodes)                             
+        
+        # generate the noises
+        perturbOffset = np.random.uniform(low = -offsetPerturb,
+                                          high = offsetPerturb,
+                                          size = (nSamples, nNodes))
+        
+        perturbSkew = np.random.uniform(low = -skewPerturb,
+                                        high = skewPerturb,
+                                        size = (nSamples, nNodes))        
+        
+        # compute the initial clock offsets and skews            
+        initOffset = fixedOffset + perturbOffset # nSamples x nNodes     
+        initSkew = fixedSkew + perturbSkew # nSamples x nNodes
+        
+        # add the extra dimensions (time=1, feature=1)
+        initOffset = np.expand_dims(initOffset, (1, 2)) # nSamples x time x feature x nNodes
+        initSkew = np.expand_dims(initSkew, (1, 2)) # nSamples x time x feature x nNodes
+        
+        return initOffset, initSkew
 
     def computeInitialPositions(self, nNodes, nSamples, commRadius,
                                 minDist = 0.1, geometry = 'rectangular',
