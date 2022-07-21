@@ -95,17 +95,7 @@ class initClockNetwk():
         self.samples['test'] = {} # create a dict in the above samples dict
         self.samples['test']['signals'] = None
         self.samples['test']['targets'] = None        
-        """
-        我们初始化clock offset skew可以是和网络的拓扑结构分开的，只要注意好维度问题即可。
-        我们可以先考虑进去这个noise的问题，但是在刚开始仿真的时候，并不会考虑这个噪声
-        的问题，而是等到后期的时候，再考虑这个噪声的问题
-        
-        需要考虑，如果以后test就是重新创建的时候，也许就是需要考虑不同的节点个数，图的状态了。
-        所以到底是使用self版本，还是不需要使用self版本，就是需要重点关注一下，
-        同时的呢，就是需要想一下，估计还是需要封装行数，因为后期就是需要test创建的时候
-        会使用到
-        在转变成函数形式的时候，参考一下这里的实例代码
-        """
+
         # save the relevant input information
         # number of nodes
         self.nNodes = nNodes
@@ -168,64 +158,52 @@ class initClockNetwk():
                                                                      self.gainOffset, self.gainSkew,
                                                                      self.duration, self.samplingTimeScale)   
 
-        
+        inputOffsetSkewAll = np.concatenate((offsetAll, skewAll), axis = 2)
+        outputOffsetSkewAll = np.concatenate((offsetCorrectionAll, skewCorrectionAll), axis = 2)        
+                
         self.offset = {}
         self.skew = {}
         self.offsetCorrection = {}
         self.skewCorrection = {}        
         
         print("OK", flush = True)
-        print("\tComputing the communication network topologies...",
-              end=' ', flush=True)
         
-
-
-        print("\tComputing the agent states...", end = ' ', flush = True)
-        
-        # Compute the states
-        stateAll = self.computeStates(posAll, velAll, commGraphAll)
-        
-        self.state = {}
-        
-        # Erase the label
-        print("OK", flush = True)
-        
-        # Separate the states into training, validation and testing samples
+        # separate the states into training, validation and testing samples
         # and save them
         #   Training set
-        self.samples['train']['signals'] = stateAll[0:self.nTrain].copy()
-        self.samples['train']['targets'] = accelAll[0:self.nTrain].copy()
-        self.initPos['train'] = initPosAll[0:self.nTrain]
-        self.initVel['train'] = initVelAll[0:self.nTrain]
-        self.pos['train'] = posAll[0:self.nTrain]
-        self.vel['train'] = velAll[0:self.nTrain]
-        self.accel['train'] = accelAll[0:self.nTrain]
-        self.commGraph['train'] = commGraphAll[0:self.nTrain]
-        self.state['train'] = stateAll[0:self.nTrain]
+        self.samples['train']['signals'] = inputOffsetSkewAll[0:self.nTrain].copy()
+        self.samples['train']['targets'] = outputOffsetSkewAll[0:self.nTrain].copy()
+        self.initOffset['train'] = initOffsetAll[0:self.nTrain]
+        self.initSkew['train'] = initSkewAll[0:self.nTrain]
+        self.offset['train'] = offsetAll[0:self.nTrain]
+        self.skew['train'] = skewAll[0:self.nTrain]
+        self.offsetCorrection['train'] = offsetCorrectionAll[0:self.nTrain]
+        self.skewCorrection['train'] = skewCorrectionAll[0:self.nTrain]        
+        self.commNetwk['train'] = commGraphAll[0:self.nTrain]
         #   Validation set
         startSample = self.nTrain
         endSample = self.nTrain + self.nValid
-        self.samples['valid']['signals']=stateAll[startSample:endSample].copy()
-        self.samples['valid']['targets']=accelAll[startSample:endSample].copy()
-        self.initPos['valid'] = initPosAll[startSample:endSample]
-        self.initVel['valid'] = initVelAll[startSample:endSample]
-        self.pos['valid'] = posAll[startSample:endSample]
-        self.vel['valid'] = velAll[startSample:endSample]
-        self.accel['valid'] = accelAll[startSample:endSample]
-        self.commGraph['valid'] = commGraphAll[startSample:endSample]
-        self.state['valid'] = stateAll[startSample:endSample]
+        self.samples['valid']['signals']=inputOffsetSkewAll[startSample:endSample].copy()
+        self.samples['valid']['targets']=outputOffsetSkewAll[startSample:endSample].copy()
+        self.initOffset['valid'] = initOffsetAll[startSample:endSample]
+        self.initSkew['valid'] = initSkewAll[startSample:endSample]
+        self.offset['valid'] = offsetAll[startSample:endSample]
+        self.skew['valid'] = skewAll[startSample:endSample]
+        self.offsetCorrection['valid'] = offsetCorrectionAll[startSample:endSample]
+        self.skewCorrection['valid'] = skewCorrectionAll[startSample:endSample]
+        self.commNetwk['valid'] = commGraphAll[startSample:endSample]
         #   Testing set
         startSample = self.nTrain + self.nValid
         endSample = self.nTrain + self.nValid + self.nTest
-        self.samples['test']['signals']=stateAll[startSample:endSample].copy()
-        self.samples['test']['targets']=accelAll[startSample:endSample].copy()
-        self.initPos['test'] = initPosAll[startSample:endSample]
-        self.initVel['test'] = initVelAll[startSample:endSample]
-        self.pos['test'] = posAll[startSample:endSample]
-        self.vel['test'] = velAll[startSample:endSample]
-        self.accel['test'] = accelAll[startSample:endSample]
-        self.commGraph['test'] = commGraphAll[startSample:endSample]
-        self.state['test'] = stateAll[startSample:endSample]
+        self.samples['test']['signals']=inputOffsetSkewAll[startSample:endSample].copy()
+        self.samples['test']['targets']=outputOffsetSkewAll[startSample:endSample].copy()
+        self.initPos['test'] = initOffsetAll[startSample:endSample]
+        self.initOffset['test'] = initSkewAll[startSample:endSample]
+        self.offset['test'] = offsetAll[startSample:endSample]
+        self.skew['test'] = skewAll[startSample:endSample]
+        self.offsetCorrection['test'] = offsetCorrectionAll[startSample:endSample]
+        self.skewCorrection['test'] = skewCorrectionAll[startSample:endSample]
+        self.commNetwk['test'] = commGraphAll[startSample:endSample]
         
         # Change data to specified type and device
         self.astype(self.dataType)
@@ -810,7 +788,14 @@ class initClockNetwk():
         #   nSamples x tSamples x 1 x nNodes x nNodes
         
         # check dimensions
-        assert len(u.shape) == 4
+        assert len(u.shape) == 3 or len(u.shape) == 4
+        # If it has shape 3, which means it's only a single time instant, then
+        # add the extra dimension so we move along assuming we have multiple
+        # time instants
+        if len(u.shape) == 3:
+            u = np.expand_dims(u, 1)
+        else:
+            pass 
         
         # now we have that offset or skew always has shape
         #   nSamples x tSamples x 1 x nNodes
@@ -857,8 +842,8 @@ class initClockNetwk():
         correctionSkew = np.zeros((nSamples, tSamples, 1, nNodes))
         
         # initial settings
-        offset[:,0,:,:] = initOffset
-        skew[:,0,:,:] = initSkew
+        offset[:,0,:,:] = np.squeeze(initOffset, 1)
+        skew[:,0,:,:] = np.squeeze(initSkew, 1)
         
         # sample percentage count
         percentageCount = int(100/tSamples)
@@ -870,10 +855,10 @@ class initClockNetwk():
             
             # compute the clock offset and skew correction input
             #   compute the the clock offset differences between all elements
-            ijDiffOffset, _ = self.computeDifferences(offset[:,t-1,:,:])
+            ijDiffOffset = self.computeDifferences(offset[:,t-1,:,:])
             #       ijDiffOffset: nSamples x 1 x 1 x nNodes x nNodes
             #   and also the difference in clock skews
-            ijDiffSkew, _ = self.computeDifferences(skew[:,t-1,:,:])
+            ijDiffSkew = self.computeDifferences(skew[:,t-1,:,:])
             #       ijDiffSkew: nSamples x 1 x 1 x nNodes x nNodes
 
             # update the clock offset and skew correction input

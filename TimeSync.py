@@ -96,6 +96,8 @@ duration = 2. # simulation duration, unit: second
 samplingTimeScale = 0.01 # sampling timescale, unit: second, according to Giorgi2011
 initOffsetValue = 6e+5 # initial clock offset = 600 us
 initSkewValue = 50 # initial clock skew = 50 ppm
+gainOffset = np.array([0.5, 0.5, 0.5, 0.5]) # K1, K2, K3 and K4 for offset correction
+gainSkew = np.array([0.5, 0.5, 0.5, 0.5]) # K1, K2, K3 and K4 for skew correction
 
 varValues = {'nNodes': nNodes, 'nTrain': nTrain, 'nValid': nValid, 'nTest': nTest, \
              'duration': duration, 'samplingTimeScale': samplingTimeScale, \
@@ -235,7 +237,7 @@ trainingOptions['validationInterval'] = validationInterval
 print("Generating data", end = '')
 print("...", flush = True)
 
-#   Generate the dataset
+# Generate the dataset
 data = dataTools.initClockNetwk(
             # Structure
             nNodes,
@@ -244,11 +246,11 @@ data = dataTools.initClockNetwk(
             nValid,
             1, # no need care about testing, will re-generate the dataset for testing
             # Time
-            duration,
-            samplingTimeScale,
+            duration, samplingTimeScale,
             # Initial conditions
-            initOffsetValue = initOffsetValue,
-            initSkewValue = initSkewValue)
+            initOffsetValue, initSkewValue,
+            gainOffset, gainSkew, 
+            netwkType='digraph')
 
 ###########
 # Preview #
