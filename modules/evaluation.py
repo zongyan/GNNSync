@@ -5,107 +5,48 @@ import numpy as np
 
 def evaluate(model, data, **kwargs):
                     
-    if 'graphNo' in kwargs.keys():
-        graphNo = kwargs['graphNo']
-    else:
-        graphNo = -1
-
-    if 'realizationNo' in kwargs.keys():
-        if 'graphNo' in kwargs.keys():
-            realizationNo = kwargs['realizationNo']
-        else:
-            graphNo = kwargs['realizationNo']
-            realizationNo = -1
-    else:
-        realizationNo = -1
-
-    #\\\\\\\\\\\\\\\\\\\\
-    #\\\ TRAJECTORIES \\\
-    #\\\\\\\\\\\\\\\\\\\\
-
     ########
-    # DATA #
+    # Data #
     ########
 
     # Initial data
-    initPosTest = data.getData('initPos', 'test')
-    initVelTest = data.getData('initVel', 'test')
+    initOffsetTest = data.getData('initOffset', 'test')
+    initSkewTest = data.getData('initSkew', 'test')
+    netwkTopologyTest = data.getData('commNetwk','test')         
 
     ##############
-    # BEST MODEL #
+    # Best Model #
     ##############
 
     model.load(label = 'Best')
 
-    print("\tComputing learned trajectory for best model...", end = ' ', flush = True)
+    print("\tComputing learned synchronisation strategy for best model...", end = ' ', flush = True)
 
-    posTestBest, velTestBest, accelTestBest, stateTestBest, commGraphTestBest = \
-        data.computeTrajectory(initPosTest, initVelTest, data.duration, archit = model.archit)
-        
+    offsetTestBest, skewTestBest, offsetCorrectionTestBest, skewCorrectionTestBest = \
+        data.computeTimeSynchronisation(initOffsetTest, initSkewTest, netwkTopologyTest, 
+                                   data.duration, model.archit, True)
+           
     SavedPath ='./gnn_test.npz'
-    np.savez(SavedPath, posTestBest=posTestBest, velTestBest=velTestBest, \
-             accelTestBest=accelTestBest, stateTestBest=stateTestBest, \
-                 commGraphTestBest=commGraphTestBest)
+    np.savez(SavedPath, offsetTestBest=offsetTestBest, skewTestBest=skewTestBest, \
+             offsetCorrectionTestBest=offsetCorrectionTestBest, skewCorrectionTestBest=skewCorrectionTestBest, \
+                 networkTopologyTest=netwkTopologyTest)
     print("\tSaved the test data to the following path: ./gnn_test.npz...", end = ' ')
     print("OK", flush = True)
 
     ##############
-    # LAST MODEL #
+    # Last Model #
     ##############
 
     model.load(label = 'Last')
 
-    print("\tComputing learned trajectory for last model...",
+    print("\tComputing learned synchronisation strategy for last model...",
           end = ' ', flush = True)
 
-    posTestLast, \
-    velTestLast, \
-    accelTestLast, \
-    stateTestLast, \
-    commGraphTestLast = \
-        data.computeTrajectory(initPosTest, initVelTest, data.duration, archit = model.archit)
-
-    print("OK")
-
-    ###########
-    # PREVIEW #
-    ###########
-
-    learnedTrajectoriesDir = os.path.join(model.saveDir,
-                                          'learnedTrajectories')
-    
-    if not os.path.exists(learnedTrajectoriesDir):
-        os.mkdir(learnedTrajectoriesDir)
-    
-    if graphNo > -1:
-        learnedTrajectoriesDir = os.path.join(learnedTrajectoriesDir,
-                                              '%03d' % graphNo)
-        if not os.path.exists(learnedTrajectoriesDir):
-            os.mkdir(learnedTrajectoriesDir)
-    if realizationNo > -1:
-        learnedTrajectoriesDir = os.path.join(learnedTrajectoriesDir,
-                                              '%03d' % realizationNo)
-        if not os.path.exists(learnedTrajectoriesDir):
-            os.mkdir(learnedTrajectoriesDir)
-
-    learnedTrajectoriesDir = os.path.join(learnedTrajectoriesDir, model.name)
-
-    if not os.path.exists(learnedTrajectoriesDir):
-        os.mkdir(learnedTrajectoriesDir)
-
-    print("\tPreview data...",
-          end = ' ', flush = True)
+    offsetTestLast, skewTestLast, offsetCorrectionTestLast, skewCorrectionTestLast = \
+        data.computeTimeSynchronisation(initOffsetTest, initSkewTest, netwkTopologyTest, 
+                                   data.duration, model.archit, True)
 
     print("OK", flush = True)
 
-    #\\\\\\\\\\\\\\\\\\
-    #\\\ EVALUATION \\\
-    #\\\\\\\\\\\\\\\\\\
-        
-    evalVars = {}
-    evalVars['costBestFull'] = data.evaluate(vel = velTestBest)
-    evalVars['costBestEnd'] = data.evaluate(vel = velTestBest[:,-1:,:,:])
-    evalVars['costLastFull'] = data.evaluate(vel = velTestLast)
-    evalVars['costLastEnd'] = data.evaluate(vel = velTestLast[:,-1:,:,:])
 
-    return evalVars
+

@@ -383,11 +383,7 @@ for thisModel in modelsGNN.keys():
 
     modelsGNN[thisModel].train(data, nEpochs, batchSize, **trainingOptsPerModel[m])
 
-#%%##################################################################
-#                                                                   #
-#                    EVALUATION                                     #
-#                                                                   #
-#####################################################################
+#%% Evaluation 
 
 # Now that the model has been trained, we evaluate them on the test
 # samples.
@@ -395,99 +391,56 @@ for thisModel in modelsGNN.keys():
 # We have two versions of each model to evaluate: the one obtained
 # at the best result of the validation step, and the last trained model.
     
-for n in range(nSimPoints):
     
-    print("")
-    print("[%3d Agents] Generating test set" % nNodesTest[n],
-          end = '')
+print("")
+print("[%3d Agents] Generating test set" % nNodes,
+      end = '')
+print("...", flush = True)
+
+# Load the data, which will give a specific split
+dataTest = dataTools.initClockNetwk(
+                # Structure
+                nNodes,
+                # Samples
+                1, # We don't care about training
+                1, # nor validation
+                nTest,
+                # Time
+                duration, samplingTimeScale,
+                # Initial conditions
+                initOffsetValue, initSkewValue,
+                gainOffset, gainSkew,
+                netwkType='digraph')
+
+###############
+# Centralised #
+###############
+
+offsetTest = dataTest.getData('offset', 'test')
+skewTest = dataTest.getData('skew', 'test')
+
+print("[%3d Agents] Preview data"  % nNodes, end = '')
+print("...", flush = True)
+
+# Get the cost for the centralised dynamic controller
+
+# Centralised dynamic controller
+costCtrlFull = dataTest.evaluate(offset = offsetTest, skew = skewTest)
+
+del offsetTest, skewTest
+
+##########
+# Models #
+##########
+
+for thisModel in modelsGNN.keys():
+
+    print("[%3d Agents] Evaluating model %s" % (nNodes, thisModel), end = '')
     print("...", flush = True)
+                
+    modelsGNN[thisModel].evaluate(dataTest)
 
-    #   Load the data, which will give a specific split
-    dataTest = dataTools.Flocking(
-                    # Structure
-                    nNodesTest[n],
-                    commRadius,
-                    repelDist,
-                    # Samples
-                    1, # We don't care about training
-                    1, # nor validation
-                    nTest,
-                    # Time
-                    duration,
-                    samplingTimeScale,
-                    # Initial conditions
-                    initGeometry = initGeometry,
-                    initVelValue = initVelValue,
-                    initMinDist = initMinDist,
-                    accelMax = accelMax)
-
-    ###########
-    # OPTIMAL #
-    ###########
-    
-    #\\\ PREVIEW
-    #\\\\\\\\\\\
-    
-    # Save videos for the optimal trajectories of the test set (before it
-    # was for the otpimal trajectories of the training set)
-    
-    posTest = dataTest.getData('pos', 'test')
-    velTest = dataTest.getData('vel', 'test')
-    commGraphTest = dataTest.getData('commGraph', 'test')
-
-    print("[%3d Agents] Preview data"  % nNodesTest[n], end = '')
-    print("...", flush = True)
-    
-    #\\\ EVAL
-    #\\\\\\\\
-    
-    # Get the cost for the optimal trajectories
-    
-    # Full trajectory
-    costOptFull[n] = dataTest.evaluate(vel = velTest)
-    
-    # Last time instant
-    costOptEnd[n] = dataTest.evaluate(vel = velTest[:,-1:,:,:])
-    
-    del posTest, velTest, commGraphTest
-    
-    ##########
-    # MODELS #
-    ##########
-
-    for thisModel in modelsGNN.keys():
-
-        print("[%3d Agents] Evaluating model %s" % \
-                                 (nNodesTest[n], thisModel), end = '')
-        print("...", flush = True)
-            
-        addKW = {}
-        addKW['graphNo'] = nNodesTest[n]
-            
-        thisEvalVars = modelsGNN[thisModel].evaluate(dataTest, **addKW)
-
-        thisCostBestFull = thisEvalVars['costBestFull']
-        thisCostBestEnd = thisEvalVars['costBestEnd']
-        thisCostLastFull = thisEvalVars['costLastFull']
-        thisCostLastEnd = thisEvalVars['costLastEnd']
-        
-        # Find which model to save the results (when having multiple
-        # realizations)
-        for m in modelList:
-            if m in thisModel:
-                costBestFull[n][m] = thisCostBestFull
-                costBestEnd[n][m] = thisCostBestEnd
-                costLastFull[n][m] = thisCostLastFull
-                costLastEnd[n][m] = thisCostLastEnd
-
-#%%##################################################################
-#                                                                   #
-#                    PLOT                                           #
-#                                                                   #
-#####################################################################
-
-
-
+#%% Plot 
 
 # Finish measuring time
 endRunTime = datetime.datetime.now()
@@ -523,21 +476,18 @@ import matplotlib.pyplot as plt
 
 gnn_test = np.load('./gnn_test.npz') # the data file loaded from the example folder
 
+offsetTest = gnn_test['offsetTestBest']
+skewTest = gnn_test['skewTestBest']
+offsetCorrectionTest = gnn_test['offsetCorrectionTestBest']
+skewCorrectionTest = gnn_test['skewCorrectionTestBest']
+networkTopology = gnn_test['networkTopologyTest']
 
-
-posTest = gnn_test['posTestBest']
-velTest = gnn_test['velTestBest']
-accelTest = gnn_test['accelTestBest']
-stateTest = gnn_test['stateTestBest']
-commGraphTest = gnn_test['commGraphTestBest']
-
-posOptim, velOptim, accelOptim = data.computeOptimalTrajectory(posTest[:,0,:,:], \
-                                                               posTest[:,0,:,:], \
-                                                                   duration=data.duration, \
-                                                                       samplingTime=data.samplingTime, \
-                                                                           repelDist=data.repelDist, \
-                                                                               accelMax=data.accelMax)
-
+offsetCtrl, skewCtrl, offsetCorrectionCtrl, skewCorrectionCtrl = \
+    data.computeViaCentralisedDynamicController(data.nNodes, nTest, 
+                                                offsetTest[:,0,:,:], skewTest[:,0,:,:],
+                                                data.gainOffset, data.gainSkew,
+                                                data.duration, data.samplingTimeScale)    
+        
 # plot the velocity of all agents via the GNN method
 for i in range(0, 1, 1):
     plt.figure()
@@ -545,7 +495,7 @@ for i in range(0, 1, 1):
     for j in range(0, 50, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), np.sqrt(velTest[i, :, 0, j]**2 + velTest[i, :, 1, j]**2)) 
+        plt.plot(np.arange(0, 200, 1), offsetTest[i, :, 0, j]) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
@@ -562,7 +512,7 @@ for i in range(0, 1, 1):
     for j in range(0, 50, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), np.sqrt(velOptim[i, :, 0, j]**2 + velOptim[i, :, 1, j]**2)) 
+        plt.plot(np.arange(0, 200, 1), offsetCtrl[i, :, 0, j]) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
@@ -579,10 +529,7 @@ for i in range(0, 1, 1):
     for j in range(0, 50, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        vel_temp = np.sqrt(velTest[i, :, 0, j] ** 2 + velTest[i, :, 1, j] ** 2) \
-            - np.sqrt(velOptim[i, :, 0, j] ** 2 + velOptim[i, :, 1, j] ** 2)                
-        plt.plot(np.arange(0, 200, 1), vel_temp) 
-        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+        plt.plot(np.arange(0, 200, 1), offsetTest[i, :, 0, j] - offsetCtrl[i, :, 0, j]) 
     # end for 
     plt.xlabel(r'$time (s)$')
     plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
