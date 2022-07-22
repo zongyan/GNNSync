@@ -197,8 +197,8 @@ class initClockNetwk():
         endSample = self.nTrain + self.nValid + self.nTest
         self.samples['test']['signals']=inputOffsetSkewAll[startSample:endSample].copy()
         self.samples['test']['targets']=outputOffsetSkewAll[startSample:endSample].copy()
-        self.initPos['test'] = initOffsetAll[startSample:endSample]
-        self.initOffset['test'] = initSkewAll[startSample:endSample]
+        self.initOffset['test'] = initOffsetAll[startSample:endSample]
+        self.initSkew['test'] = initSkewAll[startSample:endSample]
         self.offset['test'] = offsetAll[startSample:endSample]
         self.skew['test'] = skewAll[startSample:endSample]
         self.offsetCorrection['test'] = offsetCorrectionAll[startSample:endSample]
@@ -794,8 +794,9 @@ class initClockNetwk():
         # time instants
         if len(u.shape) == 3:
             u = np.expand_dims(u, 1)
+            hasTimeDim = False
         else:
-            pass 
+            hasTimeDim = True
         
         # now we have that offset or skew always has shape
         #   nSamples x tSamples x 1 x nNodes
@@ -818,6 +819,11 @@ class initClockNetwk():
         #   Add the extra dimension in the position
         uDiff = np.expand_dims(uDiff, 2)
         #   nSamples x tSamples x 1 x nNodes x nNodes
+        
+        if not hasTimeDim:
+            # (This fails if tSamples > 1)
+            uDiff = uDiff.squeeze(1)
+            #   nSamples x 1 x nNodes x nNodes        
                         
         return uDiff
 
@@ -863,8 +869,8 @@ class initClockNetwk():
 
             # update the clock offset and skew correction input
             #   update clock offset correction value
-            integralOffset[:,t,:,:] = gainOffset[0] * integralOffset[:,t-1,:,:] + gainOffset[1] * np.sum(ijDiffOffset, axis=4)
-            correctionOffset[:,t,:,:] = gainOffset[3] * integralOffset[:,t-1,:,:] + gainOffset[3] * np.sum(ijDiffOffset, axis=4)
+            integralOffset[:,t,:,:] = gainOffset[0] * integralOffset[:,t-1,:,:] + gainOffset[1] * np.sum(ijDiffOffset, axis=3)
+            correctionOffset[:,t,:,:] = gainOffset[3] * integralOffset[:,t-1,:,:] + gainOffset[3] * np.sum(ijDiffOffset, axis=3)
             #   Update clock skew correction value
             integralSkew[:,t,:,:] = gainSkew[0] * integralSkew[:,t-1,:,:] + gainSkew[1] * np.sum(ijDiffSkew, axis=3)
             correctionSkew[:,t,:,:] = gainSkew[2] * integralSkew[:,t-1,:,:] + gainSkew[3] * np.sum(ijDiffSkew, axis=3)            
