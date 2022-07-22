@@ -134,7 +134,7 @@ batchSize = 20 # batch size
 doLearningRateDecay = False # learning rate decay
 learningRateDecayRate = 0.9 # rate 
 learningRateDecayPeriod = 1 # how many epochs after which update the lr
-validationInterval = 5 # how many training steps to do the validation
+validationInterval = 0 # how many training steps to do the validation
 
 del varValues
 varValues = {'optimisationAlgorithm': optimAlg, 'learningRate': learningRate, \
@@ -227,6 +227,8 @@ if doLearningRateDecay:
     trainingOptions['learningRateDecayPeriod'] = learningRateDecayPeriod
 # end if 
 trainingOptions['validationInterval'] = validationInterval
+
+trainingOptsPerModel= {}
     
 #%% data handling 
 
@@ -259,11 +261,7 @@ data = dataTools.initClockNetwk(
 print("Preview data", end = '')
 print("...", flush = True)
 
-#%%##################################################################
-#                                                                   #
-#                    MODELS INITIALIZATION                          #
-#                                                                   #
-#####################################################################
+#%% Models initialisation 
 
 # This is the dictionary where we store the models (in a model.Model
 # class).
@@ -271,7 +269,7 @@ modelsGNN = {}
 
 # If a new model is to be created, it should be called for here.
 
-print("Model initialization...", flush = True)
+print("Model initialisation...", flush = True)
 
 for thisModel in modelList:
 
@@ -280,48 +278,32 @@ for thisModel in modelList:
     # and training options
     trainingOptsPerModel[thisModel] = deepcopy(trainingOptions)
 
-    # Now, this dictionary has all the hyperparameters that we need to pass
-    # to the architecture, but it also has the 'name' and 'archit' that
-    # we do not need to pass them. So we are going to get them out of
-    # the dictionary
     thisName = hParamsDict.pop('name')
     callArchit = hParamsDict.pop('archit')
     thisDevice = hParamsDict.pop('device')
-    # If there's a specific DAGger type, pop it out now
-    if 'DAGgerType' in hParamsDict.keys() \
-                                    and 'probExpert' in hParamsDict.keys():
-        trainingOptsPerModel[thisModel]['probExpert'] = \
-                                              hParamsDict.pop('probExpert')
-        trainingOptsPerModel[thisModel]['DAGgerType'] = \
-                                              hParamsDict.pop('DAGgerType')
 
-    # If more than one graph or data realization is going to be carried out,
-    # we are going to store all of thos models separately, so that any of
-    # them can be brought back and studied in detail.
-
-    print("\tInitializing %s..." % thisName,
+    print("\tInitialising %s..." % thisName,
           end = ' ',flush = True)
 
     ##############
-    # PARAMETERS #
+    # Parameters #
     ##############
 
-    #\\\ Optimizer options
-    #   (If different from the default ones, change here.)
+    # Optimiser options
     thisOptimAlg = optimAlg
     thisLearningRate = learningRate
     thisBeta1 = beta1
     thisBeta2 = beta2
 
     ################
-    # ARCHITECTURE #
+    # Architecture #
     ################
 
     thisArchit = callArchit(**hParamsDict)
     thisArchit.to(thisDevice)
 
     #############
-    # OPTIMIZER #
+    # Optimiser #
     #############
 
     if thisOptimAlg == 'ADAM':
@@ -334,27 +316,28 @@ for thisModel in modelList:
     elif thisOptimAlg == 'RMSprop':
         thisOptim = optim.RMSprop(thisArchit.parameters(),
                                   lr = learningRate, alpha = beta1)
+    # end if 
 
     ########
-    # LOSS #
+    # Loss #
     ########
 
     thisLossFunction = lossFunction()
     
     ###########
-    # TRAINER #
+    # Trainer #
     ###########
 
     thisTrainer = trainer
     
     #############
-    # EVALUATOR #
+    # Evaluator #
     #############
 
     thisEvaluator = evaluator
 
     #########
-    # MODEL #
+    # Model #
     #########
 
     modelCreated = model.Model(thisArchit,
@@ -368,26 +351,24 @@ for thisModel in modelList:
 
     modelsGNN[thisName] = modelCreated
 
-    writeVarValues(varsFile,
-                   {'name': thisName,
-                    'thisOptimizationAlgorithm': thisOptimAlg,
-                    'thisTrainer': thisTrainer,
-                    'thisEvaluator': thisEvaluator,
-                    'thisLearningRate': thisLearningRate,
-                    'thisBeta1': thisBeta1,
-                    'thisBeta2': thisBeta2})
-
+    del varValues
+    varValues = {'name': thisName, 'thisOptimizationAlgorithm': thisOptimAlg, \
+                 'thisTrainer': thisTrainer, 'thisEvaluator': thisEvaluator, \
+                     'thisLearningRate': thisLearningRate, 'thisBeta1': thisBeta1, \
+                         'thisBeta2': thisBeta2}
+        
+    with open(varsFile, 'a+') as file:
+        for key in varValues.keys():
+            file.write('%s = %s\n' % (key, varValues[key]))
+        file.write('\n')    
+        
     print("OK")
 
-#%%##################################################################
-#                                                                   #
-#                    TRAINING                                       #
-#                                                                   #
-#####################################################################
-
+# end for
+#%% Training 
 
 ############
-# TRAINING #
+# Training #
 ############
 
 print("")

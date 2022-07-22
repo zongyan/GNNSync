@@ -111,8 +111,10 @@ class Trainer:
         lagCount = 0 # lag counter for early stopping
 
         xTrainAll, yTrainAll = self.data.getSamples('train')
-        StrainAll = self.data.getData('commGraph', 'train')
-        initVelTrainAll = self.data.getData('initVel', 'train')
+        StrainAll = self.data.getData('commNetwk', 'train')
+        initOffsetTrainAll = self.data.getData('initOffset', 'train')
+        initSkewTrainAll = self.data.getData('initSkew', 'train')     
+        initOffsetSkewTrainAll = np.concatenate((initOffsetTrainAll, initSkewTrainAll), axis = 2)        
 
         while (epoch < nEpochs) and (lagCount < earlyStoppingLag or (not doEarlyStopping)):
             randomPermutation = np.random.permutation(nTrain)
@@ -133,12 +135,12 @@ class Trainer:
                 xTrain = xTrainAll[thisBatchIndices]
                 yTrain = yTrainAll[thisBatchIndices]
                 Strain = StrainAll[thisBatchIndices]
-                initVelTrain = initVelTrainAll[thisBatchIndices]                   
+                initOffsetSkewTrain = initOffsetSkewTrainAll[thisBatchIndices]                   
 
                 xTrain = torch.tensor(xTrain, device = thisDevice)
                 Strain = torch.tensor(Strain, device = thisDevice)
                 yTrain = torch.tensor(yTrain, device = thisDevice)
-                initVelTrain = torch.tensor(initVelTrain, device = thisDevice)
+                initOffsetSkewTrain = torch.tensor(initOffsetSkewTrain, device = thisDevice)
 
                 startTime = datetime.datetime.now()
 
@@ -170,10 +172,11 @@ class Trainer:
                 del xTrain
                 del Strain
                 del yTrain
-                del initVelTrain
+                del initOffsetSkewTrain
                 del lossValueTrain
 
-                if (epoch * nBatches + batch) % validationInterval == 0:
+                if validationInterval != 0:
+                # if (epoch * nBatches + batch) % validationInterval == 0:
                     
                     startTime = datetime.datetime.now()
                                         

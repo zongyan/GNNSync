@@ -142,8 +142,9 @@ class initClockNetwk():
         # compute communication graph           
         # when network topology is directed graph, 'normaliseGraph' does NOT work
         commGraphAll = self.computeNetworkTopologies(self.nNodes, nSamples, \
-                                                self.netwkType, \
-                                                self.normaliseGraph)      
+                                                     self.duration, self.samplingTimeScale, \
+                                                     self.netwkType, \
+                                                     self.normaliseGraph)      
                                         
         self.commNetwk = {}
         
@@ -435,7 +436,9 @@ class initClockNetwk():
         
         return state
 
-    def computeNetworkTopologies(self, nNodes, nSamples, netwkType='digraph', normaliseGraph=False):
+    def computeNetworkTopologies(self, nNodes, nSamples,
+                                 duration, samplingTimeScale=0.01,
+                                 netwkType='digraph', normaliseGraph=False):
 
         assert netwkType == 'digraph' or netwkType == 'bigraph'        
              
@@ -466,7 +469,8 @@ class initClockNetwk():
         # end if    
         
         # add the time dimension, but the network is constant during the experiments
-        commGraph = np.expand_dims(commGraph, 1) # nSamples x time x feature x nNodes
+        commGraph = np.expand_dims(commGraph, 1) 
+        commGraph = np.repeat(commGraph, int(duration/samplingTimeScale), axis = 1) # nSamples x time x feature x nNodes     
         
         return commGraph
 
