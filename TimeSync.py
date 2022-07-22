@@ -499,8 +499,8 @@ for i in range(0, 1, 1):
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-    plt.title(r'$\bf v_{gnn}$ for ' + str(50)+ ' agents (gnn controller)')
+    plt.ylabel(r'$\theta (\mu s)$')
+    plt.title(r'$\theta_{gnn}$ for ' + str(50)+ ' agents (gnn controller)')
     plt.grid()
     plt.show()    
 # end for
@@ -516,8 +516,8 @@ for i in range(0, 1, 1):
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-    plt.title(r'$\bf v_{cc}$ for ' + str(50)+ ' agents (centralised controller)')
+    plt.ylabel(r'$\theta (\mu s)$')
+    plt.title(r'$\theta_{cc}$ for ' + str(50)+ ' agents (centralised controller)')
     plt.grid()
     plt.show()    
 # end for
@@ -532,8 +532,8 @@ for i in range(0, 1, 1):
         plt.plot(np.arange(0, 200, 1), offsetTest[i, :, 0, j] - offsetCtrl[i, :, 0, j]) 
     # end for 
     plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-    plt.title(r'$\|{\bf v}_{gnn}\|_2 - \|{\bf v}_{cc}\|_2$')    
+    plt.ylabel(r'$\theta (\mu s)$')
+    plt.title(r'$\theta_{gnn} - \theta_{cc}$')    
     plt.grid()
     plt.show()    
 # end for
