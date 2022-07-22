@@ -175,20 +175,19 @@ class Trainer:
                 del initOffsetSkewTrain
                 del lossValueTrain
 
-                if validationInterval != 0:
-                # if (epoch * nBatches + batch) % validationInterval == 0:
+                if (epoch * nBatches + batch) % validationInterval == 0:
                     
                     startTime = datetime.datetime.now()
                                         
                     # Initial data
-                    initPosValid = self.data.getData('initPos','valid')
-                    initVelValid = self.data.getData('initVel','valid')
-                    
-                    _, velTestValid, _, _, _ = self.data.computeTrajectory(
-                            initPosValid, initVelValid, self.data.duration,
-                            archit = thisArchit, doPrint = False)
-                    
-                    accValid = self.data.evaluate(vel = velTestValid)
+                    initOffsetValid = self.data.getData('initOffset','valid')
+                    initSkewValid = self.data.getData('initSkew','valid')
+                    networkTopologyValid = self.data.getData('commNetwk','valid')                    
+
+                    offsetTestValid, _, _, _ = self.data.computeTimeSynchronisation(initOffsetValid, initSkewValid, networkTopologyValid, 
+                                   self.data.duration, thisArchit, displayProgress=False)
+                                        
+                    accValid = self.data.evaluate(offset = offsetTestValid)
 
                     endTime = datetime.datetime.now()
 
@@ -234,8 +233,9 @@ class Trainer:
                             lagCount += 1
 
                     # Delete variables to free space in CUDA memory
-                    del initVelValid
-                    del initPosValid
+                    del initOffsetValid
+                    del initSkewValid
+                    del networkTopologyValid
 
                 #\\\\\\\
                 #\\\ END OF BATCH:

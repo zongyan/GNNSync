@@ -134,7 +134,7 @@ batchSize = 20 # batch size
 doLearningRateDecay = False # learning rate decay
 learningRateDecayRate = 0.9 # rate 
 learningRateDecayPeriod = 1 # how many epochs after which update the lr
-validationInterval = 0 # how many training steps to do the validation
+validationInterval = 5 # how many training steps to do the validation
 
 del varValues
 varValues = {'optimisationAlgorithm': optimAlg, 'learningRate': learningRate, \

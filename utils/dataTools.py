@@ -342,86 +342,105 @@ class initClockNetwk():
 
         return thisData
         
-    def evaluate(self, vel = None, accel = None, initVel = None,
-                 samplingTime = None):
+    def evaluate(self, offset = None, skew = None,
+                 correctionOffset = None, correctionSkew= None, 
+                 initOffset = None, initSkew = None,
+                 samplingTimeScale = None):
         
         # It is optional to add a different sampling time, if not, it uses
         # the internal one
-        if samplingTime is None:
+        if samplingTimeScale is None:
             # If there's no argument use the internal sampling time
-            samplingTime = self.samplingTime
+            samplingTimeScale = self.samplingTimeScale
+        # end if 
         
-        # Check whether we have vel, or accel and initVel (i.e. we are either
-        # given the velocities, or we are given the elements to compute them)
-        if vel is not None:
-            assert len(vel.shape) == 4
-            nSamples = vel.shape[0]
-            tSamples = vel.shape[1]
-            assert vel.shape[2] == 2
-            nNodes = vel.shape[3]
-        elif accel is not None and initVel is not None:
-            assert len(accel.shape) == 4 and len(initVel.shape) == 3
-            nSamples = accel.shape[0]
-            tSamples = accel.shape[1]
-            assert accel.shape[2] == 2
-            nNodes = accel.shape[3]
-            assert initVel.shape[0] == nSamples
-            assert initVel.shape[1] == 2
-            assert initVel.shape[2] == nNodes
-            
-            # Now that we know we have a accel and init velocity, compute the
-            # velocity trajectory
-            # Compute the velocity trajectory
-            if 'torch' in repr(accel.dtype):
-                # Check that initVel is also torch
-                assert 'torch' in repr(initVel.dtype)
-                # Create the tensor to save the velocity trajectory
-                vel = torch.zeros(nSamples,tSamples,2,nNodes,
-                                  dtype = accel.dtype, device = accel.device)
-                # Add the initial velocity
-                vel[:,0,:,:] = initVel.clone().detach()
-            else:
-                # Create the space
-                vel = np.zeros((nSamples, tSamples, 2, nNodes),
-                               dtype=accel.dtype)
-                # Add the initial velocity
-                vel[:,0,:,:] = initVel.copy()
+        # Check whether we have offset, skew, or correctionOffset, correctionSkew, 
+        # initOffset, initSkew (i.e. we are either given the offsets and skews, 
+        # or we are given the elements to compute them)
+        if offset is not None and skew is not None:
+            assert len(offset.shape) == 4
+            nSamples = offset.shape[0]
+            tSamples = offset.shape[1]
+            assert offset.shape[2] == 1
+            nNodes = offset.shape[3]            
+            assert len(skew.shape) == 4
+            assert nSamples == skew.shape[0]
+            assert tSamples == skew.shape[1]
+            assert offset.shape[2] == 1
+            assert nNodes == skew.shape[3]                        
+        elif correctionOffset is not None and correctionSkew is not None and\
+            initOffset is not None and initSkew is not None:
+            assert len(correctionOffset.shape) == 4 and len(correctionSkew.shape) == 4                
+            assert len(initOffset.shape) == 3 and len(initSkew.shape) == 3                            
+            nSamples = correctionOffset.shape[0]
+            tSamples = correctionOffset.shape[1]  
+            assert correctionOffset.shape[2] == 1
+            nNodes = correctionOffset.shape[3]                 
+            assert correctionSkew.shape[0] == nSamples
+            assert correctionSkew.shape[1] == tSamples  
+            assert correctionSkew.shape[2] == 1
+            assert correctionSkew.shape[3] == nNodes
+            assert initOffset.shape[0] == nSamples
+            assert initOffset.shape[1] == 1  
+            assert initOffset.shape[2] == nNodes  
+            assert initSkew.shape[0] == nSamples
+            assert initSkew.shape[1] == 1  
+            assert initSkew.shape[2] == nNodes              
+                        
+            # # Now that we know we have a accel and init velocity, compute the
+            # # velocity trajectory
+            # # Compute the velocity trajectory
+            # if 'torch' in repr(accel.dtype):
+            #     # Check that initVel is also torch
+            #     assert 'torch' in repr(initVel.dtype)
+            #     # Create the tensor to save the velocity trajectory
+            #     vel = torch.zeros(nSamples,tSamples,2,nNodes,
+            #                       dtype = accel.dtype, device = accel.device)
+            #     # Add the initial velocity
+            #     vel[:,0,:,:] = initVel.clone().detach()
+            # else:
+            #     # Create the space
+            #     vel = np.zeros((nSamples, tSamples, 2, nNodes),
+            #                    dtype=accel.dtype)
+            #     # Add the initial velocity
+            #     vel[:,0,:,:] = initVel.copy()
                 
-            # Go over time
-            for t in range(1,tSamples):
-                # Compute velocity
-                vel[:,t,:,:] = accel[:,t-1,:,:] * samplingTime + vel[:,t-1,:,:]
+            # # Go over time
+            # for t in range(1,tSamples):
+            #     # Compute velocity
+            #     vel[:,t,:,:] = accel[:,t-1,:,:] * samplingTime + vel[:,t-1,:,:]
             
         # Check that I did enter one of the if clauses
-        assert vel is not None
+        assert offset is not None
+        assert skew is not None        
             
-        # And now that we have the velocities, we can compute the cost
-        if 'torch' in repr(vel.dtype):
-            # Average velocity for time t, averaged across agents
-            avgVel = torch.mean(vel, dim = 3) # nSamples x tSamples x 2
+        # And now that we have the offsets and skew, we can compute the cost
+        if 'torch' in repr(offset.dtype):
+            # Average offset for time t, averaged across agents
+            avgOffset = torch.mean(offset, dim = 3) # nSamples x tSamples x 1
             # Compute the difference in velocity between each agent and the
             # mean velocity
-            diffVel = vel - avgVel.unsqueeze(3) 
-            #   nSamples x tSamples x 2 x nNodes
+            diffOffset = offset - avgOffset.unsqueeze(3) 
+            #   nSamples x tSamples x 1 x nNodes
             # Compute the MSE velocity
-            diffVelNorm = torch.sum(diffVel ** 2, dim = 2) 
+            diffOffsetNorm = torch.sum(diffOffset ** 2, dim = 2) 
             #   nSamples x tSamples x nNodes
             # Average over agents
-            diffVelAvg = torch.mean(diffVelNorm, dim = 2) # nSamples x tSamples
+            diffOffsetAvg = torch.mean(diffOffsetNorm, dim = 2) # nSamples x tSamples
             # Sum over time
-            costPerSample = torch.sum(diffVelAvg, dim = 1) # nSamples
+            costPerSample = torch.sum(diffOffsetAvg, dim = 1) # nSamples
             # Final average cost
             cost = torch.mean(costPerSample)
         else:
             # Repeat for numpy
-            avgVel = np.mean(vel, axis = 3) # nSamples x tSamples x 2
-            diffVel = vel - np.tile(np.expand_dims(avgVel, 3),
+            avgOffset = np.mean(offset, axis = 3) # nSamples x tSamples x 2
+            diffOffset = offset - np.tile(np.expand_dims(avgOffset, 3),
                                     (1, 1, 1, nNodes))
             #   nSamples x tSamples x 2 x nNodes
-            diffVelNorm = np.sum(diffVel ** 2, axis = 2)
+            diffOffsetNorm = np.sum(diffOffset ** 2, axis = 2)
             #   nSamples x tSamples x nNodes
-            diffVelAvg = np.mean(diffVelNorm, axis = 2) # nSamples x tSamples
-            costPerSample = np.sum(diffVelAvg, axis = 1) # nSamples
+            diffOffsetAvg = np.mean(diffOffsetNorm, axis = 2) # nSamples x tSamples
+            costPerSample = np.sum(diffOffsetAvg, axis = 1) # nSamples
             cost = np.mean(costPerSample) # scalar
         
         return cost
@@ -590,6 +609,138 @@ class initClockNetwk():
             return pos, vel, accel, state, graph
         elif useAccel:
             return pos, vel
+                
+    def computeTimeSynchronisation(self, initOffset, initSkew, netwkTopology, 
+                                   duration, archit, displayProgress=True):
+        
+        # Check initOffset is of shape batchSize x 1 x nNodes
+        assert len(initOffset.shape) == 3
+        batchSize = initOffset.shape[0]
+        assert initOffset.shape[1]
+        nNodes = initOffset.shape[2]
+        
+        # Check initSkew is of shape batchSize x 1 x nNodes
+        assert len(initSkew.shape) == 3
+        assert initSkew.shape[0] == batchSize
+        assert initSkew.shape[1] == 1
+        assert initSkew.shape[2] == nNodes
+        
+        # Check netwkTopology is of shape batchSize x time x nNodes x nNodes
+        assert len(netwkTopology.shape) == 4
+        assert netwkTopology.shape[0] == batchSize
+        assert initSkew.shape[1] == int(duration/self.samplingTimeScale)
+        assert initSkew.shape[2] == nNodes        
+        assert initSkew.shape[3] == nNodes                
+        
+        # Check what kind of data it is
+        #   This is because all the functions are numpy, but if this was
+        #   torch, we need to return torch, to make it consistent
+        if 'torch' in repr(initOffset.dtype):
+            assert 'torch' in repr(initSkew.dtype)
+            useTorch = True
+            device = initOffset.device
+            assert initSkew.device == device
+        else:
+            useTorch = False
+        
+        # Create time line
+        time = np.arange(0, duration, self.samplingTimeScale)
+        tSamples = len(time)
+                
+        architDevice = list(archit.parameters())[0].device
+                
+        # Now create the outputs that will be filled afterwards
+        offset = np.zeros((batchSize, tSamples, 1, nNodes), dtype = np.float)
+        skew = np.zeros((batchSize, tSamples, 1, nNodes), dtype = np.float)
+        offsetCorrection = np.zeros((batchSize, tSamples, 1, nNodes), dtype=np.float)
+        skewCorrection = np.zeros((batchSize, tSamples, 1, nNodes), dtype=np.float)
+            
+        # Assign the initial positions and velocities
+        if useTorch:
+            offset[:,0,:,:] = initOffset.cpu().numpy()
+            skew[:,0,:,:] = initSkew.cpu().numpy()
+            offsetCorrection = offsetCorrection.cpu().numpy()
+            skewCorrection = skewCorrection.cpu().numpy()                
+        else:
+            offset[:,0,:,:] = initOffset.copy()
+            skew[:,0,:,:] = initSkew.copy()
+
+        if displayProgress == True:            
+            # Sample percentage count
+            percentageCount = int(100/tSamples)
+            # Print new value
+            print("%3d%%" % percentageCount, end = '', flush = True)
+        # end if
+        
+        # Now, let's get started:
+        for t in range(1, tSamples):
+            
+            # Adjust pos value for input computation
+            thisOffset = np.expand_dims(offset[:,t-1,:,:], 1)
+            thisSkew = np.expand_dims(skew[:,t-1,:,:], 1)                
+            thisInputOffsetSkew = np.concatenate((thisOffset, thisSkew), axis = 2)
+           
+            # Compute the output of the architecture
+            #   Note that we need the collection of all time instants up
+            #   to now, because when we do the communication exchanges,
+            #   it involves past times.
+            x = torch.tensor(thisInputOffsetSkew[:,0:t,:,:], device = architDevice)
+            S = torch.tensor(netwkTopology[:,0:t,:,:], device = architDevice)
+            with torch.no_grad():
+                thisOffsetSkewCorrection = archit(x, S)
+            # Now that we have computed the correction input, we only care 
+            # about the last element in time
+            thisOffsetSkewCorrection = thisOffsetSkewCorrection.cpu().numpy()[:,-1,:,:]
+            # And save it
+            offsetCorrection[:,t-1,:,:] = np.expand_dims(thisOffsetSkewCorrection[:,0,:], 1)
+            skewCorrection[:,t-1,:,:] = np.expand_dims(thisOffsetSkewCorrection[:,1,:], 1)            
+                
+            # Now that we have the offset and skew correction inputs, we can 
+            # clock offset and skew 
+            offset[:,t,:,:] =  offset[:,t-1,:,:] + skew[:,t-1,:,:] * self.samplingTimeScale + offsetCorrection[:,t-1,:,:]
+            skew[:,t,:,:] = skew[:,t-1,:,:] + skewCorrection[:,t-1,:,:]  
+            
+            if displayProgress == True:
+                # Sample percentage count
+                percentageCount = int(100*(t+1)/tSamples)
+                # Erase previous value and print new value
+                print('\b \b' * 4 + "%3d%%" % percentageCount,
+                      end = '', flush = True)
+            # end if 
+            
+        # end for
+                
+        # And we're missing the last values of clock offset and skew, so
+        # let's compute them for completeness
+        #   Clock offset and skew
+        thisOffset = np.expand_dims(offset[:,-1,:,:], 1)
+        thisSkew = np.expand_dims(skew[:,-1,:,:], 1)                
+        thisInputOffsetSkew[:,-1,:,:] = np.concatenate((thisOffset, thisSkew), axis = 2)
+
+        #   Accel
+        x = torch.tensor(thisInputOffsetSkew).to(architDevice)
+        S = torch.tensor(netwkTopology).to(architDevice)
+        with torch.no_grad():
+            thisOffsetSkewCorrection = archit(x, S)
+        thisOffsetSkewCorrection = thisOffsetSkewCorrection.cpu().numpy()[:,-1,:,:]
+        # And save it
+        offsetCorrection[:,-1,:,:] = np.expand_dims(thisOffsetSkewCorrection[:,0,:], 1)
+        skewCorrection[:,-1,:,:] = np.expand_dims(thisOffsetSkewCorrection[:,1,:], 1)            
+        
+        if displayProgress == True:
+            # Erase the percentage
+            print('\b \b' * 4, end = '', flush = True)
+        # end if
+        
+        # After we have finished, turn it back into tensor, if required
+        if useTorch:
+            offset = torch.tensor(offset).to(device)
+            skew = torch.tensor(skew).to(device)
+            offsetCorrection = torch.tensor(offsetCorrection).to(device)
+            skewCorrection = torch.tensor(skewCorrection).to(device)            
+            
+        # And return it
+        return offset, skew, offsetCorrection, skewCorrection
     
     def computeDifferences(self, u):
         
