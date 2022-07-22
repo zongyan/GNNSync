@@ -628,9 +628,9 @@ class initClockNetwk():
         # Check netwkTopology is of shape batchSize x time x nNodes x nNodes
         assert len(netwkTopology.shape) == 4
         assert netwkTopology.shape[0] == batchSize
-        assert initSkew.shape[1] == int(duration/self.samplingTimeScale)
-        assert initSkew.shape[2] == nNodes        
-        assert initSkew.shape[3] == nNodes                
+        assert netwkTopology.shape[1] == int(duration/self.samplingTimeScale)
+        assert netwkTopology.shape[2] == nNodes        
+        assert netwkTopology.shape[3] == nNodes                
         
         # Check what kind of data it is
         #   This is because all the functions are numpy, but if this was
@@ -654,6 +654,7 @@ class initClockNetwk():
         skew = np.zeros((batchSize, tSamples, 1, nNodes), dtype = np.float)
         offsetCorrection = np.zeros((batchSize, tSamples, 1, nNodes), dtype=np.float)
         skewCorrection = np.zeros((batchSize, tSamples, 1, nNodes), dtype=np.float)
+        thisOffsetSkew = np.zeros((batchSize, tSamples, 2, nNodes), dtype=np.float)
             
         # Assign the initial positions and velocities
         if useTorch:
@@ -676,15 +677,15 @@ class initClockNetwk():
         for t in range(1, tSamples):
             
             # Adjust pos value for input computation
-            thisOffset = np.expand_dims(offset[:,t-1,:,:], 1)
-            thisSkew = np.expand_dims(skew[:,t-1,:,:], 1)                
-            thisInputOffsetSkew = np.concatenate((thisOffset, thisSkew), axis = 2)
+            thisOffset = offset[:,t-1,:,:]
+            thisSkew = skew[:,t-1,:,:]                
+            thisOffsetSkew[:,t-1,:,:] = np.concatenate((thisOffset, thisSkew), axis = 1)
            
             # Compute the output of the architecture
             #   Note that we need the collection of all time instants up
             #   to now, because when we do the communication exchanges,
             #   it involves past times.
-            x = torch.tensor(thisInputOffsetSkew[:,0:t,:,:], device = architDevice)
+            x = torch.tensor(thisOffsetSkew[:,0:t,:,:], device = architDevice)
             S = torch.tensor(netwkTopology[:,0:t,:,:], device = architDevice)
             with torch.no_grad():
                 thisOffsetSkewCorrection = archit(x, S)
@@ -713,12 +714,12 @@ class initClockNetwk():
         # And we're missing the last values of clock offset and skew, so
         # let's compute them for completeness
         #   Clock offset and skew
-        thisOffset = np.expand_dims(offset[:,-1,:,:], 1)
-        thisSkew = np.expand_dims(skew[:,-1,:,:], 1)                
-        thisInputOffsetSkew[:,-1,:,:] = np.concatenate((thisOffset, thisSkew), axis = 2)
+        thisOffset = offset[:,-1,:,:]
+        thisSkew = skew[:,-1,:,:]                
+        thisOffsetSkew[:,-1,:,:] = np.concatenate((thisOffset, thisSkew), axis = 1)
 
         #   Accel
-        x = torch.tensor(thisInputOffsetSkew).to(architDevice)
+        x = torch.tensor(thisOffsetSkew).to(architDevice)
         S = torch.tensor(netwkTopology).to(architDevice)
         with torch.no_grad():
             thisOffsetSkewCorrection = archit(x, S)
@@ -810,8 +811,8 @@ class initClockNetwk():
         correctionSkew = np.zeros((nSamples, tSamples, 1, nNodes))
         
         # initial settings
-        offset[:,0,:,:] = np.squeeze(initOffset, 1)
-        skew[:,0,:,:] = np.squeeze(initSkew, 1)
+        offset[:,0,:,:] = initOffset
+        skew[:,0,:,:] = initSkew
         
         # sample percentage count
         percentageCount = int(100/tSamples)
@@ -879,9 +880,9 @@ class initClockNetwk():
         initOffset = fixedOffset + perturbOffset # nSamples x nNodes     
         initSkew = fixedSkew + perturbSkew # nSamples x nNodes
         
-        # add the extra dimensions (time=1, feature=1)
-        initOffset = np.expand_dims(initOffset, (1, 2)) # nSamples x time x feature x nNodes
-        initSkew = np.expand_dims(initSkew, (1, 2)) # nSamples x time x feature x nNodes
+        # add the extra feature=1 dimensions
+        initOffset = np.expand_dims(initOffset, 1) # nSamples x 1 x nNodes
+        initSkew = np.expand_dims(initSkew, 1) # nSamples x 1 x nNodes
         
         return initOffset, initSkew
     

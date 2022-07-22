@@ -184,10 +184,10 @@ class Trainer:
                     initSkewValid = self.data.getData('initSkew','valid')
                     networkTopologyValid = self.data.getData('commNetwk','valid')                    
 
-                    offsetTestValid, _, _, _ = self.data.computeTimeSynchronisation(initOffsetValid, initSkewValid, networkTopologyValid, 
+                    offsetTestValid, skewTestValid, _, _ = self.data.computeTimeSynchronisation(initOffsetValid, initSkewValid, networkTopologyValid, 
                                    self.data.duration, thisArchit, displayProgress=False)
                                         
-                    accValid = self.data.evaluate(offset = offsetTestValid)
+                    accValid = self.data.evaluate(offset = offsetTestValid, skew = skewTestValid)
 
                     endTime = datetime.datetime.now()
 
