@@ -861,25 +861,27 @@ class initClockNetwk():
                                    ):
 
         # repeat and reshape to obtain the offsets and skews                                          
-        fixedOffsetTmp = np.repeat(initOffsetValue, nSamples*nNodes, axis = 0)     
-        fixedOffset = fixedOffsetTmp.reshape(nSamples, nNodes)             
+        fixedOffset = np.repeat(initOffsetValue, nSamples*nNodes, axis = 0)     
         
-        fixedSkewTmp = np.repeat(initSkewValue, nSamples*nNodes, axis = 0)     
-        fixedSkew = fixedSkewTmp.reshape(nSamples, nNodes)                             
+        fixedSkew = np.repeat(initSkewValue, nSamples*nNodes, axis = 0)     
         
-        # generate the noises
+        # generate the noises uniformly
         perturbOffset = np.random.uniform(low = -offsetPerturb,
                                           high = offsetPerturb,
-                                          size = (nSamples, nNodes))
-        
+                                          size = nSamples*nNodes)
+
         perturbSkew = np.random.uniform(low = -skewPerturb,
                                         high = skewPerturb,
-                                        size = (nSamples, nNodes))        
+                                        size = nSamples*nNodes)
         
         # compute the initial clock offsets and skews            
         initOffset = fixedOffset + perturbOffset # nSamples x nNodes     
         initSkew = fixedSkew + perturbSkew # nSamples x nNodes
-        
+               
+        # reshape
+        initOffset = initOffset.reshape(nSamples, nNodes)        
+        initSkew = initSkew.reshape(nSamples, nNodes)                
+                
         # add the extra feature=1 dimensions
         initOffset = np.expand_dims(initOffset, 1) # nSamples x 1 x nNodes
         initSkew = np.expand_dims(initSkew, 1) # nSamples x 1 x nNodes
