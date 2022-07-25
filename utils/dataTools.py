@@ -833,7 +833,7 @@ class initClockNetwk():
             # update the clock offset and skew correction input
             #   update clock offset correction value
             integralOffset[:,t,:,:] = gainOffset[0] * integralOffset[:,t-1,:,:] + gainOffset[1] * np.sum(ijDiffOffset, axis=3)
-            correctionOffset[:,t,:,:] = gainOffset[3] * integralOffset[:,t-1,:,:] + gainOffset[3] * np.sum(ijDiffOffset, axis=3)
+            correctionOffset[:,t,:,:] = gainOffset[2] * integralOffset[:,t-1,:,:] + gainOffset[3] * np.sum(ijDiffOffset, axis=3)
             #   Update clock skew correction value
             integralSkew[:,t,:,:] = gainSkew[0] * integralSkew[:,t-1,:,:] + gainSkew[1] * np.sum(ijDiffSkew, axis=3)
             correctionSkew[:,t,:,:] = gainSkew[2] * integralSkew[:,t-1,:,:] + gainSkew[3] * np.sum(ijDiffSkew, axis=3)            
