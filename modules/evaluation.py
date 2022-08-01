@@ -232,7 +232,7 @@ def evaluateFlocking(model, data, **kwargs):
 
     if doPrint:
         print("\tComputing learned trajectory for best model...",
-              end = ' ', flush = True)
+              end = '\n', flush = True)
 
     posTestBest, \
     velTestBest, \
@@ -241,6 +241,13 @@ def evaluateFlocking(model, data, **kwargs):
     commGraphTestBest = \
         data.computeTrajectory(initPosTest, initVelTest, data.duration,
                                archit = model.archit)
+        
+    import numpy as np
+    SavedPath ='./gnn_test.npz'
+    np.savez(SavedPath, posTestBest=posTestBest, velTestBest=velTestBest, \
+             accelTestBest=accelTestBest, stateTestBest=stateTestBest, \
+                 commGraphTestBest=commGraphTestBest)
+    print("\tSaved the test data to the following path: ./gnn_test.npz...", end = ' ')        
 
     if doPrint:
         print("OK")

@@ -178,7 +178,7 @@ evaluator = evaluation.evaluateFlocking
 #\\\ Overall training options
 probExpert = 0.993 # Probability of choosing the expert in DAGger
 #DAGgerType = 'fixedBatch' # 'replaceTimeBatch', 'randomEpoch'
-nEpochs = 1 # Number of epochs
+nEpochs = 30 # Number of epochs
 batchSize = 20 # Batch size
 doLearningRateDecay = False # Learning rate decay
 learningRateDecayRate = 0.9 # Rate

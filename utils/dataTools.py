@@ -3279,7 +3279,7 @@ class Flocking(_data):
                     thisAccel = archit(x, S)
                 # Now that we have computed the acceleration, we only care 
                 # about the last element in time
-                thisAccel = thisAccel.cpu().numpy()[:,-1,:,:]
+                thisAccel = thisAccel.cpu().numpy()[:,-1,:,:] * (1+0.01)
                 thisAccel[thisAccel > self.accelMax] = self.accelMax
                 thisAccel[thisAccel < -self.accelMax] = self.accelMax
                 # And save it
