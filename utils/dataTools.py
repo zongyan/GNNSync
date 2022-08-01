@@ -168,11 +168,19 @@ class initClockNetwk():
         self.skewCorrection = {}        
         
         print("OK", flush = True)
+        print("\tComputing the agent states...", end = ' ', flush = True)
+        
+        # Compute the states
+        stateAll = self.computeStates(offsetAll, skewAll, commGraphAll)
+        
+        self.state = {}
+        
+        print("OK", flush = True)        
         
         # separate the states into training, validation and testing samples
         # and save them
         #   Training set
-        self.samples['train']['signals'] = inputOffsetSkewAll[0:self.nTrain].copy()
+        self.samples['train']['signals'] = stateAll[0:self.nTrain].copy()
         self.samples['train']['targets'] = outputOffsetSkewAll[0:self.nTrain].copy()
         self.initOffset['train'] = initOffsetAll[0:self.nTrain]
         self.initSkew['train'] = initSkewAll[0:self.nTrain]
@@ -181,10 +189,11 @@ class initClockNetwk():
         self.offsetCorrection['train'] = offsetCorrectionAll[0:self.nTrain]
         self.skewCorrection['train'] = skewCorrectionAll[0:self.nTrain]        
         self.commNetwk['train'] = commGraphAll[0:self.nTrain]
+        self.state['train'] = stateAll[0:self.nTrain]        
         #   Validation set
         startSample = self.nTrain
         endSample = self.nTrain + self.nValid
-        self.samples['valid']['signals']=inputOffsetSkewAll[startSample:endSample].copy()
+        self.samples['valid']['signals']=stateAll[startSample:endSample].copy()
         self.samples['valid']['targets']=outputOffsetSkewAll[startSample:endSample].copy()
         self.initOffset['valid'] = initOffsetAll[startSample:endSample]
         self.initSkew['valid'] = initSkewAll[startSample:endSample]
@@ -193,10 +202,11 @@ class initClockNetwk():
         self.offsetCorrection['valid'] = offsetCorrectionAll[startSample:endSample]
         self.skewCorrection['valid'] = skewCorrectionAll[startSample:endSample]
         self.commNetwk['valid'] = commGraphAll[startSample:endSample]
+        self.state['valid'] = stateAll[startSample:endSample]        
         #   Testing set
         startSample = self.nTrain + self.nValid
         endSample = self.nTrain + self.nValid + self.nTest
-        self.samples['test']['signals']=inputOffsetSkewAll[startSample:endSample].copy()
+        self.samples['test']['signals']=stateAll[startSample:endSample].copy()
         self.samples['test']['targets']=outputOffsetSkewAll[startSample:endSample].copy()
         self.initOffset['test'] = initOffsetAll[startSample:endSample]
         self.initSkew['test'] = initSkewAll[startSample:endSample]
@@ -205,6 +215,7 @@ class initClockNetwk():
         self.offsetCorrection['test'] = offsetCorrectionAll[startSample:endSample]
         self.skewCorrection['test'] = skewCorrectionAll[startSample:endSample]
         self.commNetwk['test'] = commGraphAll[startSample:endSample]
+        self.state['test'] = stateAll[startSample:endSample]                
         
         # Change data to specified type and device
         self.astype(self.dataType)
@@ -242,6 +253,186 @@ class initClockNetwk():
                 self.state[key].to(device)
             
             super().to(device)
+            
+    def computeStates(self, offset, skew, netwkTopology):
+        
+        # We get the following inputs.
+        # positions: nSamples x tSamples x 2 x nNodes
+        # velocities: nSamples x tSamples x 2 x nNodes
+        # graphMatrix: nSaples x tSamples x nNodes x nNodes
+        
+        # And we want to build the state, which is a vector of dimension 6 on 
+        # each node, that is, the output shape is
+        #   nSamples x tSamples x 6 x nNodes
+                
+        # Check correct dimensions
+        assert len(offset.shape) == len(skew.shape) == len(netwkTopology.shape) == 4
+        nSamples = offset.shape[0]
+        tSamples = offset.shape[1]
+        assert offset.shape[2] == 1
+        nNodes = offset.shape[3]
+        assert skew.shape[0] == netwkTopology.shape[0] == nSamples
+        assert skew.shape[1] == netwkTopology.shape[1] == tSamples
+        assert skew.shape[2] == 1
+        assert skew.shape[3] == netwkTopology.shape[2] == netwkTopology.shape[3] == nNodes
+                
+        # If we have a lot of batches and a particularly long sequence, this
+        # is bound to fail, memory-wise, so let's do it time instant by time
+        # instant if we have a large number of time instants, and split the
+        # batches
+        maxTimeSamples = 200 # Set the maximum number of t.Samples before
+            # which to start doing this time by time.
+        maxBatchSize = 100 # Maximum number of samples to process at a given
+            # time
+        
+        # Compute the number of samples, and split the indices accordingly
+        if nSamples < maxBatchSize:
+            nBatches = 1
+            batchSize = [nSamples]
+        elif nSamples % maxBatchSize != 0:
+            # If we know it's not divisible, then we do floor division and
+            # add one more batch
+            nBatches = nSamples // maxBatchSize + 1
+            batchSize = [maxBatchSize] * nBatches
+            # But the last batch is actually smaller, so just add the 
+            # remaining ones
+            batchSize[-1] = nSamples - sum(batchSize[0:-1])
+        # If they fit evenly, then just do so.
+        else:
+            nBatches = int(nSamples/maxBatchSize)
+            batchSize = [maxBatchSize] * nBatches
+        # batchIndex is used to determine the first and last element of each
+        # batch. We need to add the 0 because it's the first index.
+        batchIndex = np.cumsum(batchSize).tolist()
+        batchIndex = [0] + batchIndex
+        
+        # Create the output state variable
+        state = np.zeros((nSamples, tSamples, 2, nNodes))
+        
+        for b in range(nBatches):
+            
+            # Pick the batch elements
+            offsetBatch = offset[batchIndex[b]:batchIndex[b+1]]
+            skewBatch = skew[batchIndex[b]:batchIndex[b+1]]
+            netwkTopologyBatch = netwkTopology[batchIndex[b]:batchIndex[b+1]]
+        
+            if tSamples > maxTimeSamples:
+                
+                # For each time instant
+                for t in range(tSamples):
+                    
+                    # Now, we need to compute the differences, in velocities and in 
+                    # positions, for each agent, for each time instant
+                    offsetDiff = self.computeDifferences(offsetBatch[:,t,:,:])
+                    #   posDiff: batchSize[b] x 2 x nNodes x nNodes
+                    #   posDistSq: batchSize[b] x nNodes x nNodes
+                    skewDiff = self.computeDifferences(skewBatch[:,t,:,:])
+                    #   velDiff: batchSize[b] x 2 x nNodes x nNodes
+                    
+                    # Next, we need to get ride of all those places where there are
+                    # no neighborhoods. That is given by the nonzero elements of the 
+                    # graph matrix.
+                    netwkTopologyTime = (np.abs(netwkTopologyBatch[:,t,:,:]) > zeroTolerance).astype(offset.dtype)
+                    #   graphMatrix: batchSize[b] x nNodes x nNodes
+                    # We also need to invert the squares of the distances
+                    # posDistSqInv = invertTensorEW(posDistSq)
+                    #   posDistSqInv: batchSize[b] x nNodes x nNodes
+                    
+                    # Now we add the extra dimensions so that all the 
+                    # multiplications are adequate
+                    netwkTopologyTime = np.expand_dims(netwkTopologyTime, 1)
+                    #   graphMatrix: batchSize[b] x 1 x nNodes x nNodes
+                    
+                    # Then, we can get rid of non-neighbors
+                    offsetDiff = offsetDiff * netwkTopologyTime
+                    # posDistSqInv = np.expand_dims(posDistSqInv,1)\
+                    #                                           * netwkTopologyTime
+                    skewDiff = skewDiff * netwkTopologyTime
+                    
+                    # Finally, we can compute the states
+                    stateOffset = np.sum(offsetDiff, axis = 3)
+                    #   stateVel: batchSize[b] x 2 x nNodes
+                    # statePosFourth = np.sum(posDiff * (posDistSqInv ** 2),
+                    #                         axis = 3)
+                    #   statePosFourth: batchSize[b] x 2 x nNodes
+                    stateSkew = np.sum(skewDiff, axis = 3)
+                    #   statePosSq: batchSize[b] x 2 x nNodes
+                    
+                    # Concatentate the states and return the result
+                    state[batchIndex[b]:batchIndex[b+1],t,:,:] = \
+                                                np.concatenate((stateOffset,
+                                                                stateSkew),
+                                                               axis = 1)
+                    #   batchSize[b] x 6 x nNodes
+                    
+                    # Sample percentage count
+                    percentageCount = int(100*(t+1+b*tSamples)\
+                                                      /(nBatches*tSamples))
+                    
+                    if t == 0 and b == 0:
+                        # It's the first one, so just print it
+                        print("%3d%%" % percentageCount,
+                              end = '', flush = True)
+                    else:
+                        # Erase the previous characters
+                        print('\b \b' * 4 + "%3d%%" % percentageCount,
+                              end = '', flush = True)
+                
+            else:
+                
+                # Now, we need to compute the differences, in velocities and in 
+                # positions, for each agent, for each time instante
+                offsetDiff = self.computeDifferences(offsetBatch)
+                #   posDiff: batchSize[b] x tSamples x 1 x nNodes x nNodes
+                skewDiff = self.computeDifferences(skewBatch)
+                #   velDiff: batchSize[b] x tSamples x 1 x nNodes x nNodes
+                
+                # Next, we need to get ride of all those places where there are
+                # no neighborhoods. That is given by the nonzero elements of the 
+                # graph matrix.
+                netwkTopologyBatch = (np.abs(netwkTopologyBatch) > zeroTolerance).astype(offset.dtype)
+                #   graphMatrix: batchSize[b] x tSamples x nNodes x nNodes
+                # We also need to invert the squares of the distances
+                # posDistSqInv = invertTensorEW(posDistSq)
+                #   posDistSqInv: batchSize[b] x tSamples x nNodes x nNodes
+                
+                # Now we add the extra dimensions so that all the multiplications
+                # are adequate
+                netwkTopologyBatch = np.expand_dims(netwkTopologyBatch, 2)
+                #   graphMatrix:batchSize[b] x tSamples x 1 x nNodes x nNodes
+                
+                # Then, we can get rid of non-neighbors
+                offsetDiff = offsetDiff * netwkTopologyBatch
+                skewDiff = skewDiff * netwkTopologyBatch
+                
+                # Finally, we can compute the states
+                stateOffset = np.sum(offsetDiff, axis = 4)
+                #   stateVel: batchSize[b] x tSamples x 1 x nNodes
+                # statePosFourth = np.sum(posDiff * (posDistSqInv ** 2), axis = 4)
+                #   statePosFourth: batchSize[b] x tSamples x 2 x nNodes
+                stateSkew = np.sum(skewDiff, axis = 4)
+                #   statePosSq: batchSize[b] x tSamples x 1 x nNodes
+                
+                # Concatentate the states and return the result
+                state[batchIndex[b]:batchIndex[b+1]] = np.concatenate((stateOffset, stateSkew), axis = 2)
+                #   state: batchSize[b] x tSamples x 2 x nNodes
+                                                
+                # Sample percentage count
+                percentageCount = int(100*(b+1)/nBatches)
+                
+                if b == 0:
+                    # It's the first one, so just print it
+                    print("%3d%%" % percentageCount,
+                          end = '', flush = True)
+                else:
+                    # Erase the previous characters
+                    print('\b \b' * 4 + "%3d%%" % percentageCount,
+                          end = '', flush = True)
+                        
+        # Erase the percentage
+        print('\b \b' * 4, end = '', flush = True)
+        
+        return state            
             
     def computeNetworkTopologies(self, nNodes, nSamples,
                                  duration, samplingTimeScale=0.01,
@@ -655,6 +846,8 @@ class initClockNetwk():
         offsetCorrection = np.zeros((batchSize, tSamples, 1, nNodes), dtype=np.float)
         skewCorrection = np.zeros((batchSize, tSamples, 1, nNodes), dtype=np.float)
         thisOffsetSkew = np.zeros((batchSize, tSamples, 2, nNodes), dtype=np.float)
+
+        state = np.zeros((batchSize, tSamples, 2, nNodes), dtype=np.float)        
             
         # Assign the initial positions and velocities
         if useTorch:
@@ -677,15 +870,23 @@ class initClockNetwk():
         for t in range(1, tSamples):
             
             # Adjust pos value for input computation
-            thisOffset = offset[:,t-1,:,:]
-            thisSkew = skew[:,t-1,:,:]                
-            thisOffsetSkew[:,t-1,:,:] = np.concatenate((thisOffset, thisSkew), axis = 1)
+            thisOffset = np.expand_dims(offset[:,t-1,:,:], 1)
+            thisSkew = np.expand_dims(skew[:,t-1,:,:], 1)                
+            # thisOffsetSkew[:,t-1,:,:] = np.concatenate((thisOffset, thisSkew), axis = 1)
+
+            thisNetwk = np.expand_dims(netwkTopology[:,t-1,:,:], 1)                                        
+                                
+            # Compute state
+            thisState = self.computeStates(thisOffset, thisSkew, thisNetwk)
+            
+            # Save state
+            state[:,t-1,:,:] = thisState.squeeze(1)                
            
             # Compute the output of the architecture
             #   Note that we need the collection of all time instants up
             #   to now, because when we do the communication exchanges,
             #   it involves past times.
-            x = torch.tensor(thisOffsetSkew[:,0:t,:,:], device = architDevice)
+            x = torch.tensor(state[:,0:t,:,:], device = architDevice)
             S = torch.tensor(netwkTopology[:,0:t,:,:], device = architDevice)
             with torch.no_grad():
                 thisOffsetSkewCorrection = archit(x, S)
@@ -714,10 +915,20 @@ class initClockNetwk():
         # And we're missing the last values of clock offset and skew, so
         # let's compute them for completeness
         #   Clock offset and skew
-        thisOffset = offset[:,-1,:,:]
-        thisSkew = skew[:,-1,:,:]                
-        thisOffsetSkew[:,-1,:,:] = np.concatenate((thisOffset, thisSkew), axis = 1)
+        thisOffset = np.expand_dims(offset[:,t-1,:,:], 1)
+        thisSkew = np.expand_dims(skew[:,-1,:,:], 1)                
+        # thisOffsetSkew[:,-1,:,:] = np.concatenate((thisOffset, thisSkew), axis = 1)
+        
+        # thisOffsetSkew[:,t-1,:,:] = np.concatenate((thisOffset, thisSkew), axis = 1)
 
+        thisNetwk = np.expand_dims(netwkTopology[:,t-1,:,:], 1)                                        
+                            
+        # Compute state
+        thisState = self.computeStates(thisOffset, thisSkew, thisNetwk)
+        
+        # Save state
+        state[:,-1,:,:] = thisState.squeeze(1)           
+        
         #   Accel
         x = torch.tensor(thisOffsetSkew).to(architDevice)
         S = torch.tensor(netwkTopology).to(architDevice)

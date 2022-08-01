@@ -27,7 +27,7 @@ startRunTime = datetime.datetime.now()
 
 thisFilename = 'TimeSync' # the general name of all related files
 
-nNodes = 50 # the number of nodes at training time
+nNodes = 10 # the number of nodes at training time
 
 saveDirRoot = 'experiments' # the relative location
 saveDir = os.path.join(saveDirRoot, thisFilename) # dir where to save all results from each run
@@ -94,10 +94,10 @@ nValid = 20 # number of valid samples
 nTest = 20 # number of testing samples
 duration = 2. # simulation duration, unit: second 
 samplingTimeScale = 0.01 # sampling timescale, unit: second, according to Giorgi2011
-initOffsetValue = 6e+5 # initial clock offset = 600 us
+initOffsetValue = 6e+2 # initial clock offset = 600 us
 initSkewValue = 50 # initial clock skew = 50 ppm
-gainOffset = np.array([0.5, 0.5, 0.5, 0.5]) # K1, K2, K3 and K4 for offset correction
-gainSkew = np.array([0.5, 0.5, 0.5, 0.5]) # K1, K2, K3 and K4 for skew correction
+gainOffset = np.array([0, 0, 0, 0.08]) # K1, K2, K3 and K4 for offset correction
+gainSkew = np.array([0, 0, 0, 0.08]) # K1, K2, K3 and K4 for skew correction
 
 varValues = {'nNodes': nNodes, 'nTrain': nTrain, 'nValid': nValid, 'nTest': nTest, \
              'duration': duration, 'samplingTimeScale': samplingTimeScale, \
@@ -129,7 +129,7 @@ trainer = training.Trainer
 evaluator = evaluation.evaluate
 
 # overall training options
-nEpochs = 1 # number of epochs
+nEpochs = 30 # number of epochs
 batchSize = 20 # batch size
 doLearningRateDecay = False # learning rate decay
 learningRateDecayRate = 0.9 # rate 
@@ -246,7 +246,7 @@ data = dataTools.initClockNetwk(
             # Samples
             nTrain,
             nValid,
-            1, # no need care about testing, will re-generate the dataset for testing
+            nTest, # no need care about testing, will re-generate the dataset for testing
             # Time
             duration, samplingTimeScale,
             # Initial conditions
@@ -398,19 +398,21 @@ print("[%3d Agents] Generating test set" % nNodes,
 print("...", flush = True)
 
 # Load the data, which will give a specific split
-dataTest = dataTools.initClockNetwk(
-                # Structure
-                nNodes,
-                # Samples
-                1, # We don't care about training
-                1, # nor validation
-                nTest,
-                # Time
-                duration, samplingTimeScale,
-                # Initial conditions
-                initOffsetValue, initSkewValue,
-                gainOffset, gainSkew,
-                netwkType='digraph')
+# dataTest = dataTools.initClockNetwk(
+#                 # Structure
+#                 nNodes,
+#                 # Samples
+#                 1, # We don't care about training
+#                 1, # nor validation
+#                 nTest,
+#                 # Time
+#                 duration, samplingTimeScale,
+#                 # Initial conditions
+#                 initOffsetValue, initSkewValue,
+#                 gainOffset, gainSkew,
+#                 netwkType='digraph')
+
+dataTest = data
 
 ###############
 # Centralised #
@@ -492,7 +494,7 @@ offsetCtrl, skewCtrl, offsetCorrectionCtrl, skewCorrectionCtrl = \
 for i in range(0, 1, 1):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, 50, 1):
+    for j in range(0, nNodes, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
         plt.plot(np.arange(0, 200, 1), offsetTest[i, :, 0, j]) 
@@ -509,7 +511,7 @@ for i in range(0, 1, 1):
 for i in range(0, 1, 1):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, 50, 1):
+    for j in range(0, nNodes, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
         plt.plot(np.arange(0, 200, 1), offsetCtrl[i, :, 0, j]) 
@@ -526,7 +528,7 @@ for i in range(0, 1, 1):
 for i in range(0, 1, 1):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, 50, 1):
+    for j in range(0, nNodes, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
         plt.plot(np.arange(0, 200, 1), offsetTest[i, :, 0, j] - offsetCtrl[i, :, 0, j]) 
