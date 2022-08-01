@@ -234,19 +234,22 @@ def evaluateFlocking(model, data, **kwargs):
         print("\tComputing learned trajectory for best model...",
               end = '\n', flush = True)
 
-    posTestBest, \
-    velTestBest, \
-    accelTestBest, \
-    stateTestBest, \
-    commGraphTestBest = \
-        data.computeTrajectory(initPosTest, initVelTest, data.duration,
+    posTestBest, velTestBest, accelTestBest, stateTestBest, \
+        commGraphTestBest = data.computeTrajectory(initPosTest, initVelTest, data.duration,
                                archit = model.archit)
+        
+    posTestBestWithNoises, velTestBestWithNoises, accelTestBestWithNoises, stateTestBestWithNoises, \
+        commGraphTestBestWithNoises = data.computeTrajectoryWithNoises(initPosTest, initVelTest, data.duration,
+                               archit = model.archit)        
         
     import numpy as np
     SavedPath ='./gnn_test.npz'
     np.savez(SavedPath, posTestBest=posTestBest, velTestBest=velTestBest, \
              accelTestBest=accelTestBest, stateTestBest=stateTestBest, \
-                 commGraphTestBest=commGraphTestBest)
+                 commGraphTestBest=commGraphTestBest, \
+                     posTestBestWithNoises=posTestBestWithNoises, velTestBestWithNoises=velTestBestWithNoises, \
+                          accelTestBestWithNoises=accelTestBestWithNoises, stateTestBestWithNoises=stateTestBestWithNoises, \
+                              commGraphTestBestWithNoises=commGraphTestBestWithNoises)
     print("\tSaved the test data to the following path: ./gnn_test.npz...", end = ' ')        
 
     if doPrint:

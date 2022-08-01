@@ -1256,6 +1256,12 @@ accelTest = gnn_test['accelTestBest']
 stateTest = gnn_test['stateTestBest']
 commGraphTest = gnn_test['commGraphTestBest']
 
+posTestWithNoises = gnn_test['posTestBestWithNoises']
+velTestWithNoises = gnn_test['velTestBestWithNoises']
+accelTestWithNoises = gnn_test['accelTestBestWithNoises']
+stateTestWithNoises = gnn_test['stateTestBestWithNoises']
+commGraphTestWithNoises = gnn_test['commGraphTestBestWithNoises']
+
 posOptim, velOptim, accelOptim = data.computeOptimalTrajectory(posTest[:,0,:,:], \
                                                                posTest[:,0,:,:], \
                                                                    duration=data.duration, \
@@ -1275,43 +1281,24 @@ for i in range(0, 1, 1):
     # end for 
     plt.xlabel(r'$time (s)$')
     plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-    plt.title(r'$\bf v_{gnn}$ for ' + str(50)+ ' agents (gnn controller)')
+    plt.title(r'$\bf v_{gnn}$ for ' + str(50)+ ' agents (gnn controller without noises)')
     plt.grid()
     plt.show()    
 # end for
 
-# plot the velocity of all agents via the centralised optimal controller
+# plot the velocity of all agents via the GNN method with Noises
 for i in range(0, 1, 1):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
     for j in range(0, 50, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), np.sqrt(velOptim[i, :, 0, j]**2 + velOptim[i, :, 1, j]**2)) 
+        plt.plot(np.arange(0, 200, 1), np.sqrt(velTestWithNoises[i, :, 0, j]**2 + velTestWithNoises[i, :, 1, j]**2)) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
     plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-    plt.title(r'$\bf v_{cc}$ for ' + str(50)+ ' agents (centralised controller)')
-    plt.grid()
-    plt.show()    
-# end for
-
-# plot the velocity difference of all agents by using the centralised optimal controller and GNN methods
-for i in range(0, 1, 1):
-    plt.figure()
-    plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, 50, 1):
-        # the input and output features are two dimensions, which means that one 
-        # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        vel_temp = np.sqrt(velTest[i, :, 0, j] ** 2 + velTest[i, :, 1, j] ** 2) \
-            - np.sqrt(velOptim[i, :, 0, j] ** 2 + velOptim[i, :, 1, j] ** 2)                
-        plt.plot(np.arange(0, 200, 1), vel_temp) 
-        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-    # end for 
-    plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-    plt.title(r'$\|{\bf v}_{gnn}\|_2 - \|{\bf v}_{cc}\|_2$')    
+    plt.title(r'$\bf v_{gnn}$ for ' + str(50)+ ' agents (gnn controller with noises)')
     plt.grid()
     plt.show()    
 # end for
