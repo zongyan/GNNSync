@@ -24,7 +24,7 @@ import os
 import pickle
 import datetime
 
-from alegnn.utils.dataTools import invertTensorEW
+from utils.dataTools import invertTensorEW
 
 class Trainer:
     """

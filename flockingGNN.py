@@ -47,17 +47,15 @@ import torch; torch.set_default_dtype(torch.float64)
 import torch.nn as nn
 import torch.optim as optim
 
-#\\\ Own libraries:
-import alegnn.utils.dataTools as dataTools
-import alegnn.utils.graphML as gml
-import alegnn.modules.architecturesTime as architTime
-import alegnn.modules.model as model
-import alegnn.modules.training as training
-import alegnn.modules.evaluation as evaluation
+import utils.dataTools as dataTools
+import utils.graphML as gml
+import modules.architecturesTime as architTime
+import modules.model as model
+import modules.training as training
+import modules.evaluation as evaluation
 
-#\\\ Separate functions:
-from alegnn.utils.miscTools import writeVarValues
-from alegnn.utils.miscTools import saveSeed
+from utils.miscTools import writeVarValues
+from utils.miscTools import saveSeed
 
 # Start measuring time
 startRunTime = datetime.datetime.now()
@@ -136,7 +134,7 @@ initVelValue = 3. # Initial velocities are samples from an interval
 initMinDist = 0.1 # No two agents are located at a distance less than this
 accelMax = 10. # This is the maximum value of acceleration allowed
 
-nRealizations = 10 # Number of data realizations
+nRealizations = 1 # Number of data realizations
     # How many times we repeat the experiment
 
 #\\\ Save values:
@@ -180,7 +178,7 @@ evaluator = evaluation.evaluateFlocking
 #\\\ Overall training options
 probExpert = 0.993 # Probability of choosing the expert in DAGger
 #DAGgerType = 'fixedBatch' # 'replaceTimeBatch', 'randomEpoch'
-nEpochs = 30 # Number of epochs
+nEpochs = 1 # Number of epochs
 batchSize = 20 # Batch size
 doLearningRateDecay = False # Learning rate decay
 learningRateDecayRate = 0.9 # Rate
@@ -231,10 +229,10 @@ nonlinearityOutput = torch.tanh
 nonlinearity = nn.Tanh # Chosen nonlinearity for nonlinear architectures
 
 # Select desired architectures
-doLocalFlt = True # Local filter (no nonlinearity)
+doLocalFlt = False # Local filter (no nonlinearity)
 doLocalGNN = True # Local GNN (include nonlinearity)
-doDlAggGNN = True
-doGraphRNN = True
+doDlAggGNN = False
+doGraphRNN = False
 
 modelList = []
 
@@ -455,7 +453,7 @@ if doLogging:
     logger = Visualizer(logsTB, name='visualResults')
     
 #\\\ Number of agents at test time
-nAgentsTest = np.linspace(nAgents, nAgentsMax, num = nSimPoints,dtype = np.int)
+nAgentsTest = np.linspace(nAgents, nAgentsMax, num = nSimPoints,dtype = np.int64)
 nAgentsTest = np.unique(nAgentsTest).tolist()
 nSimPoints = len(nAgentsTest)
 writeVarValues(varsFile, {'nAgentsTest': nAgentsTest}) # Save list
@@ -636,14 +634,6 @@ for realization in range(nRealizations):
         if nRealizations > 1:
             print(" for realization %d" % realization, end = '')
         print("...", flush = True)
-
-    # Generate the videos
-    data.saveVideo(datasetTrainTrajectoryDir, # Where to save them
-                    data.pos['train'], # Which positions to plot
-                    nVideos, # Number of videos to create
-                    commGraph = data.commGraph['train'], # Graph to plot
-                    vel = data.vel['train'], # Velocity arrows to plot
-                    videoSpeed = videoSpeed) # Change speed of animation
 
     #%%##################################################################
     #                                                                   #
@@ -868,13 +858,6 @@ for realization in range(nRealizations):
             if nRealizations > 1:
                 print(" for realization %d" % realization, end = '')
             print("...", flush = True)
-    
-        dataTest.saveVideo(datasetTestAgentTrajectoryDir[n],
-                           posTest,
-                           nVideos,
-                           commGraph = commGraphTest,
-                           vel = velTest,
-                           videoSpeed = videoSpeed)
         
         #\\\ EVAL
         #\\\\\\\\

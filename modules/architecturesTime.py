@@ -26,7 +26,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-import alegnn.utils.graphML as gml
+import utils.graphML as gml
 
 zeroTolerance = 1e-9 # Absolute values below this number are considered zero.
 
