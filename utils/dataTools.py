@@ -137,7 +137,7 @@ class initClockNetwk():
         
         print("OK", flush = True)
         print("\tComputing the network topologies...",
-              end=' ', flush=True)
+              end='\n', flush=True)
 
         # compute communication graph           
         # when network topology is directed graph, 'normaliseGraph' does NOT work
@@ -442,9 +442,12 @@ class initClockNetwk():
              
         commGraph = np.zeros((nSamples, nNodes, nNodes))
         
+        networkTopology = netwk.random_tree(nNodes, seed=np.random, create_using=netwk.DiGraph)            
+        print(netwk.forest_str(networkTopology))
+        
         if netwkType=='digraph':
             for i in range(nSamples):
-                networkTopology = netwk.random_tree(nNodes, seed=np.random, create_using=netwk.DiGraph)            
+                networkTopology = networkTopology            
                 # calculate the adjacency matrix
                 networkTopologyMatrix = netwk.adjacency_matrix(networkTopology).todense()            
                 # the maximum eigenvalue is zero, no normalisation
@@ -1048,6 +1051,10 @@ class initClockNetwk():
             #   Update clock skew correction value
             integralSkew[:,t,:,:] = gainSkew[0] * integralSkew[:,t-1,:,:] - gainSkew[1] * np.sum(ijDiffSkew, axis=3)
             correctionSkew[:,t,:,:] = gainSkew[2] * integralSkew[:,t-1,:,:] - gainSkew[3] * np.sum(ijDiffSkew, axis=3)            
+            integralOffset[:,t,:,0] = np.zeros((nSamples, 1))
+            correctionOffset[:,t,:,0] = np.zeros((nSamples, 1))
+            integralSkew[:,t,:,0] = np.zeros((nSamples, 1))
+            correctionSkew[:,t,:,0] = np.zeros((nSamples, 1))
             
             # update the values Todo: noises will be required in the future work
             #   update clock offset 
@@ -1089,9 +1096,11 @@ class initClockNetwk():
         initOffset = fixedOffset + perturbOffset # nSamples x nNodes     
         initSkew = fixedSkew + perturbSkew # nSamples x nNodes
                
-        # reshape
+        # reshape and reset the first node (with index=0)
         initOffset = initOffset.reshape(nSamples, nNodes)        
         initSkew = initSkew.reshape(nSamples, nNodes)                
+        initOffset[:,0] = np.zeros((nSamples))
+        initSkew[:,0] = np.zeros((nSamples))
                 
         # add the extra feature=1 dimensions
         initOffset = np.expand_dims(initOffset, 1) # nSamples x 1 x nNodes

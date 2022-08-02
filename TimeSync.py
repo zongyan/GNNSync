@@ -96,8 +96,8 @@ duration = 2. # simulation duration, unit: second
 samplingTimeScale = 0.01 # sampling timescale, unit: second, according to Giorgi2011
 initOffsetValue = 6e+2 # initial clock offset = 600 us
 initSkewValue = 50 # initial clock skew = 50 ppm
-gainOffset = np.array([0, 0, 0, 0.08]) # K1, K2, K3 and K4 for offset correction
-gainSkew = np.array([0, 0, 0, 0.08]) # K1, K2, K3 and K4 for skew correction
+gainOffset = np.array([0, 0, 0, 0.05]) # K1, K2, K3 and K4 for offset correction
+gainSkew = np.array([0, 0, 0, 0.05]) # K1, K2, K3 and K4 for skew correction
 
 varValues = {'nNodes': nNodes, 'nTrain': nTrain, 'nValid': nValid, 'nTest': nTest, \
              'duration': duration, 'samplingTimeScale': samplingTimeScale, \
