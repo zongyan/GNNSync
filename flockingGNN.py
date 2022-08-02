@@ -1258,11 +1258,11 @@ accelTest = gnn_test['accelTestBest']
 stateTest = gnn_test['stateTestBest']
 commGraphTest = gnn_test['commGraphTestBest']
 
-posTestWithNoises = gnn_test['posTestBestWithNoises']
-velTestWithNoises = gnn_test['velTestBestWithNoises']
-accelTestWithNoises = gnn_test['accelTestBestWithNoises']
-stateTestWithNoises = gnn_test['stateTestBestWithNoises']
-commGraphTestWithNoises = gnn_test['commGraphTestBestWithNoises']
+posTestBestBrokenGraph = gnn_test['posTestBestBrokenGraph']
+velTestBestBrokenGraph = gnn_test['velTestBestBrokenGraph']
+accelTestBestBrokenGraph = gnn_test['accelTestBestBrokenGraph']
+stateTestBestBrokenGraph = gnn_test['stateTestBestBrokenGraph']
+commGraphTestBestBrokenGraph = gnn_test['commGraphTestBestBrokenGraph']
 
 posOptim, velOptim, accelOptim = data.computeOptimalTrajectory(posTest[:,0,:,:], \
                                                                posTest[:,0,:,:], \
@@ -1283,7 +1283,7 @@ for i in range(0, 1, 1):
     # end for 
     plt.xlabel(r'$time (s)$')
     plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-    plt.title(r'$\bf v_{gnn}$ for ' + str(50)+ ' agents (gnn controller without noises)')
+    plt.title(r'$\bf v_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller without noises)')
     plt.grid()
     plt.show()    
 # end for
@@ -1295,12 +1295,46 @@ for i in range(0, 1, 1):
     for j in range(0, 50, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), np.sqrt(velTestWithNoises[i, :, 0, j]**2 + velTestWithNoises[i, :, 1, j]**2)) 
+        plt.plot(np.arange(0, 200, 1), np.sqrt(velTestBestBrokenGraph[i, :, 0, j]**2 + velTestBestBrokenGraph[i, :, 1, j]**2)) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
     plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-    plt.title(r'$\bf v_{gnn}$ for ' + str(50)+ ' agents (gnn controller with noises)')
+    plt.title(r'$\bf v_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller with noises)')
+    plt.grid()
+    plt.show()    
+# end for
+
+# plot the velocity of all agents via the GNN method
+for i in range(0, 1, 1):
+    plt.figure()
+    plt.rcParams["figure.figsize"] = (6.4,4.8)
+    for j in range(0, 50, 1):
+        # the input and output features are two dimensions, which means that one 
+        # dimension is for x-axis velocity, the other one is for y-axis velocity 
+        plt.plot(np.arange(0, 200, 1), np.sqrt(accelTest[i, :, 0, j]**2 + accelTest[i, :, 1, j]**2)) 
+        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+    # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
+    plt.title(r'$\bf a_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller without noises)')
+    plt.grid()
+    plt.show()    
+# end for
+
+# plot the velocity of all agents via the GNN method with Noises
+for i in range(0, 1, 1):
+    plt.figure()
+    plt.rcParams["figure.figsize"] = (6.4,4.8)
+    for j in range(0, 50, 1):
+        # the input and output features are two dimensions, which means that one 
+        # dimension is for x-axis velocity, the other one is for y-axis velocity 
+        plt.plot(np.arange(0, 200, 1), np.sqrt(accelTestBestBrokenGraph[i, :, 0, j]**2 + accelTestBestBrokenGraph[i, :, 1, j]**2)) 
+        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+    # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
+    plt.title(r'$\bf a_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller with noises)')
     plt.grid()
     plt.show()    
 # end for
