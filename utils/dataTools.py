@@ -2558,15 +2558,34 @@ class Flocking(_data):
         #   Testing set
         startSample = self.nTrain + self.nValid
         endSample = self.nTrain + self.nValid + self.nTest
-        self.samples['test']['signals']=stateAll[startSample:endSample].copy()
-        self.samples['test']['targets']=accelAll[startSample:endSample].copy()
+        #######################################################################        
+        commGraphTest = commGraphAll[0:self.nTrain].deepcopy() # (nSamples, tSamples, nAgents, nAgents)
+
+        numBreakConnections = 1
+        
+        # Compute communication graph
+        for i in range(commGraphTest.shape[0]): # nSamples
+            for j in range(commGraphTest.shape[1]): # tSamples
+                if j <= (numBreakConnections-1):
+                    yCoord = np.random.randint(low=0, high=50)
+                    xCoord = np.random.randrange(low=0, high=50)
+                    if commGraphTest[i, j, xCoord, yCoord] == 1:
+                        commGraphTest[i, j, xCoord, yCoord] = 0
+                        commGraphTest[i, j, yCoord, xCoord] = 0                    
+                    # end if
+                # end if
+            # end for
+        # end for        
+        #######################################################################
+        self.samples['test']['signals'] = 0
+        self.samples['test']['targets'] = 0
         self.initPos['test'] = initPosAll[startSample:endSample]
         self.initVel['test'] = initVelAll[startSample:endSample]
-        self.pos['test'] = posAll[startSample:endSample]
-        self.vel['test'] = velAll[startSample:endSample]
-        self.accel['test'] = accelAll[startSample:endSample]
-        self.commGraph['test'] = commGraphAll[startSample:endSample]
-        self.state['test'] = stateAll[startSample:endSample]
+        self.pos['test'] = 0
+        self.vel['test'] = 0
+        self.accel['test'] = 0
+        self.commGraph['test'] = commGraphTest
+        self.state['test'] = 0
         
         # Change data to specified type and device
         self.astype(self.dataType)
@@ -3337,6 +3356,172 @@ class Flocking(_data):
             return pos, vel, accel, state, graph
         elif useAccel:
             return pos, vel
+
+    def computeTrajectoryBrokenGraph(self, initPos, initVel, duration, graph, **kwargs):
+        
+        # Check initPos is of shape batchSize x 2 x nAgents
+        assert len(initPos.shape) == 3
+        batchSize = initPos.shape[0]
+        assert initPos.shape[1]
+        nAgents = initPos.shape[2]
+        
+        # Check initVel is of shape batchSize x 2 x nAgents
+        assert len(initVel.shape) == 3
+        assert initVel.shape[0] == batchSize
+        assert initVel.shape[1] == 2
+        assert initVel.shape[2] == nAgents
+        
+        # Check what kind of data it is
+        #   This is because all the functions are numpy, but if this was
+        #   torch, we need to return torch, to make it consistent
+        if 'torch' in repr(initPos.dtype):
+            assert 'torch' in repr(initVel.dtype)
+            useTorch = True
+            device = initPos.device
+            assert initVel.device == device
+        else:
+            useTorch = False
+        
+        # Create time line
+        time = np.arange(0, duration, self.samplingTime)
+        tSamples = len(time)
+        
+        # Here, we have two options, or we're given the acceleration or the
+        # architecture
+        assert 'archit' in kwargs.keys() or 'accel' in kwargs.keys()
+        # Flags to determine which method to use
+        useArchit = False
+        useAccel = False
+        
+        if 'archit' in kwargs.keys():
+            archit = kwargs['archit'] # This is a torch.nn.Module architecture
+            architDevice = list(archit.parameters())[0].device
+            useArchit = True
+        elif 'accel' in kwargs.keys():
+            accel = kwargs['accel']
+            # accel has to be of shape batchSize x tSamples x 2 x nAgents
+            assert len(accel.shape) == 4
+            assert accel.shape[0] == batchSize
+            assert accel.shape[1] == tSamples
+            assert accel.shape[2] == 2
+            assert accel.shape[3] == nAgents
+            if useTorch:
+                assert 'torch' in repr(accel.dtype)
+            useAccel = True
+            
+        # Decide on printing or not:
+        if 'doPrint' in kwargs.keys():
+            doPrint = kwargs['doPrint']
+        else:
+            doPrint = self.doPrint # Use default
+        
+        # Now create the outputs that will be filled afterwards
+        pos = np.zeros((batchSize, tSamples, 2, nAgents), dtype = np.float)
+        vel = np.zeros((batchSize, tSamples, 2, nAgents), dtype = np.float)
+        if useArchit:
+            accel = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float)
+            state = np.zeros((batchSize, tSamples, 6, nAgents), dtype=np.float)
+            
+        # Assign the initial positions and velocities
+        if useTorch:
+            pos[:,0,:,:] = initPos.cpu().numpy()
+            vel[:,0,:,:] = initVel.cpu().numpy()
+            if useAccel:
+                accel = accel.cpu().numpy()
+        else:
+            pos[:,0,:,:] = initPos.copy()
+            vel[:,0,:,:] = initVel.copy()
+            
+        if doPrint:
+            # Sample percentage count
+            percentageCount = int(100/tSamples)
+            # Print new value
+            print("%3d%%" % percentageCount, end = '', flush = True)
+            
+        # Now, let's get started:
+        for t in range(1, tSamples):
+            
+            # If it is architecture-based, we need to compute the state, and
+            # for that, we need to compute the graph
+            if useArchit:
+                # Adjust pos value for graph computation
+                thisPos = np.expand_dims(pos[:,t-1,:,:], 1)
+                # Compute graph
+                thisGraph = np.expand_dims(graph[:,t-1,:,:], 1)
+                # Adjust vel value for state computation
+                thisVel = np.expand_dims(vel[:,t-1,:,:], 1)
+                # Compute state
+                thisState = self.computeStates(thisPos, thisVel, thisGraph,
+                                               doPrint = False)
+                # Save state
+                state[:,t-1,:,:] = thisState.squeeze(1)
+                
+                # Compute the output of the architecture
+                #   Note that we need the collection of all time instants up
+                #   to now, because when we do the communication exchanges,
+                #   it involves past times.
+                x = torch.tensor(state[:,0:t,:,:], device = architDevice)
+                S = torch.tensor(graph[:,0:t,:,:], device = architDevice)
+                with torch.no_grad():
+                    thisAccel = archit(x, S)
+                # Now that we have computed the acceleration, we only care 
+                # about the last element in time
+                thisAccel = thisAccel.cpu().numpy()[:,-1,:,:]
+                thisAccel[thisAccel > self.accelMax] = self.accelMax
+                thisAccel[thisAccel < -self.accelMax] = self.accelMax
+                # And save it
+                accel[:,t-1,:,:] = thisAccel
+                
+            # Now that we have the acceleration, we can update position and
+            # velocity
+            vel[:,t,:,:] = accel[:,t-1,:,:] * self.samplingTime +vel[:,t-1,:,:]
+            pos[:,t,:,:] = accel[:,t-1,:,:] * (self.samplingTime ** 2)/2 + \
+                            vel[:,t-1,:,:] * self.samplingTime + pos[:,t-1,:,:]
+            
+            if doPrint:
+                # Sample percentage count
+                percentageCount = int(100*(t+1)/tSamples)
+                # Erase previous value and print new value
+                print('\b \b' * 4 + "%3d%%" % percentageCount,
+                      end = '', flush = True)
+                
+        # And we're missing the last values of graph, state and accel, so
+        # let's compute them for completeness
+        #   Graph
+        thisPos = np.expand_dims(pos[:,-1,:,:], 1)
+        thisGraph = np.expand_dims(graph[:,-1,:,:], 1)
+        #   State
+        thisVel = np.expand_dims(vel[:,-1,:,:], 1)
+        thisState = self.computeStates(thisPos, thisVel, thisGraph,
+                                       doPrint = False)
+        state[:,-1,:,:] = thisState.squeeze(1)
+        #   Accel
+        x = torch.tensor(state).to(architDevice)
+        S = torch.tensor(graph).to(architDevice)
+        with torch.no_grad():
+            thisAccel = archit(x, S)
+        thisAccel = thisAccel.cpu().numpy()[:,-1,:,:]
+        thisAccel[thisAccel > self.accelMax] = self.accelMax
+        thisAccel[thisAccel < -self.accelMax] = self.accelMax
+        # And save it
+        accel[:,-1,:,:] = thisAccel
+                
+        # Print
+        if doPrint:
+            # Erase the percentage
+            print('\b \b' * 4, end = '', flush = True)
+            
+        # After we have finished, turn it back into tensor, if required
+        if useTorch:
+            pos = torch.tensor(pos).to(device)
+            vel = torch.tensor(vel).to(device)
+            accel = torch.tensor(accel).to(device)
+            
+        # And return it
+        if useArchit:
+            return pos, vel, accel, state, graph
+        elif useAccel:
+            return pos, vel        
         
     def computeTrajectory(self, initPos, initVel, duration, **kwargs):
         

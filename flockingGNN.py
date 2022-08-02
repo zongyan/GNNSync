@@ -125,7 +125,7 @@ commRadius = 2. # Communication radius
 repelDist = 1. # Minimum distance before activating repelling potential
 nTrain = 400 # Number of training samples
 nValid = 20 # Number of valid samples
-nTest = 20 # Number of testing samples
+nTest = nTrain # Number of testing samples
 duration = 2. # Duration of the trajectory
 samplingTime = 0.01 # Sampling time
 initGeometry = 'circular' # Geometry of initial positions
@@ -614,7 +614,7 @@ for realization in range(nRealizations):
                 # Samples
                 nTrain,
                 nValid,
-                1, # We do not care about testing, we will re-generate the
+                nTest, # We do not care about testing, we will re-generate the
                    # dataset for testing
                 # Time
                 duration,
@@ -820,24 +820,26 @@ for realization in range(nRealizations):
                 print(" for realization %d" % realization, end = '')
             print("...", flush = True)
 
-        #   Load the data, which will give a specific split
-        dataTest = dataTools.Flocking(
-                        # Structure
-                        nAgentsTest[n],
-                        commRadius,
-                        repelDist,
-                        # Samples
-                        1, # We don't care about training
-                        1, # nor validation
-                        nTest,
-                        # Time
-                        duration,
-                        samplingTime,
-                        # Initial conditions
-                        initGeometry = initGeometry,
-                        initVelValue = initVelValue,
-                        initMinDist = initMinDist,
-                        accelMax = accelMax)
+        # #   Load the data, which will give a specific split
+        # dataTest = dataTools.Flocking(
+        #                 # Structure
+        #                 nAgentsTest[n],
+        #                 commRadius,
+        #                 repelDist,
+        #                 # Samples
+        #                 1, # We don't care about training
+        #                 1, # nor validation
+        #                 nTest,
+        #                 # Time
+        #                 duration,
+        #                 samplingTime,
+        #                 # Initial conditions
+        #                 initGeometry = initGeometry,
+        #                 initVelValue = initVelValue,
+        #                 initMinDist = initMinDist,
+        #                 accelMax = accelMax)
+
+        dataTest = data
     
         ###########
         # OPTIMAL #

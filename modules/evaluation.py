@@ -223,6 +223,7 @@ def evaluateFlocking(model, data, **kwargs):
     # Initial data
     initPosTest = data.getData('initPos', 'test')
     initVelTest = data.getData('initVel', 'test')
+    commGraphTest = data.getData('commGraph', 'test')    
 
     ##############
     # BEST MODEL #
@@ -238,18 +239,22 @@ def evaluateFlocking(model, data, **kwargs):
         commGraphTestBest = data.computeTrajectory(initPosTest, initVelTest, data.duration,
                                archit = model.archit)
         
-    posTestBestWithNoises, velTestBestWithNoises, accelTestBestWithNoises, stateTestBestWithNoises, \
-        commGraphTestBestWithNoises = data.computeTrajectoryWithNoises(initPosTest, initVelTest, data.duration,
-                               archit = model.archit)        
+    # posTestBestWithNoises, velTestBestWithNoises, accelTestBestWithNoises, stateTestBestWithNoises, \
+    #     commGraphTestBestWithNoises = data.computeTrajectoryWithNoises(initPosTest, initVelTest, data.duration,
+    #                            archit = model.archit)   
+        
+    posTestBestBrokenGraph, velTestBestBrokenGraph, accelTestBestBrokenGraph, stateTestBrokenGraph, \
+        commGraphTestBestBrokenGraph = data.computeTrajectoryBrokenGraph(initPosTest, initVelTest, data.duration, commGraphTest,
+                               archit = model.archit)           
         
     import numpy as np
     SavedPath ='./gnn_test.npz'
     np.savez(SavedPath, posTestBest=posTestBest, velTestBest=velTestBest, \
              accelTestBest=accelTestBest, stateTestBest=stateTestBest, \
                  commGraphTestBest=commGraphTestBest, \
-                     posTestBestWithNoises=posTestBestWithNoises, velTestBestWithNoises=velTestBestWithNoises, \
-                          accelTestBestWithNoises=accelTestBestWithNoises, stateTestBestWithNoises=stateTestBestWithNoises, \
-                              commGraphTestBestWithNoises=commGraphTestBestWithNoises)
+                     posTestBestBrokenGraph=posTestBestBrokenGraph, velTestBestBrokenGraph=velTestBestBrokenGraph, \
+                          accelTestBestBrokenGraph=accelTestBestBrokenGraph, stateTestBestBrokenGraph=stateTestBrokenGraph, \
+                              commGraphTestBestBrokenGraph=commGraphTestBestBrokenGraph)
     print("\tSaved the test data to the following path: ./gnn_test.npz...", end = ' ')        
 
     if doPrint:
