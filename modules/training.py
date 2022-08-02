@@ -144,15 +144,23 @@ class Trainer:
 
                 startTime = datetime.datetime.now()
 
+                # for param in thisArchit.GFL[0].parameters():
+                #     print(param[0:2])
+
                 thisArchit.zero_grad()
 
                 yHatTrain = thisArchit(xTrain, Strain)
 
                 lossValueTrain = thisLoss(yHatTrain, yTrain)
+                
+                # print(lossValueTrain)
 
                 lossValueTrain.backward()
 
                 thisOptim.step()
+
+                # for param in thisArchit.GFL[0].parameters():
+                #     print(param[0:2])
 
                 endTime = datetime.datetime.now()
 

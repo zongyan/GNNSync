@@ -94,8 +94,8 @@ nValid = 20 # number of valid samples
 nTest = 20 # number of testing samples
 duration = 2. # simulation duration, unit: second 
 samplingTimeScale = 0.01 # sampling timescale, unit: second, according to Giorgi2011
-initOffsetValue = 6e+2 # initial clock offset = 600 us
-initSkewValue = 50 # initial clock skew = 50 ppm
+initOffsetValue = 100 # initial clock offset = 600 us
+initSkewValue = 25 # initial clock skew = 50 ppm
 gainOffset = np.array([0, 0, 0, 0.05]) # K1, K2, K3 and K4 for offset correction
 gainSkew = np.array([0, 0, 0, 0.05]) # K1, K2, K3 and K4 for skew correction
 
@@ -164,8 +164,8 @@ hParamsGNN = {} # hyperparameters (hParams) for GNN
 hParamsGNN['name'] = 'GNN'
 hParamsGNN['archit'] = architTime.LocalGNN_DB
 hParamsGNN['device'] = 'cuda:0' if (torch.cuda.is_available()) else 'cpu'
-hParamsGNN['dimNodeSignals'] = [2, 32] # features per layer
-hParamsGNN['nFilterTaps'] = [3] # number of filter taps, i.e. three-hop neighbours' infor 
+hParamsGNN['dimNodeSignals'] = [2, 32, 32] # features per layer
+hParamsGNN['nFilterTaps'] = [3, 3] # number of filter taps, i.e. three-hop neighbours' infor 
 hParamsGNN['bias'] = True # decide whether to include a bias term
 hParamsGNN['nonlinearity'] = nonlinearity
                                             
@@ -524,18 +524,70 @@ for i in range(0, 1, 1):
     plt.show()    
 # end for
 
-# plot the velocity difference of all agents by using the centralised optimal controller and GNN methods
+# plot the velocity of all agents via the GNN method
 for i in range(0, 1, 1):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
     for j in range(0, nNodes, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), offsetTest[i, :, 0, j] - offsetCtrl[i, :, 0, j]) 
+        plt.plot(np.arange(0, 200, 1), offsetCorrectionTest[i, :, 0, j]) 
+        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\theta (\mu s)$')
-    plt.title(r'$\theta_{gnn} - \theta_{cc}$')    
+    plt.ylabel(r'$u_{\theta}$')
+    plt.title(r'$u_{\theta}$ for ' + str(50)+ ' agents (gnn controller)')
+    plt.grid()
+    plt.show()    
+# end for
+
+# plot the velocity of all agents via the GNN method
+for i in range(0, 1, 1):
+    plt.figure()
+    plt.rcParams["figure.figsize"] = (6.4,4.8)
+    for j in range(0, nNodes, 1):
+        # the input and output features are two dimensions, which means that one 
+        # dimension is for x-axis velocity, the other one is for y-axis velocity 
+        plt.plot(np.arange(0, 200, 1), skewCorrectionTest[i, :, 0, j]) 
+        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+    # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'$u_{\gamma}$')
+    plt.title(r'$u_{\gamma}$ for ' + str(50)+ ' agents (gnn controller)')
+    plt.grid()
+    plt.show()    
+# end for
+
+# plot the velocity of all agents via the GNN method
+for i in range(0, 1, 1):
+    plt.figure()
+    plt.rcParams["figure.figsize"] = (6.4,4.8)
+    for j in range(0, nNodes, 1):
+        # the input and output features are two dimensions, which means that one 
+        # dimension is for x-axis velocity, the other one is for y-axis velocity 
+        plt.plot(np.arange(0, 200, 1), offsetCorrectionCtrl[i, :, 0, j]) 
+        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+    # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'$u_{\theta}$')
+    plt.title(r'$u_{\theta}$ for ' + str(50)+ ' agents (centralised controller)')
+    plt.grid()
+    plt.show()    
+# end for
+
+# plot the velocity of all agents via the GNN method
+for i in range(0, 1, 1):
+    plt.figure()
+    plt.rcParams["figure.figsize"] = (6.4,4.8)
+    for j in range(0, nNodes, 1):
+        # the input and output features are two dimensions, which means that one 
+        # dimension is for x-axis velocity, the other one is for y-axis velocity 
+        plt.plot(np.arange(0, 200, 1), skewCorrectionCtrl[i, :, 0, j]) 
+        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+    # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'$u_{\gamma}$')
+    plt.title(r'$u_{\gamma}$ for ' + str(50)+ ' agents (centralised controller)')
     plt.grid()
     plt.show()    
 # end for

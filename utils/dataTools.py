@@ -898,11 +898,14 @@ class initClockNetwk():
             thisOffsetSkewCorrection = thisOffsetSkewCorrection.cpu().numpy()[:,-1,:,:]
             # And save it
             offsetCorrection[:,t-1,:,:] = np.expand_dims(thisOffsetSkewCorrection[:,0,:], 1)
-            skewCorrection[:,t-1,:,:] = np.expand_dims(thisOffsetSkewCorrection[:,1,:], 1)            
+            skewCorrection[:,t-1,:,:] = np.expand_dims(thisOffsetSkewCorrection[:,1,:], 1)      
+            
+            offsetCorrection[:,t-1,:,0] = np.zeros((batchSize, 1))
+            skewCorrection[:,t-1,:,0] = np.zeros((batchSize, 1))            
                 
             # Now that we have the offset and skew correction inputs, we can 
             # clock offset and skew 
-            offset[:,t,:,:] =  offset[:,t-1,:,:] + skew[:,t-1,:,:] * self.samplingTimeScale + offsetCorrection[:,t-1,:,:]
+            offset[:,t,:,:] =  offset[:,t-1,:,:] + (skew[:,t-1,:,:] + skewCorrection[:,t-1,:,:]) * self.samplingTimeScale + offsetCorrection[:,t-1,:,:]
             skew[:,t,:,:] = skew[:,t-1,:,:] + skewCorrection[:,t-1,:,:]  
             
             if displayProgress == True:
@@ -1058,7 +1061,7 @@ class initClockNetwk():
             
             # update the values Todo: noises will be required in the future work
             #   update clock offset 
-            offset[:,t,:,:] = offset[:,t-1,:,:] + skew[:,t-1,:,:] * samplingTimeScale + correctionOffset[:,t-1,:,:]
+            offset[:,t,:,:] = offset[:,t-1,:,:] + (skew[:,t-1,:,:] + correctionSkew[:,t-1,:,:] )* samplingTimeScale + correctionOffset[:,t-1,:,:]
             #   update clock skew 
             skew[:,t,:,:] = skew[:,t-1,:,:] + correctionSkew[:,t-1,:,:]              
             
@@ -1074,7 +1077,7 @@ class initClockNetwk():
 
     def computeInitialOffsetsSkews(self, nNodes, nSamples, 
                                    initOffsetValue, initSkewValue,
-                                   offsetPerturb=2e+5, # us
+                                   offsetPerturb=50, # us
                                    skewPerturb=25 # ppm
                                    ):
 
