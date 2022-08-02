@@ -45,6 +45,8 @@ from matplotlib.animation import FFMpegWriter
 import numpy as np
 import torch
 
+from copy import deepcopy
+
 import utils.graphTools as graph
 
 zeroTolerance = 1e-9 # Values below this number are considered zero.
@@ -2559,7 +2561,7 @@ class Flocking(_data):
         startSample = self.nTrain + self.nValid
         endSample = self.nTrain + self.nValid + self.nTest
         #######################################################################        
-        commGraphTest = commGraphAll[0:self.nTrain].deepcopy() # (nSamples, tSamples, nAgents, nAgents)
+        commGraphTest = deepcopy(commGraphAll[0:self.nTrain]) # (nSamples, tSamples, nAgents, nAgents)
 
         numBreakConnections = 1
         
@@ -2568,7 +2570,7 @@ class Flocking(_data):
             for j in range(commGraphTest.shape[1]): # tSamples
                 if j <= (numBreakConnections-1):
                     yCoord = np.random.randint(low=0, high=50)
-                    xCoord = np.random.randrange(low=0, high=50)
+                    xCoord = np.random.randint(low=0, high=50)
                     if commGraphTest[i, j, xCoord, yCoord] == 1:
                         commGraphTest[i, j, xCoord, yCoord] = 0
                         commGraphTest[i, j, yCoord, xCoord] = 0                    
@@ -2577,15 +2579,15 @@ class Flocking(_data):
             # end for
         # end for        
         #######################################################################
-        self.samples['test']['signals'] = 0
-        self.samples['test']['targets'] = 0
+        self.samples['test']['signals'] = stateAll[startSample:endSample].copy()
+        self.samples['test']['targets'] = accelAll[startSample:endSample].copy()
         self.initPos['test'] = initPosAll[startSample:endSample]
         self.initVel['test'] = initVelAll[startSample:endSample]
-        self.pos['test'] = 0
-        self.vel['test'] = 0
-        self.accel['test'] = 0
+        self.pos['test'] = posAll[startSample:endSample]
+        self.vel['test'] = velAll[startSample:endSample]
+        self.accel['test'] = accelAll[startSample:endSample]
         self.commGraph['test'] = commGraphTest
-        self.state['test'] = 0
+        self.state['test'] = stateAll[startSample:endSample]
         
         # Change data to specified type and device
         self.astype(self.dataType)
