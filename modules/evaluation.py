@@ -14,6 +14,7 @@ evaluateFlocking: evaluate a model using the flocking cost
 import os
 import torch
 import pickle
+import numpy as np
 
 def evaluate(model, data, **kwargs):
     """
@@ -223,7 +224,30 @@ def evaluateFlocking(model, data, **kwargs):
     # Initial data
     initPosTest = data.getData('initPos', 'test')
     initVelTest = data.getData('initVel', 'test')
-    commGraphTest = data.getData('commGraph', 'test')    
+    commGraphTest = data.getData('commGraph', 'test')  
+            
+    nTest = data.nTest # size of the testing set
+    batchSize = 20
+    
+    if nTest < batchSize:
+        nBatches = 1
+        batchSize = [nTest]
+    elif nTest % batchSize != 0:
+        nBatches = np.ceil(nTest/batchSize).astype(np.int64)
+        batchSize = [batchSize] * nBatches
+        # If the sum of all batches so far is not the total number of
+        # graphs, start taking away samples from the last batch (remember
+        # that we used ceiling, so we are overshooting with the estimated
+        # number of batches)
+        while sum(batchSize) != nTest:
+            batchSize[-1] -= 1
+    # If they fit evenly, then just do so.
+    else:
+        nBatches = np.int(nTest/batchSize)
+        batchSize = [batchSize] * nBatches
+
+    batchIndex = np.cumsum(batchSize).tolist()
+    batchIndex = [0] + batchIndex    
 
     ##############
     # BEST MODEL #
@@ -234,26 +258,58 @@ def evaluateFlocking(model, data, **kwargs):
     if doPrint:
         print("\tComputing learned trajectory for best model...",
               end = '\n', flush = True)
-
-    posTestBest, velTestBest, accelTestBest, stateTestBest, \
-        commGraphTestBest = data.computeTrajectory(initPosTest, initVelTest, data.duration,
-                               archit = model.archit)
+    
+    batch = 0 
+    while batch < nBatches:    
         
-    # posTestBestWithNoises, velTestBestWithNoises, accelTestBestWithNoises, stateTestBestWithNoises, \
-    #     commGraphTestBestWithNoises = data.computeTrajectoryWithNoises(initPosTest, initVelTest, data.duration,
-    #                            archit = model.archit)   
+        thisInitPosTest = initPosTest[batchIndex[batch] : batchIndex[batch+1]]
+        thisInitVelTest = initVelTest[batchIndex[batch] : batchIndex[batch+1]]
+        thisCommGraphTest = commGraphTest[batchIndex[batch] : batchIndex[batch+1]]
         
-    posTestBestBrokenGraph, velTestBestBrokenGraph, accelTestBestBrokenGraph, stateTestBrokenGraph, \
-        commGraphTestBestBrokenGraph = data.computeTrajectoryBrokenGraph(initPosTest, initVelTest, data.duration, commGraphTest,
-                               archit = model.archit)           
+        thisPosTestBest, thisVelTestBest, thisAccelTestBest, thisStateTestBest, \
+            thisCommGraphTestBest = data.computeTrajectory(thisInitPosTest, thisInitVelTest, data.duration,
+                                   archit = model.archit)
+            
+        # posTestBestWithNoises, velTestBestWithNoises, accelTestBestWithNoises, stateTestBestWithNoises, \
+        #     commGraphTestBestWithNoises = data.computeTrajectoryWithNoises(initPosTest, initVelTest, data.duration,
+        #                            archit = model.archit)   
+            
+        thisPosTestBestBrokenGraph, thisVelTestBestBrokenGraph, thisAccelTestBestBrokenGraph, thisStateTestBrokenGraph, \
+            thisCommGraphTestBestBrokenGraph = data.computeTrajectoryBrokenGraph(thisInitPosTest, thisInitVelTest, data.duration, thisCommGraphTest,
+                                   archit = model.archit)  
+        if batch == 0:            
+            posTestBest = thisPosTestBest
+            velTestBest = thisVelTestBest
+            accelTestBest = thisAccelTestBest
+            stateTestBest = thisStateTestBest
+            commGraphTestBest = thisCommGraphTestBest
+            posTestBestBrokenGraph = thisPosTestBestBrokenGraph
+            velTestBestBrokenGraph = thisVelTestBestBrokenGraph
+            accelTestBestBrokenGraph = thisAccelTestBestBrokenGraph
+            stateTestBestBrokenGraph = thisStateTestBrokenGraph
+            commGraphTestBestBrokenGraph = thisCommGraphTestBestBrokenGraph            
+        else:
+            # Concatentate 
+            posTestBest = np.concatenate((posTestBest, thisPosTestBest), axis = 0)        
+            velTestBest = np.concatenate((velTestBest, thisVelTestBest), axis = 0)        
+            accelTestBest = np.concatenate((accelTestBest, thisAccelTestBest), axis = 0)        
+            stateTestBest = np.concatenate((stateTestBest, thisStateTestBest), axis = 0)        
+            commGraphTestBest = np.concatenate((commGraphTestBest, thisCommGraphTestBest), axis = 0)        
+            posTestBestBrokenGraph = np.concatenate((posTestBestBrokenGraph, thisPosTestBestBrokenGraph), axis = 0)        
+            velTestBestBrokenGraph = np.concatenate((velTestBestBrokenGraph, thisVelTestBestBrokenGraph), axis = 0)        
+            accelTestBestBrokenGraph = np.concatenate((accelTestBestBrokenGraph, thisAccelTestBestBrokenGraph), axis = 0)        
+            stateTestBestBrokenGraph = np.concatenate((stateTestBestBrokenGraph, thisStateTestBrokenGraph), axis = 0)        
+            commGraphTestBestBrokenGraph = np.concatenate((commGraphTestBestBrokenGraph, thisCommGraphTestBestBrokenGraph), axis = 0)                    
         
-    import numpy as np
+        batch += 1    
+            
+        
     SavedPath ='./gnn_test.npz'
     np.savez(SavedPath, posTestBest=posTestBest, velTestBest=velTestBest, \
              accelTestBest=accelTestBest, stateTestBest=stateTestBest, \
                  commGraphTestBest=commGraphTestBest, \
                      posTestBestBrokenGraph=posTestBestBrokenGraph, velTestBestBrokenGraph=velTestBestBrokenGraph, \
-                          accelTestBestBrokenGraph=accelTestBestBrokenGraph, stateTestBestBrokenGraph=stateTestBrokenGraph, \
+                          accelTestBestBrokenGraph=accelTestBestBrokenGraph, stateTestBestBrokenGraph=stateTestBestBrokenGraph, \
                               commGraphTestBestBrokenGraph=commGraphTestBestBrokenGraph)
     print("\tSaved the test data to the following path: ./gnn_test.npz...", end = ' ')        
 
@@ -264,22 +320,22 @@ def evaluateFlocking(model, data, **kwargs):
     # LAST MODEL #
     ##############
 
-    model.load(label = 'Last')
+    # model.load(label = 'Last')
 
-    if doPrint:
-        print("\tComputing learned trajectory for last model...",
-              end = ' ', flush = True)
+    # if doPrint:
+    #     print("\tComputing learned trajectory for last model...",
+    #           end = ' ', flush = True)
 
-    posTestLast, \
-    velTestLast, \
-    accelTestLast, \
-    stateTestLast, \
-    commGraphTestLast = \
-        data.computeTrajectory(initPosTest, initVelTest, data.duration,
-                               archit = model.archit)
+    # posTestLast, \
+    # velTestLast, \
+    # accelTestLast, \
+    # stateTestLast, \
+    # commGraphTestLast = \
+    #     data.computeTrajectory(initPosTest, initVelTest, data.duration,
+    #                            archit = model.archit)
 
-    if doPrint:
-        print("OK")
+    # if doPrint:
+    #     print("OK")
 
     ###########
     # PREVIEW #
@@ -321,7 +377,7 @@ def evaluateFlocking(model, data, **kwargs):
     evalVars = {}
     evalVars['costBestFull'] = data.evaluate(vel = velTestBest)
     evalVars['costBestEnd'] = data.evaluate(vel = velTestBest[:,-1:,:,:])
-    evalVars['costLastFull'] = data.evaluate(vel = velTestLast)
-    evalVars['costLastEnd'] = data.evaluate(vel = velTestLast[:,-1:,:,:])
+    # evalVars['costLastFull'] = data.evaluate(vel = velTestLast)
+    # evalVars['costLastEnd'] = data.evaluate(vel = velTestLast[:,-1:,:,:])
 
     return evalVars
