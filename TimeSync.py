@@ -92,7 +92,7 @@ with open(pathToSeed, 'wb') as seedFile:
 nTrain = 400 # number of training samples
 nValid = 20 # number of valid samples
 nTest = 20 # number of testing samples
-duration = 2. # simulation duration, unit: second 
+duration = 3.5 # simulation duration, unit: second 
 samplingTimeScale = 0.01 # sampling timescale, unit: second, according to Giorgi2011
 initOffsetValue = 100 # initial clock offset = 600 us
 initSkewValue = 25 # initial clock skew = 50 ppm
@@ -497,7 +497,7 @@ for i in range(0, 1, 1):
     for j in range(0, nNodes, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), offsetTest[i, :, 0, j]) 
+        plt.plot(np.arange(0, (duration/samplingTimeScale), 1), offsetTest[i, :, 0, j]) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
@@ -514,7 +514,7 @@ for i in range(0, 1, 1):
     for j in range(0, nNodes, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), offsetCtrl[i, :, 0, j]) 
+        plt.plot(np.arange(0, (duration/samplingTimeScale), 1), offsetCtrl[i, :, 0, j]) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
@@ -531,7 +531,7 @@ for i in range(0, 1, 1):
     for j in range(0, nNodes, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), offsetCorrectionTest[i, :, 0, j]) 
+        plt.plot(np.arange(0, (duration/samplingTimeScale), 1), offsetCorrectionTest[i, :, 0, j]) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
@@ -548,7 +548,7 @@ for i in range(0, 1, 1):
     for j in range(0, nNodes, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), skewCorrectionTest[i, :, 0, j]) 
+        plt.plot(np.arange(0, (duration/samplingTimeScale), 1), skewCorrectionTest[i, :, 0, j]) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
@@ -565,7 +565,7 @@ for i in range(0, 1, 1):
     for j in range(0, nNodes, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), offsetCorrectionCtrl[i, :, 0, j]) 
+        plt.plot(np.arange(0, (duration/samplingTimeScale), 1), offsetCorrectionCtrl[i, :, 0, j]) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
@@ -582,7 +582,7 @@ for i in range(0, 1, 1):
     for j in range(0, nNodes, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), skewCorrectionCtrl[i, :, 0, j]) 
+        plt.plot(np.arange(0, (duration/samplingTimeScale), 1), skewCorrectionCtrl[i, :, 0, j]) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
