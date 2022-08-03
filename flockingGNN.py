@@ -903,23 +903,23 @@ for realization in range(nRealizations):
     
             thisCostBestFull = thisEvalVars['costBestFull']
             thisCostBestEnd = thisEvalVars['costBestEnd']
-            thisCostLastFull = thisEvalVars['costLastFull']
-            thisCostLastEnd = thisEvalVars['costLastEnd']
+            # thisCostLastFull = thisEvalVars['costLastFull']
+            # thisCostLastEnd = thisEvalVars['costLastEnd']
             
-            # Save values
-            writeVarValues(varsFile,
-                   {'costBestFull%s%03dR%02d' % \
-                                       (thisModel, nAgentsTest[n], realization):
-                                                                thisCostBestFull,
-                    'costBestEnd%s%04dR%02d' % \
-                                       (thisModel, nAgentsTest[n], realization):
-                                                                 thisCostBestEnd,
-                    'costLastFull%s%03dR%02d' % \
-                                       (thisModel, nAgentsTest[n], realization):
-                                                                thisCostLastFull,
-                    'costLastEnd%s%04dR%02d' % \
-                                       (thisModel, nAgentsTest[n], realization):
-                                                                thisCostLastEnd})
+            # # Save values
+            # writeVarValues(varsFile,
+            #        {'costBestFull%s%03dR%02d' % \
+            #                            (thisModel, nAgentsTest[n], realization):
+            #                                                     thisCostBestFull,
+            #         'costBestEnd%s%04dR%02d' % \
+            #                            (thisModel, nAgentsTest[n], realization):
+            #                                                      thisCostBestEnd,
+            #         'costLastFull%s%03dR%02d' % \
+            #                            (thisModel, nAgentsTest[n], realization):
+            #                                                     thisCostLastFull,
+            #         'costLastEnd%s%04dR%02d' % \
+            #                            (thisModel, nAgentsTest[n], realization):
+            #                                                     thisCostLastEnd})
     
             # Find which model to save the results (when having multiple
             # realizations)
@@ -927,8 +927,8 @@ for realization in range(nRealizations):
                 if m in thisModel:
                     costBestFull[n][m][realization] = thisCostBestFull
                     costBestEnd[n][m][realization] = thisCostBestEnd
-                    costLastFull[n][m][realization] = thisCostLastFull
-                    costLastEnd[n][m][realization] = thisCostLastEnd
+                    # costLastFull[n][m][realization] = thisCostLastFull
+                    # costLastEnd[n][m][realization] = thisCostLastEnd
 
 
 ############################
