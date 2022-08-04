@@ -125,7 +125,7 @@ commRadius = 2. # Communication radius
 repelDist = 1. # Minimum distance before activating repelling potential
 nTrain = 400 # Number of training samples
 nValid = 20 # Number of valid samples
-nTest = nTrain # Number of testing samples
+nTest = 50 # Number of testing samples
 duration = 2. # Duration of the trajectory
 samplingTime = 0.01 # Sampling time
 initGeometry = 'circular' # Geometry of initial positions
@@ -233,6 +233,7 @@ doLocalFlt = False # Local filter (no nonlinearity)
 doLocalGNN = True # Local GNN (include nonlinearity)
 doDlAggGNN = False
 doGraphRNN = False
+doLocalFNN = True
 
 modelList = []
 
@@ -309,6 +310,43 @@ if doLocalGNN:
     #\\\ Save Values:
     writeVarValues(varsFile, hParamsLocalGNN)
     modelList += [hParamsLocalGNN['name']]
+    
+#\\\\\\\\\\\\\\\\\
+#\\\ LOCAL Fully connected NN \\\
+#\\\\\\\\\\\\\\\\\
+
+if doLocalFNN:
+
+    #\\\ Basic parameters for the Local GNN architecture
+
+    hParamsLocalFNN = {} # Hyperparameters (hParams) for the Local GNN (LclGNN)
+
+    hParamsLocalFNN['name'] = 'LocalFNN'
+    # Chosen architecture
+    hParamsLocalFNN['archit'] = architTime.LocalGNN_DB
+    hParamsLocalFNN['device'] = 'cuda:0' \
+                                    if (useGPU and torch.cuda.is_available()) \
+                                    else 'cpu'
+
+    # Graph convolutional parameters
+    hParamsLocalFNN['dimNodeSignals'] = [6] # Features per layer
+    hParamsLocalFNN['nFilterTaps'] = [] # Number of filter taps
+    hParamsLocalFNN['bias'] = True # Decide whether to include a bias term
+    # Nonlinearity
+    hParamsLocalFNN['nonlinearity'] = nonlinearity # Selected nonlinearity
+        # is affected by the summary
+    # Readout layer: local linear combination of features
+    hParamsLocalFNN['dimReadout'] = [64, 32, 16, 8, 4, 2] # Dimension of the fully connected
+        # layers after the GCN layers (map); this fully connected layer
+        # is applied only at each node, without any further exchanges nor 
+        # considering all nodes at once, making the architecture entirely
+        # local.
+    # Graph structure
+    hParamsLocalFNN['dimEdgeFeatures'] = 1 # Scalar edge weights
+
+    #\\\ Save Values:
+    writeVarValues(varsFile, hParamsLocalFNN)
+    modelList += [hParamsLocalFNN['name']]    
     
 #\\\\\\\\\\\\\\\\\\\\\\\
 #\\\ AGGREGATION GNN \\\
@@ -935,142 +973,142 @@ for realization in range(nRealizations):
 # FINAL EVALUATION RESULTS #
 ############################
                     
-meanCostBestFull = [None] * nSimPoints # Mean across data splits
-meanCostBestEnd = [None] * nSimPoints # Mean across data splits
-meanCostLastFull = [None] * nSimPoints # Mean across data splits
-meanCostLastEnd = [None] * nSimPoints # Mean across data splits
-stdDevCostBestFull = [None] * nSimPoints # Standard deviation across data splits
-stdDevCostBestEnd = [None] * nSimPoints # Standard deviation across data splits
-stdDevCostLastFull = [None] * nSimPoints # Standard deviation across data splits
-stdDevCostLastEnd = [None] * nSimPoints # Standard deviation across data splits
-meanCostOptFull = [None] * nSimPoints
-stdDevCostOptFull = [None] * nSimPoints
-meanCostOptEnd = [None] * nSimPoints
-stdDevCostOptEnd = [None] * nSimPoints
+# meanCostBestFull = [None] * nSimPoints # Mean across data splits
+# meanCostBestEnd = [None] * nSimPoints # Mean across data splits
+# meanCostLastFull = [None] * nSimPoints # Mean across data splits
+# meanCostLastEnd = [None] * nSimPoints # Mean across data splits
+# stdDevCostBestFull = [None] * nSimPoints # Standard deviation across data splits
+# stdDevCostBestEnd = [None] * nSimPoints # Standard deviation across data splits
+# stdDevCostLastFull = [None] * nSimPoints # Standard deviation across data splits
+# stdDevCostLastEnd = [None] * nSimPoints # Standard deviation across data splits
+# meanCostOptFull = [None] * nSimPoints
+# stdDevCostOptFull = [None] * nSimPoints
+# meanCostOptEnd = [None] * nSimPoints
+# stdDevCostOptEnd = [None] * nSimPoints
                     
-for n in range(nSimPoints):
+# for n in range(nSimPoints):
 
-    # Now that we have computed the accuracy of all runs, we can obtain a final
-    # result (mean and standard deviation)
+#     # Now that we have computed the accuracy of all runs, we can obtain a final
+#     # result (mean and standard deviation)
     
-    meanCostBestFull[n] = {} # Mean across data splits
-    meanCostBestEnd[n] = {} # Mean across data splits
-    meanCostLastFull[n] = {} # Mean across data splits
-    meanCostLastEnd[n] = {} # Mean across data splits
-    stdDevCostBestFull[n] = {} # Standard deviation across data splits
-    stdDevCostBestEnd[n] = {} # Standard deviation across data splits
-    stdDevCostLastFull[n] = {} # Standard deviation across data splits
-    stdDevCostLastEnd[n] = {} # Standard deviation across data splits
+#     meanCostBestFull[n] = {} # Mean across data splits
+#     meanCostBestEnd[n] = {} # Mean across data splits
+#     meanCostLastFull[n] = {} # Mean across data splits
+#     meanCostLastEnd[n] = {} # Mean across data splits
+#     stdDevCostBestFull[n] = {} # Standard deviation across data splits
+#     stdDevCostBestEnd[n] = {} # Standard deviation across data splits
+#     stdDevCostLastFull[n] = {} # Standard deviation across data splits
+#     stdDevCostLastEnd[n] = {} # Standard deviation across data splits
     
-    if doPrint:
-        print("\n[%3d Agents] Final evaluations (%02d data splits)" % \
-                                               (nAgentsTest[n], nRealizations))
+#     if doPrint:
+#         print("\n[%3d Agents] Final evaluations (%02d data splits)" % \
+#                                                (nAgentsTest[n], nRealizations))
         
-    costOptFull[n] = np.array(costOptFull[n])
-    meanCostOptFull[n] = np.mean(costOptFull[n])
-    stdDevCostOptFull[n] = np.std(costOptFull[n])
-    costOptEnd[n] = np.array(costOptEnd[n])
-    meanCostOptEnd[n] = np.mean(costOptEnd[n])
-    stdDevCostOptEnd[n] = np.std(costOptEnd[n])
+#     costOptFull[n] = np.array(costOptFull[n])
+#     meanCostOptFull[n] = np.mean(costOptFull[n])
+#     stdDevCostOptFull[n] = np.std(costOptFull[n])
+#     costOptEnd[n] = np.array(costOptEnd[n])
+#     meanCostOptEnd[n] = np.mean(costOptEnd[n])
+#     stdDevCostOptEnd[n] = np.std(costOptEnd[n])
     
-    if doPrint:
-        print("\t%8s: %8.4f (+-%6.4f) [Optm/Full]" % (
-                'Optimal',
-                meanCostOptFull[n],
-                stdDevCostOptFull[n]))
-        print("\t%9s %8.4f (+-%6.4f) [Optm/End ]" % (
-                '',
-                meanCostOptEnd[n],
-                stdDevCostOptEnd[n]))
+#     if doPrint:
+#         print("\t%8s: %8.4f (+-%6.4f) [Optm/Full]" % (
+#                 'Optimal',
+#                 meanCostOptFull[n],
+#                 stdDevCostOptFull[n]))
+#         print("\t%9s %8.4f (+-%6.4f) [Optm/End ]" % (
+#                 '',
+#                 meanCostOptEnd[n],
+#                 stdDevCostOptEnd[n]))
         
-    # Save values
-    writeVarValues(varsFile,
-               {'meanCostOptFull%03d' % nAgentsTest[n]: meanCostOptFull[n],
-                'stdDevCostOptFull%03d' % nAgentsTest[n]: stdDevCostOptFull[n],
-                'meanCostOptEnd%04d' % nAgentsTest[n]: meanCostOptEnd[n],
-                'stdDevCostOptEnd%04d' % nAgentsTest[n]: stdDevCostOptEnd[n]})
+#     # Save values
+#     writeVarValues(varsFile,
+#                {'meanCostOptFull%03d' % nAgentsTest[n]: meanCostOptFull[n],
+#                 'stdDevCostOptFull%03d' % nAgentsTest[n]: stdDevCostOptFull[n],
+#                 'meanCostOptEnd%04d' % nAgentsTest[n]: meanCostOptEnd[n],
+#                 'stdDevCostOptEnd%04d' % nAgentsTest[n]: stdDevCostOptEnd[n]})
     
-    for thisModel in modelList:
-        # Convert the lists into a nDataSplits vector
-        costBestFull[n][thisModel] = np.array(costBestFull[n][thisModel])
-        costBestEnd[n][thisModel] = np.array(costBestEnd[n][thisModel])
-        costLastFull[n][thisModel] = np.array(costLastFull[n][thisModel])
-        costLastEnd[n][thisModel] = np.array(costLastEnd[n][thisModel])
+#     for thisModel in modelList:
+#         # Convert the lists into a nDataSplits vector
+#         costBestFull[n][thisModel] = np.array(costBestFull[n][thisModel])
+#         costBestEnd[n][thisModel] = np.array(costBestEnd[n][thisModel])
+#         costLastFull[n][thisModel] = np.array(costLastFull[n][thisModel])
+#         costLastEnd[n][thisModel] = np.array(costLastEnd[n][thisModel])
     
-        # And now compute the statistics (across graphs)
-        meanCostBestFull[n][thisModel] = np.mean(costBestFull[n][thisModel])
-        meanCostBestEnd[n][thisModel] = np.mean(costBestEnd[n][thisModel])
-        meanCostLastFull[n][thisModel] = np.mean(costLastFull[n][thisModel])
-        meanCostLastEnd[n][thisModel] = np.mean(costLastEnd[n][thisModel])
-        stdDevCostBestFull[n][thisModel] = np.std(costBestFull[n][thisModel])
-        stdDevCostBestEnd[n][thisModel] = np.std(costBestEnd[n][thisModel])
-        stdDevCostLastFull[n][thisModel] = np.std(costLastFull[n][thisModel])
-        stdDevCostLastEnd[n][thisModel] = np.std(costLastEnd[n][thisModel])
+#         # And now compute the statistics (across graphs)
+#         meanCostBestFull[n][thisModel] = np.mean(costBestFull[n][thisModel])
+#         meanCostBestEnd[n][thisModel] = np.mean(costBestEnd[n][thisModel])
+#         meanCostLastFull[n][thisModel] = np.mean(costLastFull[n][thisModel])
+#         meanCostLastEnd[n][thisModel] = np.mean(costLastEnd[n][thisModel])
+#         stdDevCostBestFull[n][thisModel] = np.std(costBestFull[n][thisModel])
+#         stdDevCostBestEnd[n][thisModel] = np.std(costBestEnd[n][thisModel])
+#         stdDevCostLastFull[n][thisModel] = np.std(costLastFull[n][thisModel])
+#         stdDevCostLastEnd[n][thisModel] = np.std(costLastEnd[n][thisModel])
     
-        # And print it:
-        if doPrint:
-            print(
-              "\t%s: %8.4f (+-%6.4f) [Best/Full] %8.4f (+-%6.4f) [Last/Full]"%(
-                    thisModel,
-                    meanCostBestFull[n][thisModel],
-                    stdDevCostBestFull[n][thisModel],
-                    meanCostLastFull[n][thisModel],
-                    stdDevCostLastFull[n][thisModel]))
-            print(
-              "\t%9s %8.4f (+-%6.4f) [Best/End ] %8.4f (+-%6.4f) [Last/End ]"%(
-                    '',
-                    meanCostBestEnd[n][thisModel],
-                    stdDevCostBestEnd[n][thisModel],
-                    meanCostLastEnd[n][thisModel],
-                    stdDevCostLastEnd[n][thisModel]))
+#         # And print it:
+#         if doPrint:
+#             print(
+#               "\t%s: %8.4f (+-%6.4f) [Best/Full] %8.4f (+-%6.4f) [Last/Full]"%(
+#                     thisModel,
+#                     meanCostBestFull[n][thisModel],
+#                     stdDevCostBestFull[n][thisModel],
+#                     meanCostLastFull[n][thisModel],
+#                     stdDevCostLastFull[n][thisModel]))
+#             print(
+#               "\t%9s %8.4f (+-%6.4f) [Best/End ] %8.4f (+-%6.4f) [Last/End ]"%(
+#                     '',
+#                     meanCostBestEnd[n][thisModel],
+#                     stdDevCostBestEnd[n][thisModel],
+#                     meanCostLastEnd[n][thisModel],
+#                     stdDevCostLastEnd[n][thisModel]))
     
-        # Save values
-        writeVarValues(varsFile,
-                   {'meanAccBestFull%s%03d' % (thisModel, nAgentsTest[n]): 
-                                               meanCostBestFull[n][thisModel],
-                    'stdDevAccBestFull%s%03d' % (thisModel, nAgentsTest[n]): 
-                                               stdDevCostBestFull[n][thisModel],
-                    'meanAccBestEnd%s%04d' % (thisModel, nAgentsTest[n]): 
-                                               meanCostBestEnd[n][thisModel],
-                    'stdDevAccBestEnd%s%04d' % (thisModel, nAgentsTest[n]): 
-                                               stdDevCostBestEnd[n][thisModel],
-                    'meanAccLastFull%s%03d' % (thisModel, nAgentsTest[n]): 
-                                               meanCostLastFull[n][thisModel],
-                    'stdDevAccLastFull%s%03d' % (thisModel, nAgentsTest[n]): 
-                                               stdDevCostLastFull[n][thisModel],
-                    'meanAccLastEnd%s%04d' % (thisModel, nAgentsTest[n]): 
-                                               meanCostLastEnd[n][thisModel],
-                    'stdDevAccLastEnd%s%04d' % (thisModel, nAgentsTest[n]): 
-                                               stdDevCostLastEnd[n][thisModel]})
+#         # Save values
+#         writeVarValues(varsFile,
+#                    {'meanAccBestFull%s%03d' % (thisModel, nAgentsTest[n]): 
+#                                                meanCostBestFull[n][thisModel],
+#                     'stdDevAccBestFull%s%03d' % (thisModel, nAgentsTest[n]): 
+#                                                stdDevCostBestFull[n][thisModel],
+#                     'meanAccBestEnd%s%04d' % (thisModel, nAgentsTest[n]): 
+#                                                meanCostBestEnd[n][thisModel],
+#                     'stdDevAccBestEnd%s%04d' % (thisModel, nAgentsTest[n]): 
+#                                                stdDevCostBestEnd[n][thisModel],
+#                     'meanAccLastFull%s%03d' % (thisModel, nAgentsTest[n]): 
+#                                                meanCostLastFull[n][thisModel],
+#                     'stdDevAccLastFull%s%03d' % (thisModel, nAgentsTest[n]): 
+#                                                stdDevCostLastFull[n][thisModel],
+#                     'meanAccLastEnd%s%04d' % (thisModel, nAgentsTest[n]): 
+#                                                meanCostLastEnd[n][thisModel],
+#                     'stdDevAccLastEnd%s%04d' % (thisModel, nAgentsTest[n]): 
+#                                                stdDevCostLastEnd[n][thisModel]})
             
-    # Save the printed info into the .txt file as well
-    with open(varsFile, 'a+') as file:
-        file.write("\n[%3d Agents] Final evaluations (%02d data splits)" % \
-                                               (nAgentsTest[n], nRealizations))
-        file.write("\t%8s: %8.4f (+-%6.4f) [Optm/Full]" % (
-                   'Optimal',
-                   meanCostOptFull[n],
-                   stdDevCostOptFull[n]))
-        file.write("\t%9s %8.4f (+-%6.4f) [Optm/End ]" % (
-                   '',
-                   meanCostOptEnd[n],
-                   stdDevCostOptEnd[n]))
-        for thisModel in modelList:
-            file.write(
-              "\t%s: %8.4f (+-%6.4f) [Best/Full] %8.4f (+-%6.4f) [Last/Full]"%(
-                    thisModel,
-                    meanCostBestFull[n][thisModel],
-                    stdDevCostBestFull[n][thisModel],
-                    meanCostLastFull[n][thisModel],
-                    stdDevCostLastFull[n][thisModel]))
-            file.write(
-              "\t%9s %8.4f (+-%6.4f) [Best/End ] %8.4f (+-%6.4f) [Last/End ]"%(
-                    '',
-                    meanCostBestEnd[n][thisModel],
-                    stdDevCostBestEnd[n][thisModel],
-                    meanCostLastEnd[n][thisModel],
-                    stdDevCostLastEnd[n][thisModel]))
-        file.write('\n')
+#     # Save the printed info into the .txt file as well
+#     with open(varsFile, 'a+') as file:
+#         file.write("\n[%3d Agents] Final evaluations (%02d data splits)" % \
+#                                                (nAgentsTest[n], nRealizations))
+#         file.write("\t%8s: %8.4f (+-%6.4f) [Optm/Full]" % (
+#                    'Optimal',
+#                    meanCostOptFull[n],
+#                    stdDevCostOptFull[n]))
+#         file.write("\t%9s %8.4f (+-%6.4f) [Optm/End ]" % (
+#                    '',
+#                    meanCostOptEnd[n],
+#                    stdDevCostOptEnd[n]))
+#         for thisModel in modelList:
+#             file.write(
+#               "\t%s: %8.4f (+-%6.4f) [Best/Full] %8.4f (+-%6.4f) [Last/Full]"%(
+#                     thisModel,
+#                     meanCostBestFull[n][thisModel],
+#                     stdDevCostBestFull[n][thisModel],
+#                     meanCostLastFull[n][thisModel],
+#                     stdDevCostLastFull[n][thisModel]))
+#             file.write(
+#               "\t%9s %8.4f (+-%6.4f) [Best/End ] %8.4f (+-%6.4f) [Last/End ]"%(
+#                     '',
+#                     meanCostBestEnd[n][thisModel],
+#                     stdDevCostBestEnd[n][thisModel],
+#                     meanCostLastEnd[n][thisModel],
+#                     stdDevCostLastEnd[n][thisModel]))
+#         file.write('\n')
 
 #%%##################################################################
 #                                                                   #
@@ -1248,7 +1286,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 
-gnn_test = np.load('./gnn_test.npz') # the data file loaded from the example folder
+gnn_test = np.load('./gnn_test_connection_1.npz') # the data file loaded from the example folder
 
 matplotlib.rc('figure', max_open_warning = 0)
 
@@ -1258,83 +1296,143 @@ accelTest = gnn_test['accelTestBest']
 stateTest = gnn_test['stateTestBest']
 commGraphTest = gnn_test['commGraphTestBest']
 
-posTestBestBrokenGraph = gnn_test['posTestBestBrokenGraph']
-velTestBestBrokenGraph = gnn_test['velTestBestBrokenGraph']
-accelTestBestBrokenGraph = gnn_test['accelTestBestBrokenGraph']
-stateTestBestBrokenGraph = gnn_test['stateTestBestBrokenGraph']
-commGraphTestBestBrokenGraph = gnn_test['commGraphTestBestBrokenGraph']
-
-posOptim, velOptim, accelOptim = data.computeOptimalTrajectory(posTest[:,0,:,:], \
-                                                               posTest[:,0,:,:], \
-                                                                   duration=data.duration, \
-                                                                       samplingTime=data.samplingTime, \
-                                                                           repelDist=data.repelDist, \
-                                                                               accelMax=data.accelMax)
+M = 14
 
 # plot the velocity of all agents via the GNN method
-for i in range(0, 1, 1):
-    plt.figure()
+plt.figure()
+for i in range(0+M, 1+M, 1):
     plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, 50, 1):
+    for j in range(0, nAgents, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), np.sqrt(velTest[i, :, 0, j]**2 + velTest[i, :, 1, j]**2)) 
+        plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(velTest[i, :, 0, j]**2 + velTest[i, :, 1, j]**2)) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
-    plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-    plt.title(r'$\bf v_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller without noises)')
-    plt.grid()
-    plt.show()    
+plt.xlabel(r'$time (s)$')
+plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
+plt.title(r'$\bf v_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
+plt.grid()
+plt.show()    
 # end for
 
-# plot the velocity of all agents via the GNN method with Noises
-for i in range(0, 1, 1):
-    plt.figure()
-    plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, 50, 1):
-        # the input and output features are two dimensions, which means that one 
-        # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), np.sqrt(velTestBestBrokenGraph[i, :, 0, j]**2 + velTestBestBrokenGraph[i, :, 1, j]**2)) 
-        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-    # end for 
-    plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-    plt.title(r'$\bf v_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller with noises)')
-    plt.grid()
-    plt.show()    
-# end for
+# plt.figure()
+# # plot the velocity of all agents via the GNN method
+# for i in range(0, 1, 1):
+#     plt.rcParams["figure.figsize"] = (6.4,4.8)
+#     for j in range(0, nAgents, 1):
+#         # the input and output features are two dimensions, which means that one 
+#         # dimension is for x-axis velocity, the other one is for y-axis velocity 
+#         plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(accelTest[i, :, 0, j]**2 + accelTest[i, :, 1, j]**2)) 
+#         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+#     # end for 
+# plt.xlabel(r'$time (s)$')
+# plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
+# plt.title(r'$\bf a_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
+# plt.grid()
+# plt.show()    
+# # end for
+
+###############################################################################
+del gnn_test
+del posTest
+del velTest
+del accelTest
+del stateTest
+del commGraphTest
+
+gnn_test = np.load('./gnn_test_connection_5.npz') # the data file loaded from the example folder
+
+matplotlib.rc('figure', max_open_warning = 0)
+
+posTest = gnn_test['posTestBest']
+velTest = gnn_test['velTestBest']
+accelTest = gnn_test['accelTestBest']
+stateTest = gnn_test['stateTestBest']
+commGraphTest = gnn_test['commGraphTestBest']
 
 # plot the velocity of all agents via the GNN method
-for i in range(0, 1, 1):
-    plt.figure()
+plt.figure()
+for i in range(0+M, 1+M, 1):
     plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, 50, 1):
+    for j in range(0, nAgents, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), np.sqrt(accelTest[i, :, 0, j]**2 + accelTest[i, :, 1, j]**2)) 
+        plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(velTest[i, :, 0, j]**2 + velTest[i, :, 1, j]**2)) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
-    plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
-    plt.title(r'$\bf a_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller without noises)')
-    plt.grid()
-    plt.show()    
+plt.xlabel(r'$time (s)$')
+plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
+plt.title(r'$\bf v_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
+plt.grid()
+plt.show()    
 # end for
 
-# plot the velocity of all agents via the GNN method with Noises
-for i in range(0, 1, 1):
-    plt.figure()
+# plt.figure()
+# # plot the velocity of all agents via the GNN method
+# for i in range(0, 1, 1):
+#     plt.rcParams["figure.figsize"] = (6.4,4.8)
+#     for j in range(0, nAgents, 1):
+#         # the input and output features are two dimensions, which means that one 
+#         # dimension is for x-axis velocity, the other one is for y-axis velocity 
+#         plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(accelTest[i, :, 0, j]**2 + accelTest[i, :, 1, j]**2)) 
+#         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+#     # end for 
+# plt.xlabel(r'$time (s)$')
+# plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
+# plt.title(r'$\bf a_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
+# plt.grid()
+# plt.show()    
+# # end for
+
+###############################################################################
+del gnn_test
+del posTest
+del velTest
+del accelTest
+del stateTest
+del commGraphTest
+
+gnn_test = np.load('./gnn_test_connection_10.npz') # the data file loaded from the example folder
+
+matplotlib.rc('figure', max_open_warning = 0)
+
+posTest = gnn_test['posTestBest']
+velTest = gnn_test['velTestBest']
+accelTest = gnn_test['accelTestBest']
+stateTest = gnn_test['stateTestBest']
+commGraphTest = gnn_test['commGraphTestBest']
+
+# plot the velocity of all agents via the GNN method
+plt.figure()
+for i in range(0+M, 1+M, 1):
     plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, 50, 1):
+    for j in range(0, nAgents, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), np.sqrt(accelTestBestBrokenGraph[i, :, 0, j]**2 + accelTestBestBrokenGraph[i, :, 1, j]**2)) 
+        plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(velTest[i, :, 0, j]**2 + velTest[i, :, 1, j]**2)) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
-    plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
-    plt.title(r'$\bf a_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller with noises)')
-    plt.grid()
-    plt.show()    
+plt.xlabel(r'$time (s)$')
+plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
+plt.title(r'$\bf v_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
+plt.grid()
+plt.show()    
 # end for
+
+# plt.figure()
+# # plot the velocity of all agents via the GNN method
+# for i in range(0, 1, 1):
+#     plt.rcParams["figure.figsize"] = (6.4,4.8)
+#     for j in range(0, nAgents, 1):
+#         # the input and output features are two dimensions, which means that one 
+#         # dimension is for x-axis velocity, the other one is for y-axis velocity 
+#         plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(accelTest[i, :, 0, j]**2 + accelTest[i, :, 1, j]**2)) 
+#         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+#     # end for 
+# plt.xlabel(r'$time (s)$')
+# plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
+# plt.title(r'$\bf a_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
+# plt.grid()
+# plt.show()    
+# # end for
+
