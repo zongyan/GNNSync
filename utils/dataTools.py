@@ -1,6 +1,5 @@
 import os
 import pickle
-import hdf5storage # This is required to import old Matlab(R) files.
 import urllib.request # To download from the internet
 import zipfile # To handle zip files
 import gzip # To handle gz files
