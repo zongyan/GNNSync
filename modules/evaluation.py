@@ -212,6 +212,11 @@ def evaluateFlocking(model, data, **kwargs):
             realizationNo = -1
     else:
         realizationNo = -1
+        
+    if 'nnType' in kwargs.keys():
+        nnType = kwargs['nnType']
+    else:
+        nnType = 'LocalGNN'    
 
     #\\\\\\\\\\\\\\\\\\\\
     #\\\ TRAJECTORIES \\\
@@ -303,16 +308,26 @@ def evaluateFlocking(model, data, **kwargs):
         
         batch += 1    
             
-        
-    SavedPath ='./gnn_test.npz'
-    np.savez(SavedPath, posTestBest=posTestBest, velTestBest=velTestBest, \
-             accelTestBest=accelTestBest, stateTestBest=stateTestBest, \
-                 commGraphTestBest=commGraphTestBest, \
-                     posTestBestBrokenGraph=posTestBestBrokenGraph, velTestBestBrokenGraph=velTestBestBrokenGraph, \
-                          accelTestBestBrokenGraph=accelTestBestBrokenGraph, stateTestBestBrokenGraph=stateTestBestBrokenGraph, \
-                              commGraphTestBestBrokenGraph=commGraphTestBestBrokenGraph)
-    print("\tSaved the test data to the following path: ./gnn_test.npz...", end = ' ')        
-
+    if nnType=='LocalGNN': 
+        SavedPath ='./gnn_test_gnn.npz'
+        np.savez(SavedPath, posTestBest=posTestBest, velTestBest=velTestBest, \
+                 accelTestBest=accelTestBest, stateTestBest=stateTestBest, \
+                     commGraphTestBest=commGraphTestBest, \
+                         posTestBestBrokenGraph=posTestBestBrokenGraph, velTestBestBrokenGraph=velTestBestBrokenGraph, \
+                              accelTestBestBrokenGraph=accelTestBestBrokenGraph, stateTestBestBrokenGraph=stateTestBestBrokenGraph, \
+                                  commGraphTestBestBrokenGraph=commGraphTestBestBrokenGraph)
+        print("\tSaved the test data to the following path: ./gnn_test_gnn.npz...", end = ' ')        
+    else:
+        SavedPath ='./gnn_test_fnn.npz'
+        np.savez(SavedPath, posTestBest=posTestBest, velTestBest=velTestBest, \
+                 accelTestBest=accelTestBest, stateTestBest=stateTestBest, \
+                     commGraphTestBest=commGraphTestBest, \
+                         posTestBestBrokenGraph=posTestBestBrokenGraph, velTestBestBrokenGraph=velTestBestBrokenGraph, \
+                              accelTestBestBrokenGraph=accelTestBestBrokenGraph, stateTestBestBrokenGraph=stateTestBestBrokenGraph, \
+                                  commGraphTestBestBrokenGraph=commGraphTestBestBrokenGraph)
+        print("\tSaved the test data to the following path: ./gnn_test_fnn.npz...", end = ' ')                    
+            
+            
     if doPrint:
         print("OK")
 

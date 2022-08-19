@@ -2557,12 +2557,10 @@ class Flocking(_data):
         self.commGraph['valid'] = commGraphAll[startSample:endSample]
         self.state['valid'] = stateAll[startSample:endSample]
         #   Testing set
-        startSample = self.nTrain + self.nValid
-        endSample = self.nTrain + self.nValid + self.nTest
         #######################################################################        
         commGraphTest = deepcopy(commGraphAll[0:self.nTrain]) # (nSamples, tSamples, nAgents, nAgents)
 
-        numBreakConnections = 1
+        numBreakConnections = 5
         
         # Compute communication graph
         for i in range(commGraphTest.shape[0]): # nSamples
@@ -2578,15 +2576,15 @@ class Flocking(_data):
             # end for
         # end for        
         #######################################################################
-        self.samples['test']['signals'] = stateAll[startSample:endSample].copy()
-        self.samples['test']['targets'] = accelAll[startSample:endSample].copy()
-        self.initPos['test'] = initPosAll[startSample:endSample]
-        self.initVel['test'] = initVelAll[startSample:endSample]
-        self.pos['test'] = posAll[startSample:endSample]
-        self.vel['test'] = velAll[startSample:endSample]
-        self.accel['test'] = accelAll[startSample:endSample]
+        self.samples['test']['signals'] = stateAll[0:self.nTrain].copy()
+        self.samples['test']['targets'] = accelAll[0:self.nTrain].copy()
+        self.initPos['test'] = initPosAll[0:self.nTrain]
+        self.initVel['test'] = initVelAll[0:self.nTrain]
+        self.pos['test'] = posAll[0:self.nTrain]
+        self.vel['test'] = velAll[0:self.nTrain]
+        self.accel['test'] = accelAll[0:self.nTrain]
         self.commGraph['test'] = commGraphTest
-        self.state['test'] = stateAll[startSample:endSample]
+        self.state['test'] = stateAll[0:self.nTrain]
         
         # Change data to specified type and device
         self.astype(self.dataType)
@@ -3299,7 +3297,7 @@ class Flocking(_data):
                     thisAccel = archit(x, S)
                 # Now that we have computed the acceleration, we only care 
                 # about the last element in time
-                thisAccel = thisAccel.cpu().numpy()[:,-1,:,:] * (1+0.01)
+                thisAccel = thisAccel.cpu().numpy()[:,-1,:,:] * (1.0+0.01)
                 thisAccel[thisAccel > self.accelMax] = self.accelMax
                 thisAccel[thisAccel < -self.accelMax] = self.accelMax
                 # And save it

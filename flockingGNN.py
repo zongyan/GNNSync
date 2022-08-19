@@ -230,7 +230,7 @@ nonlinearity = nn.Tanh # Chosen nonlinearity for nonlinear architectures
 
 # Select desired architectures
 doLocalFlt = False # Local filter (no nonlinearity)
-doLocalGNN = True # Local GNN (include nonlinearity)
+doLocalGNN = False # Local GNN (include nonlinearity)
 doDlAggGNN = False
 doGraphRNN = False
 doLocalFNN = True
@@ -336,7 +336,7 @@ if doLocalFNN:
     hParamsLocalFNN['nonlinearity'] = nonlinearity # Selected nonlinearity
         # is affected by the summary
     # Readout layer: local linear combination of features
-    hParamsLocalFNN['dimReadout'] = [64, 32, 16, 8, 4, 2] # Dimension of the fully connected
+    hParamsLocalFNN['dimReadout'] = [32, 32, 16, 2] # Dimension of the fully connected
         # layers after the GCN layers (map); this fully connected layer
         # is applied only at each node, without any further exchanges nor 
         # considering all nodes at once, making the architecture entirely
@@ -934,6 +934,7 @@ for realization in range(nRealizations):
             addKW = {}
             addKW['nVideos'] = nVideos
             addKW['graphNo'] = nAgentsTest[n]
+            addKW['nnType'] = thisModel
             if nRealizations > 1:
                 addKW['realizationNo'] = realization
                 
@@ -1282,157 +1283,122 @@ with open(varsFile, 'a+') as file:
 
 #%%
 
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
+if doLocalGNN == True: 
 
-gnn_test = np.load('./gnn_test_connection_1.npz') # the data file loaded from the example folder
-
-matplotlib.rc('figure', max_open_warning = 0)
-
-posTest = gnn_test['posTestBest']
-velTest = gnn_test['velTestBest']
-accelTest = gnn_test['accelTestBest']
-stateTest = gnn_test['stateTestBest']
-commGraphTest = gnn_test['commGraphTestBest']
-
-M = 14
-
-# plot the velocity of all agents via the GNN method
-plt.figure()
-for i in range(0+M, 1+M, 1):
-    plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, nAgents, 1):
-        # the input and output features are two dimensions, which means that one 
-        # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(velTest[i, :, 0, j]**2 + velTest[i, :, 1, j]**2)) 
-        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-    # end for 
-plt.xlabel(r'$time (s)$')
-plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-plt.title(r'$\bf v_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
-plt.grid()
-plt.show()    
-# end for
-
-# plt.figure()
-# # plot the velocity of all agents via the GNN method
-# for i in range(0, 1, 1):
-#     plt.rcParams["figure.figsize"] = (6.4,4.8)
-#     for j in range(0, nAgents, 1):
-#         # the input and output features are two dimensions, which means that one 
-#         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-#         plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(accelTest[i, :, 0, j]**2 + accelTest[i, :, 1, j]**2)) 
-#         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-#     # end for 
-# plt.xlabel(r'$time (s)$')
-# plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
-# plt.title(r'$\bf a_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
-# plt.grid()
-# plt.show()    
-# # end for
-
-###############################################################################
-del gnn_test
-del posTest
-del velTest
-del accelTest
-del stateTest
-del commGraphTest
-
-gnn_test = np.load('./gnn_test_connection_5.npz') # the data file loaded from the example folder
-
-matplotlib.rc('figure', max_open_warning = 0)
-
-posTest = gnn_test['posTestBest']
-velTest = gnn_test['velTestBest']
-accelTest = gnn_test['accelTestBest']
-stateTest = gnn_test['stateTestBest']
-commGraphTest = gnn_test['commGraphTestBest']
-
-# plot the velocity of all agents via the GNN method
-plt.figure()
-for i in range(0+M, 1+M, 1):
-    plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, nAgents, 1):
-        # the input and output features are two dimensions, which means that one 
-        # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(velTest[i, :, 0, j]**2 + velTest[i, :, 1, j]**2)) 
-        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-    # end for 
-plt.xlabel(r'$time (s)$')
-plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-plt.title(r'$\bf v_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
-plt.grid()
-plt.show()    
-# end for
-
-# plt.figure()
-# # plot the velocity of all agents via the GNN method
-# for i in range(0, 1, 1):
-#     plt.rcParams["figure.figsize"] = (6.4,4.8)
-#     for j in range(0, nAgents, 1):
-#         # the input and output features are two dimensions, which means that one 
-#         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-#         plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(accelTest[i, :, 0, j]**2 + accelTest[i, :, 1, j]**2)) 
-#         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-#     # end for 
-# plt.xlabel(r'$time (s)$')
-# plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
-# plt.title(r'$\bf a_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
-# plt.grid()
-# plt.show()    
-# # end for
+    import numpy as np
+    import matplotlib
+    import matplotlib.pyplot as plt
+    
+    gnn_test = np.load('./gnn_test_gnn.npz') # the data file loaded from the example folder
+    
+    matplotlib.rc('figure', max_open_warning = 0)
+    
+    posTest = gnn_test['posTestBest']
+    velTest = gnn_test['velTestBest']
+    accelTest = gnn_test['accelTestBest']
+    stateTest = gnn_test['stateTestBest']
+    commGraphTest = gnn_test['commGraphTestBest']
+    
+    posTestBrokenGraph = gnn_test['posTestBestBrokenGraph']
+    velTestBrokenGraph = gnn_test['velTestBestBrokenGraph']
+    accelTestBrokenGraph = gnn_test['accelTestBestBrokenGraph']
+    stateTestBrokenGraph = gnn_test['stateTestBestBrokenGraph']
+    commGraphTestBrokenGraph = gnn_test['commGraphTestBestBrokenGraph']
+    
+    M = 14
+    
+    # plot the velocity of all agents via the GNN method
+    plt.figure()
+    for i in range(0+M, 1+M, 1):
+        plt.rcParams["figure.figsize"] = (6.4,4.8)
+        for j in range(0, nAgents, 1):
+            # the input and output features are two dimensions, which means that one 
+            # dimension is for x-axis velocity, the other one is for y-axis velocity 
+            plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(velTest[i, :, 0, j]**2 + velTest[i, :, 1, j]**2)) 
+            # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+        # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
+    plt.title(r'$\bf v_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
+    plt.grid()
+    plt.show()    
+    # end for
+    
+    plt.figure()
+    # plot the velocity of all agents via the GNN method
+    for i in range(0, 1, 1):
+        plt.rcParams["figure.figsize"] = (6.4,4.8)
+        for j in range(0, nAgents, 1):
+            # the input and output features are two dimensions, which means that one 
+            # dimension is for x-axis velocity, the other one is for y-axis velocity 
+            plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(accelTest[i, :, 0, j]**2 + accelTest[i, :, 1, j]**2)) 
+            # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+        # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
+    plt.title(r'$\bf a_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
+    plt.grid()
+    plt.show()    
+    # end for
 
 ###############################################################################
-del gnn_test
-del posTest
-del velTest
-del accelTest
-del stateTest
-del commGraphTest
+if doLocalFNN == True:
+    
+    import numpy as np
+    import matplotlib
+    import matplotlib.pyplot as plt
+           
+    gnn_test = np.load('./gnn_test_fnn.npz') # the data file loaded from the example folder
+    
+    matplotlib.rc('figure', max_open_warning = 0)
+    
+    posTest = gnn_test['posTestBest']
+    velTest = gnn_test['velTestBest']
+    accelTest = gnn_test['accelTestBest']
+    stateTest = gnn_test['stateTestBest']
+    commGraphTest = gnn_test['commGraphTestBest']
+    
+    posTestBrokenGraph = gnn_test['posTestBestBrokenGraph']
+    velTestBrokenGraph = gnn_test['velTestBestBrokenGraph']
+    accelTestBrokenGraph = gnn_test['accelTestBestBrokenGraph']
+    stateTestBrokenGraph = gnn_test['stateTestBestBrokenGraph']
+    commGraphTestBrokenGraph = gnn_test['commGraphTestBestBrokenGraph']
 
-gnn_test = np.load('./gnn_test_connection_10.npz') # the data file loaded from the example folder
-
-matplotlib.rc('figure', max_open_warning = 0)
-
-posTest = gnn_test['posTestBest']
-velTest = gnn_test['velTestBest']
-accelTest = gnn_test['accelTestBest']
-stateTest = gnn_test['stateTestBest']
-commGraphTest = gnn_test['commGraphTestBest']
-
-# plot the velocity of all agents via the GNN method
-plt.figure()
-for i in range(0+M, 1+M, 1):
-    plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, nAgents, 1):
-        # the input and output features are two dimensions, which means that one 
-        # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(velTest[i, :, 0, j]**2 + velTest[i, :, 1, j]**2)) 
-        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-    # end for 
-plt.xlabel(r'$time (s)$')
-plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-plt.title(r'$\bf v_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
-plt.grid()
-plt.show()    
-# end for
-
-# plt.figure()
-# # plot the velocity of all agents via the GNN method
-# for i in range(0, 1, 1):
-#     plt.rcParams["figure.figsize"] = (6.4,4.8)
-#     for j in range(0, nAgents, 1):
-#         # the input and output features are two dimensions, which means that one 
-#         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-#         plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(accelTest[i, :, 0, j]**2 + accelTest[i, :, 1, j]**2)) 
-#         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-#     # end for 
-# plt.xlabel(r'$time (s)$')
-# plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
-# plt.title(r'$\bf a_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
-# plt.grid()
-# plt.show()    
-# # end for
-
+    M = 9
+    
+    # plot the velocity of all agents via the GNN method
+    plt.figure()
+    for i in range(0+M, 1+M, 1):
+        plt.rcParams["figure.figsize"] = (6.4,4.8)
+        for j in range(0, nAgents, 1):
+            # the input and output features are two dimensions, which means that one 
+            # dimension is for x-axis velocity, the other one is for y-axis velocity 
+            plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(velTest[i, :, 0, j]**2 + velTest[i, :, 1, j]**2)) 
+            # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+        # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
+    plt.title(r'$\bf v_{fnn}$ for ' + str(nAgents)+ ' agents (fnn controller)')
+    plt.grid()
+    plt.show()    
+    # end for
+    
+    plt.figure()
+    # plot the velocity of all agents via the GNN method
+    for i in range(0, 1, 1):
+        plt.rcParams["figure.figsize"] = (6.4,4.8)
+        for j in range(0, nAgents, 1):
+            # the input and output features are two dimensions, which means that one 
+            # dimension is for x-axis velocity, the other one is for y-axis velocity 
+            plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(accelTest[i, :, 0, j]**2 + accelTest[i, :, 1, j]**2)) 
+            # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+        # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
+    plt.title(r'$\bf a_{fnn}$ for ' + str(nAgents)+ ' agents (fnn controller)')
+    plt.grid()
+    plt.show()    
+    # end for
+    
+    
+    
