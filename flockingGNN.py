@@ -230,7 +230,7 @@ nonlinearity = nn.Tanh # Chosen nonlinearity for nonlinear architectures
 
 # Select desired architectures
 doLocalFlt = False # Local filter (no nonlinearity)
-doLocalGNN = False # Local GNN (include nonlinearity)
+doLocalGNN = True # Local GNN (include nonlinearity)
 doDlAggGNN = False
 doGraphRNN = False
 doLocalFNN = True
@@ -1305,7 +1305,7 @@ if doLocalGNN == True:
     stateTestBrokenGraph = gnn_test['stateTestBestBrokenGraph']
     commGraphTestBrokenGraph = gnn_test['commGraphTestBestBrokenGraph']
     
-    M = 14
+    M = 6
     
     # plot the velocity of all agents via the GNN method
     plt.figure()
@@ -1331,12 +1331,12 @@ if doLocalGNN == True:
         for j in range(0, nAgents, 1):
             # the input and output features are two dimensions, which means that one 
             # dimension is for x-axis velocity, the other one is for y-axis velocity 
-            plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(accelTest[i, :, 0, j]**2 + accelTest[i, :, 1, j]**2)) 
+            plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(posTest[i, :, 0, j]**2 + posTest[i, :, 1, j]**2)) 
             # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
         # end for 
     plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
-    plt.title(r'$\bf a_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
+    plt.ylabel(r'$\|{\bf x}_{in}\|_2$')
+    plt.title(r'$\bf x_{gnn}$ for ' + str(nAgents)+ ' agents (gnn controller)')
     plt.grid()
     plt.show()    
     # end for
@@ -1364,7 +1364,7 @@ if doLocalFNN == True:
     stateTestBrokenGraph = gnn_test['stateTestBestBrokenGraph']
     commGraphTestBrokenGraph = gnn_test['commGraphTestBestBrokenGraph']
 
-    M = 9
+    # M = 9
     
     # plot the velocity of all agents via the GNN method
     plt.figure()
@@ -1390,12 +1390,12 @@ if doLocalFNN == True:
         for j in range(0, nAgents, 1):
             # the input and output features are two dimensions, which means that one 
             # dimension is for x-axis velocity, the other one is for y-axis velocity 
-            plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(accelTest[i, :, 0, j]**2 + accelTest[i, :, 1, j]**2)) 
+            plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(posTest[i, :, 0, j]**2 + posTest[i, :, 1, j]**2)) 
             # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
         # end for 
     plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf a}_{in}\|_2$')
-    plt.title(r'$\bf a_{fnn}$ for ' + str(nAgents)+ ' agents (fnn controller)')
+    plt.ylabel(r'$\|{\bf x}_{in}\|_2$')
+    plt.title(r'$\bf x_{fnn}$ for ' + str(nAgents)+ ' agents (fnn controller)')
     plt.grid()
     plt.show()    
     # end for
