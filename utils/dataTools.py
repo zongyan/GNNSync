@@ -2560,21 +2560,34 @@ class Flocking(_data):
         #######################################################################        
         commGraphTest = deepcopy(commGraphAll[0:self.nTrain]) # (nSamples, tSamples, nAgents, nAgents)
 
-        numBreakConnections = 10
+        numBreakNodes = 10
+        breakNodeIDHistory = []
         
-        # Compute communication graph
-        for i in range(commGraphTest.shape[0]): # nSamples
-            yCoord = np.random.randint(low=0, high=50)
-            xCoord = np.random.randint(low=0, high=50)
-            for j in range(commGraphTest.shape[1]): # tSamples
-                if j <= (numBreakConnections-1):
-                    if commGraphTest[i, j, xCoord, yCoord] == 1:
-                        commGraphTest[i, j, xCoord, yCoord] = 0
-                        commGraphTest[i, j, yCoord, xCoord] = 0                    
-                    # end if
-                # end if
-            # end for
-        # end for        
+        # Compute the W matrix at the equation of S^hat = W * S + B
+        W = np.identity(self.nAgents, dtype=np.int64)                                        
+        for i in range(numBreakNodes):
+            breakNodeID = np.random.randint(low=0, high=self.nAgents)  
+            print(breakNodeID)
+            while breakNodeID in breakNodeIDHistory:
+                breakNodeID = np.random.randint(low=0, high=self.nAgents)  
+            # end while
+            
+            breakNodeIDHistory.append(breakNodeID)
+            print(breakNodeIDHistory)             
+            W[breakNodeID, breakNodeID] = 0                            
+        # end for 
+        
+        W = np.expand_dims(W, axis=(0, 1))
+        W = np.repeat(W, commGraphTest.shape[1], axis = 1)     
+        W = np.repeat(W, commGraphTest.shape[0], axis = 0)             
+        
+        # Compute the B matrix
+        B = np.zeros((self.nAgents,self.nAgents), dtype=np.int64)
+        B = np.expand_dims(B, axis=(0, 1))
+        B = np.repeat(B, commGraphTest.shape[1], axis = 1)     
+        B = np.repeat(B, commGraphTest.shape[0], axis = 0)                     
+    
+        NewcommGraphTest = np.matmul(W, commGraphTest) + B        
         #######################################################################
         self.samples['test']['signals'] = stateAll[0:self.nTrain].copy()
         self.samples['test']['targets'] = accelAll[0:self.nTrain].copy()
@@ -2583,7 +2596,7 @@ class Flocking(_data):
         self.pos['test'] = posAll[0:self.nTrain]
         self.vel['test'] = velAll[0:self.nTrain]
         self.accel['test'] = accelAll[0:self.nTrain]
-        self.commGraph['test'] = commGraphTest
+        self.commGraph['test'] = NewcommGraphTest
         self.state['test'] = stateAll[0:self.nTrain]
         
         # Change data to specified type and device
