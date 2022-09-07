@@ -296,22 +296,6 @@ def evaluateFlocking(model, data, **kwargs):
         print("\tPreview data...",
               end = ' ', flush = True)
 
-    data.saveVideo(os.path.join(learnedTrajectoriesDir,'Best'),
-                   posTestBest,
-                   nVideos,
-                   commGraph = commGraphTestBest,
-                   vel = velTestBest,
-                   videoSpeed = 0.5,
-                   doPrint = False)
-
-    data.saveVideo(os.path.join(learnedTrajectoriesDir,'Last'),
-                   posTestLast,
-                   nVideos,
-                   commGraph = commGraphTestLast,
-                   vel = velTestLast,
-                   videoSpeed = 0.5,
-                   doPrint = False)
-
     if doPrint:
         print("OK", flush = True)
 

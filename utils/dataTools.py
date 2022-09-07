@@ -30,7 +30,6 @@ Epidemics (class): loads the edge list of the friendship network of the high
 
 import os
 import pickle
-import hdf5storage # This is required to import old Matlab(R) files.
 import urllib.request # To download from the internet
 import zipfile # To handle zip files
 import gzip # To handle gz files
@@ -3430,7 +3429,8 @@ class Flocking(_data):
         # Create arrays to store the trajectory
         pos = np.zeros((nSamples, tSamples, 2, nAgents))
         vel = np.zeros((nSamples, tSamples, 2, nAgents))
-        accel = np.zeros((nSamples, tSamples, 2, nAgents))
+        deltaVel = np.zeros((nSamples, tSamples, 2, nAgents))        
+        deltaPos = np.zeros((nSamples, tSamples, 2, nAgents))                
         
         # Initial settings
         pos[:,0,:,:] = initPos
@@ -3457,18 +3457,19 @@ class Flocking(_data):
             #   gradient. Note that the gradient only counts when the distance 
             #   is smaller than the repel distance
             #       This is the mask to consider each of the differences
-            repelMask = (ijDistSq < (repelDist**2)).astype(ijDiffPos.dtype)
+            # repelMask = (ijDistSq < (repelDist**2)).astype(ijDiffPos.dtype)
             #       Apply the mask to the relevant differences
-            ijDiffPos = ijDiffPos * np.expand_dims(repelMask, 1)
+            # ijDiffPos = ijDiffPos * np.expand_dims(repelMask, 1)
             #       Compute the constant (1/||r_ij||^4 + 1/||r_ij||^2)
             ijDistSqInv = invertTensorEW(ijDistSq)
             #       Add the extra dimension
             ijDistSqInv = np.expand_dims(ijDistSqInv, 1)
             #   Compute the acceleration
-            accel[:,t-1,:,:] = \
-                    -np.sum(ijDiffVel, axis = 3) \
-                    +2* np.sum(ijDiffPos * (ijDistSqInv ** 2 + ijDistSqInv),
-                               axis = 3)
+            deltaVel[:,t-1,:,:] = \
+                    -np.sum(ijDiffVel, axis = 3) 
+                               
+            deltaPos[:,t-1,:,:] = \
+                    -np.sum(ijDiffPos, axis = 3)                                
                     
             # Finally, note that if the agents are too close together, the
             # acceleration will be very big to get them as far apart as
@@ -3476,20 +3477,19 @@ class Flocking(_data):
             # So let's add a limitation to the maximum aceleration
 
             # Find the places where the acceleration is big
-            thisAccel = accel[:,t-1,:,:].copy()
+            thisAccel = deltaVel[:,t-1,:,:].copy()
             # Values that exceed accelMax, force them to be accelMax
-            thisAccel[accel[:,t-1,:,:] > accelMax] = accelMax
+            # thisAccel[deltaVel[:,t-1,:,:] > accelMax] = accelMax
             # Values that are smaller than -accelMax, force them to be accelMax
-            thisAccel[accel[:,t-1,:,:] < -accelMax] = -accelMax
+            # thisAccel[deltaVel[:,t-1,:,:] < -accelMax] = -accelMax
             # And put it back
-            accel[:,t-1,:,:] = thisAccel
+            deltaVel[:,t-1,:,:] = thisAccel
             
             # Update the values
             #   Update velocity
-            vel[:,t,:,:] = accel[:,t-1,:,:] * samplingTime + vel[:,t-1,:,:]
+            vel[:,t,:,:] = vel[:,t-1,:,:] + 0.02 * deltaVel[:,t-1,:,:]
             #   Update the position
-            pos[:,t,:,:] = accel[:,t-1,:,:] * (samplingTime ** 2)/2 + \
-                                 vel[:,t-1,:,:] * samplingTime + pos[:,t-1,:,:]
+            pos[:,t,:,:] = pos[:,t-1,:,:] + 0.02 * deltaPos[:,t-1,:,:] + vel[:,t,:,:] * samplingTime            
             
             if self.doPrint:
                 # Sample percentage count
@@ -3503,7 +3503,7 @@ class Flocking(_data):
             # Erase the percentage
             print('\b \b' * 4, end = '', flush = True)
             
-        return pos, vel, accel
+        return pos, vel, deltaPos
         
     def computeInitialPositions(self, nAgents, nSamples, commRadius,
                                 minDist = 0.1, geometry = 'rectangular',
