@@ -2611,13 +2611,13 @@ class Flocking(_data):
     def computeStates(self, pos, vel, graphMatrix, **kwargs):
         
         # We get the following inputs.
-        # positions: nSamples x tSamples x 2 x nAgents
-        # velocities: nSamples x tSamples x 2 x nAgents
+        # positions: nSamples x tSamples x 1 x nAgents
+        # velocities: nSamples x tSamples x 1 x nAgents
         # graphMatrix: nSaples x tSamples x nAgents x nAgents
         
-        # And we want to build the state, which is a vector of dimension 6 on 
+        # And we want to build the state, which is a vector of dimension 2 on 
         # each node, that is, the output shape is
-        #   nSamples x tSamples x 6 x nAgents
+        #   nSamples x tSamples x 2 x nAgents
         
         # The print for this one can be settled independently, if not, use the
         # default of the data object
@@ -2630,22 +2630,21 @@ class Flocking(_data):
         assert len(pos.shape) == len(vel.shape) == len(graphMatrix.shape) == 4
         nSamples = pos.shape[0]
         tSamples = pos.shape[1]
-        assert pos.shape[2] == 2
+        assert pos.shape[2] == 1
         nAgents = pos.shape[3]
         assert vel.shape[0] == graphMatrix.shape[0] == nSamples
         assert vel.shape[1] == graphMatrix.shape[1] == tSamples
-        assert vel.shape[2] == 2
-        assert vel.shape[3] == graphMatrix.shape[2] == graphMatrix.shape[3] \
-                == nAgents
+        assert vel.shape[2] == 1
+        assert vel.shape[3] == graphMatrix.shape[2] == graphMatrix.shape[3] == nAgents
                 
         # If we have a lot of batches and a particularly long sequence, this
         # is bound to fail, memory-wise, so let's do it time instant by time
         # instant if we have a large number of time instants, and split the
         # batches
         maxTimeSamples = 200 # Set the maximum number of t.Samples before
-            # which to start doing this time by time.
+                             # which to start doing this time by time.
         maxBatchSize = 100 # Maximum number of samples to process at a given
-            # time
+                           # time
         
         # Compute the number of samples, and split the indices accordingly
         if nSamples < maxBatchSize:
@@ -2669,7 +2668,7 @@ class Flocking(_data):
         batchIndex = [0] + batchIndex
         
         # Create the output state variable
-        state = np.zeros((nSamples, tSamples, 6, nAgents))
+        state = np.zeros((nSamples, tSamples, 2, nAgents))
         
         for b in range(nBatches):
             
@@ -2685,19 +2684,15 @@ class Flocking(_data):
                     
                     # Now, we need to compute the differences, in velocities and in 
                     # positions, for each agent, for each time instant
-                    posDiff, posDistSq = \
-                                     self.computeDifferences(posBatch[:,t,:,:])
-                    #   posDiff: batchSize[b] x 2 x nAgents x nAgents
-                    #   posDistSq: batchSize[b] x nAgents x nAgents
+                    posDiff, posDistSq = self.computeDifferences(posBatch[:,t,:,:])
+                    #   posDiff: batchSize[b] x 1 x nAgents x nAgents
                     velDiff, _ = self.computeDifferences(velBatch[:,t,:,:])
-                    #   velDiff: batchSize[b] x 2 x nAgents x nAgents
+                    #   velDiff: batchSize[b] x 1 x nAgents x nAgents
                     
                     # Next, we need to get ride of all those places where there are
                     # no neighborhoods. That is given by the nonzero elements of the 
                     # graph matrix.
-                    graphMatrixTime = (np.abs(graphMatrixBatch[:,t,:,:])\
-                                                               >zeroTolerance)\
-                                                             .astype(pos.dtype)
+                    graphMatrixTime = (np.abs(graphMatrixBatch[:,t,:,:])>zeroTolerance).astype(pos.dtype)
                     #   graphMatrix: batchSize[b] x nAgents x nAgents
                     # We also need to invert the squares of the distances
                     posDistSqInv = invertTensorEW(posDistSq)
@@ -2710,8 +2705,7 @@ class Flocking(_data):
                     
                     # Then, we can get rid of non-neighbors
                     posDiff = posDiff * graphMatrixTime
-                    posDistSqInv = np.expand_dims(posDistSqInv,1)\
-                                                              * graphMatrixTime
+                    posDistSqInv = np.expand_dims(posDistSqInv,1) * graphMatrixTime
                     velDiff = velDiff * graphMatrixTime
                     
                     # Finally, we can compute the states
@@ -2720,16 +2714,12 @@ class Flocking(_data):
                     statePosFourth = np.sum(posDiff * (posDistSqInv ** 2),
                                             axis = 3)
                     #   statePosFourth: batchSize[b] x 2 x nAgents
-                    statePosSq = np.sum(posDiff * posDistSqInv, axis = 3)
+                    statePosSq = np.sum(posDiff, axis = 3)
                     #   statePosSq: batchSize[b] x 2 x nAgents
                     
                     # Concatentate the states and return the result
-                    state[batchIndex[b]:batchIndex[b+1],t,:,:] = \
-                                                np.concatenate((stateVel,
-                                                                statePosFourth,
-                                                                statePosSq),
-                                                               axis = 1)
-                    #   batchSize[b] x 6 x nAgents
+                    state[batchIndex[b]:batchIndex[b+1],t,:,:] = np.concatenate((stateVel, statePosSq), axis = 1)
+                    #   batchSize[b] x 2 x nAgents
                     
                     if doPrint:
                         # Sample percentage count
@@ -2758,8 +2748,7 @@ class Flocking(_data):
                 # Next, we need to get ride of all those places where there are
                 # no neighborhoods. That is given by the nonzero elements of the 
                 # graph matrix.
-                graphMatrixBatch = (np.abs(graphMatrixBatch) > zeroTolerance)\
-                                                             .astype(pos.dtype)
+                graphMatrixBatch = (np.abs(graphMatrixBatch) > zeroTolerance).astype(pos.dtype)
                 #   graphMatrix: batchSize[b] x tSamples x nAgents x nAgents
                 # We also need to invert the squares of the distances
                 posDistSqInv = invertTensorEW(posDistSq)
@@ -2781,16 +2770,12 @@ class Flocking(_data):
                 #   stateVel: batchSize[b] x tSamples x 2 x nAgents
                 statePosFourth = np.sum(posDiff * (posDistSqInv ** 2), axis = 4)
                 #   statePosFourth: batchSize[b] x tSamples x 2 x nAgents
-                statePosSq = np.sum(posDiff * posDistSqInv, axis = 4)
+                statePosSq = np.sum(posDiff, axis = 4)
                 #   statePosSq: batchSize[b] x tSamples x 2 x nAgents
                 
                 # Concatentate the states and return the result
-                state[batchIndex[b]:batchIndex[b+1]] = \
-                                                np.concatenate((stateVel,
-                                                                statePosFourth,
-                                                                statePosSq),
-                                                               axis = 2)
-                #   state: batchSize[b] x tSamples x 6 x nAgents
+                state[batchIndex[b]:batchIndex[b+1]] = np.concatenate((stateVel, statePosSq), axis = 2)
+                #   state: batchSize[b] x tSamples x 2 x nAgents
                                                 
                 if doPrint:
                     # Sample percentage count

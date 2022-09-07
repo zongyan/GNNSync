@@ -255,7 +255,7 @@ if doLocalFlt:
                                     else 'cpu'
 
     # Graph convolutional parameters
-    hParamsLocalFlt['dimNodeSignals'] = [6, 32] # Features per layer
+    hParamsLocalFlt['dimNodeSignals'] = [2, 32] # Features per layer
     hParamsLocalFlt['nFilterTaps'] = [4] # Number of filter taps
     hParamsLocalFlt['bias'] = True # Decide whether to include a bias term
     # Nonlinearity
