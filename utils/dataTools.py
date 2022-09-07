@@ -3510,53 +3510,6 @@ class Flocking(_data):
         # circular.
         
         # Let's start by setting the fixed position
-        if geometry == 'rectangular':
-            
-            # This grid has a distance that depends on the desired minDist and
-            # the commRadius
-            distFixed = (commRadius + minDist)/(2.*np.sqrt(2))
-            #   This is the fixed distance between points in the grid
-            distPerturb = (commRadius - minDist)/(4.*np.sqrt(2))
-            #   This is the standard deviation of a uniform perturbation around
-            #   the fixed point.
-            # This should guarantee that, even after the perturbations, there
-            # are no agents below minDist, and that all agents have at least
-            # one other agent within commRadius.
-            
-            # How many agents per axis
-            nAgentsPerAxis = int(np.ceil(np.sqrt(nAgents)))
-            
-            axisFixedPos = np.arange(-(nAgentsPerAxis * distFixed)/2,
-                                       (nAgentsPerAxis * distFixed)/2,
-                                      step = distFixed)
-            
-            # Repeat the positions in the same order (x coordinate)
-            xFixedPos = np.tile(axisFixedPos, nAgentsPerAxis)
-            # Repeat each element (y coordinate)
-            yFixedPos = np.repeat(axisFixedPos, nAgentsPerAxis)
-            
-            # Concatenate this to obtain the positions
-            fixedPos = np.concatenate((np.expand_dims(xFixedPos, 0),
-                                       np.expand_dims(yFixedPos, 0)),
-                                      axis = 0)
-            
-            # Get rid of unnecessary agents
-            fixedPos = fixedPos[:, 0:nAgents]
-            # And repeat for the number of samples we want to generate
-            fixedPos = np.repeat(np.expand_dims(fixedPos, 0), nSamples,
-                                 axis = 0)
-            #   nSamples x 2 x nAgents
-            
-            # Now generate the noise
-            perturbPos = np.random.uniform(low = -distPerturb,
-                                           high = distPerturb,
-                                           size = (nSamples, 2, nAgents))
-            
-            # Initial positions
-            initPos = fixedPos + perturbPos
-                
-        elif geometry == 'circular':
-            
             # Radius for the grid
             rFixed = (commRadius + minDist)/2.
             rPerturb = (commRadius - minDist)/4.
