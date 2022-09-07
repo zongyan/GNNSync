@@ -3510,66 +3510,66 @@ class Flocking(_data):
         # circular.
         
         # Let's start by setting the fixed position
-            # Radius for the grid
-            rFixed = (commRadius + minDist)/2.
-            rPerturb = (commRadius - minDist)/4.
-            fixedRadius = np.arange(0, rFixed * nAgents, step = rFixed)+rFixed
+        # Radius for the grid
+        rFixed = (commRadius + minDist)/2.
+        rPerturb = (commRadius - minDist)/4.
+        fixedRadius = np.arange(0, rFixed * nAgents, step = rFixed)+rFixed
+        
+        # Angles for the grid
+        aFixed = (commRadius/fixedRadius + minDist/fixedRadius)/2.
+        for a in range(len(aFixed)):
+            # How many times does aFixed[a] fits within 2pi?
+            nAgentsPerCircle = 2 * np.pi // aFixed[a]
+            # And now divide 2*np.pi by this number
+            aFixed[a] = 2 * np.pi / nAgentsPerCircle
+        #   Fixed angle difference for each value of fixedRadius
+        
+        # Now, let's get the radius, angle coordinates for each agents
+        initRadius = np.empty((0))
+        initAngles = np.empty((0))
+        agentsSoFar = 0 # Number of agents located so far
+        n = 0 # Index for radius
+        while agentsSoFar < nAgents:
+            thisRadius = fixedRadius[n]
+            thisAngles = np.arange(0, 2*np.pi, step = aFixed[n])
+            agentsSoFar += len(thisAngles)
+            initRadius = np.concatenate((initRadius,
+                                         np.repeat(thisRadius,
+                                                   len(thisAngles))))
+            initAngles = np.concatenate((initAngles, thisAngles))
+            n += 1
+            assert len(initRadius) == agentsSoFar
             
-            # Angles for the grid
-            aFixed = (commRadius/fixedRadius + minDist/fixedRadius)/2.
-            for a in range(len(aFixed)):
-                # How many times does aFixed[a] fits within 2pi?
-                nAgentsPerCircle = 2 * np.pi // aFixed[a]
-                # And now divide 2*np.pi by this number
-                aFixed[a] = 2 * np.pi / nAgentsPerCircle
-            #   Fixed angle difference for each value of fixedRadius
-            
-            # Now, let's get the radius, angle coordinates for each agents
-            initRadius = np.empty((0))
-            initAngles = np.empty((0))
-            agentsSoFar = 0 # Number of agents located so far
-            n = 0 # Index for radius
-            while agentsSoFar < nAgents:
-                thisRadius = fixedRadius[n]
-                thisAngles = np.arange(0, 2*np.pi, step = aFixed[n])
-                agentsSoFar += len(thisAngles)
-                initRadius = np.concatenate((initRadius,
-                                             np.repeat(thisRadius,
-                                                       len(thisAngles))))
-                initAngles = np.concatenate((initAngles, thisAngles))
-                n += 1
-                assert len(initRadius) == agentsSoFar
-                
-            # Restrict to the number of agents we need
-            initRadius = initRadius[0:nAgents]
-            initAngles = initAngles[0:nAgents]
-            
-            # Add the number of samples
-            initRadius = np.repeat(np.expand_dims(initRadius, 0), nSamples,
-                                   axis = 0)
-            initAngles = np.repeat(np.expand_dims(initAngles, 0), nSamples,
-                                   axis = 0)
-            
-            # Add the noise
-            #   First, to the angles
-            for n in range(nAgents):
-                # Get the radius (the angle noise depends on the radius); so
-                # far the radius is the same for all samples
-                thisRadius = initRadius[0,n]
-                aPerturb = (commRadius/thisRadius - minDist/thisRadius)/4.
-                # Add the noise to the angles
-                initAngles[:,n] += np.random.uniform(low = -aPerturb,
-                                                     high = aPerturb,
-                                                     size = (nSamples))
-            #   Then, to the radius
-            initRadius += np.random.uniform(low = -rPerturb,
-                                            high = rPerturb,
-                                            size = (nSamples, nAgents))
-            
-            # And finally, get the positions in the cartesian coordinates
-            initPos = np.zeros((nSamples, 2, nAgents))
-            initPos[:, 0, :] = initRadius * np.cos(initAngles)
-            initPos[:, 1, :] = initRadius * np.sin(initAngles)
+        # Restrict to the number of agents we need
+        initRadius = initRadius[0:nAgents]
+        initAngles = initAngles[0:nAgents]
+        
+        # Add the number of samples
+        initRadius = np.repeat(np.expand_dims(initRadius, 0), nSamples,
+                               axis = 0)
+        initAngles = np.repeat(np.expand_dims(initAngles, 0), nSamples,
+                               axis = 0)
+        
+        # Add the noise
+        #   First, to the angles
+        for n in range(nAgents):
+            # Get the radius (the angle noise depends on the radius); so
+            # far the radius is the same for all samples
+            thisRadius = initRadius[0,n]
+            aPerturb = (commRadius/thisRadius - minDist/thisRadius)/4.
+            # Add the noise to the angles
+            initAngles[:,n] += np.random.uniform(low = -aPerturb,
+                                                 high = aPerturb,
+                                                 size = (nSamples))
+        #   Then, to the radius
+        initRadius += np.random.uniform(low = -rPerturb,
+                                        high = rPerturb,
+                                        size = (nSamples, nAgents))
+        
+        # And finally, get the positions in the cartesian coordinates
+        initPos = np.zeros((nSamples, 2, nAgents))
+        initPos[:, 0, :] = initRadius * np.cos(initAngles)
+        initPos[:, 1, :] = initRadius * np.sin(initAngles)
             
         # Now, check that the conditions are met:
         #   Compute square distances
