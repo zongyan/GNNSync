@@ -14,6 +14,7 @@ evaluateFlocking: evaluate a model using the flocking cost
 import os
 import torch
 import pickle
+import numpy as np
 
 def evaluate(model, data, **kwargs):
     """
@@ -241,6 +242,13 @@ def evaluateFlocking(model, data, **kwargs):
     commGraphTestBest = \
         data.computeTrajectory(initPosTest, initVelTest, data.duration,
                                archit = model.archit)
+        
+    SavedPath ='./gnn_test.npz'
+    np.savez(SavedPath, posTestBest=posTestBest, velTestBest=velTestBest, \
+             accelTestBest=accelTestBest, stateTestBest=stateTestBest, \
+                 commGraphTestBest=commGraphTestBest)
+    print("\tSaved the test data to the following path: ./gnn_test.npz...", end = ' ')
+    print("OK", flush = True)        
 
     if doPrint:
         print("OK")

@@ -292,7 +292,7 @@ if doLocalGNN:
                                     else 'cpu'
 
     # Graph convolutional parameters
-    hParamsLocalGNN['dimNodeSignals'] = [6, 64] # Features per layer
+    hParamsLocalGNN['dimNodeSignals'] = [2, 64] # Features per layer
     hParamsLocalGNN['nFilterTaps'] = [3] # Number of filter taps
     hParamsLocalGNN['bias'] = True # Decide whether to include a bias term
     # Nonlinearity
@@ -643,7 +643,7 @@ for realization in range(nRealizations):
         for j in range(0, nAgents, 1):
             # the input and output features are two dimensions, which means that one 
             # dimension is for x-axis velocity, the other one is for y-axis velocity 
-            plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(posTrain[i, :, 0, j]**2 + posTrain[i, :, 1, j]**2)) 
+            plt.plot(np.arange(0, (duration/samplingTime), 1), posTrain[i, :, 0, j]) 
             # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
         # end for 
     plt.xlabel(r'$time (s)$')
@@ -660,7 +660,7 @@ for realization in range(nRealizations):
         for j in range(0, nAgents, 1):
             # the input and output features are two dimensions, which means that one 
             # dimension is for x-axis velocity, the other one is for y-axis velocity 
-            plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(velTrain[i, :, 0, j]**2 + velTrain[i, :, 1, j]**2)) 
+            plt.plot(np.arange(0, (duration/samplingTime), 1), velTrain[i, :, 0, j]) 
             # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
         # end for 
     plt.xlabel(r'$time (s)$')
@@ -677,7 +677,7 @@ for realization in range(nRealizations):
         for j in range(0, nAgents, 1):
             # the input and output features are two dimensions, which means that one 
             # dimension is for x-axis velocity, the other one is for y-axis velocity 
-            plt.plot(np.arange(0, (duration/samplingTime), 1), np.sqrt(accelTrain[i, :, 0, j]**2 + accelTrain[i, :, 1, j]**2)) 
+            plt.plot(np.arange(0, (duration/samplingTime), 1), accelTrain[i, :, 0, j]) 
             # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
         # end for 
     plt.xlabel(r'$time (s)$')
@@ -1328,7 +1328,7 @@ for i in range(0, 1, 1):
     for j in range(0, 50, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), np.sqrt(velTest[i, :, 0, j]**2 + velTest[i, :, 1, j]**2)) 
+        plt.plot(np.arange(0, 200, 1), velTest[i, :, 0, j]) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
@@ -1345,7 +1345,7 @@ for i in range(0, 1, 1):
     for j in range(0, 50, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), np.sqrt(velOptim[i, :, 0, j]**2 + velOptim[i, :, 1, j]**2)) 
+        plt.plot(np.arange(0, 200, 1), velOptim[i, :, 0, j]) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
@@ -1354,23 +1354,4 @@ for i in range(0, 1, 1):
     plt.grid()
     plt.show()    
 # end for
-
-# plot the velocity difference of all agents by using the centralised optimal controller and GNN methods
-for i in range(0, 1, 1):
-    plt.figure()
-    plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, 50, 1):
-        # the input and output features are two dimensions, which means that one 
-        # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        vel_temp = np.sqrt(velTest[i, :, 0, j] ** 2 + velTest[i, :, 1, j] ** 2) \
-            - np.sqrt(velOptim[i, :, 0, j] ** 2 + velOptim[i, :, 1, j] ** 2)                
-        plt.plot(np.arange(0, 200, 1), vel_temp) 
-        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-    # end for 
-    plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-    plt.title(r'$\|{\bf v}_{gnn}\|_2 - \|{\bf v}_{cc}\|_2$')    
-    plt.grid()
-    plt.show()    
-# end for
-    
+   

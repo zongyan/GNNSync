@@ -2811,7 +2811,7 @@ class Flocking(_data):
         assert len(pos.shape) == 4
         nSamples = pos.shape[0]
         tSamples = pos.shape[1]
-        assert pos.shape[2] == 2
+        assert pos.shape[2] == 1
         nAgents = pos.shape[3]
         
         # Graph type options
@@ -3078,7 +3078,7 @@ class Flocking(_data):
             assert len(vel.shape) == 4
             nSamples = vel.shape[0]
             tSamples = vel.shape[1]
-            assert vel.shape[2] == 2
+            assert vel.shape[2] == 1
             nAgents = vel.shape[3]
         elif accel is not None and initVel is not None:
             assert len(accel.shape) == 4 and len(initVel.shape) == 3
@@ -3087,7 +3087,7 @@ class Flocking(_data):
             assert accel.shape[2] == 2
             nAgents = accel.shape[3]
             assert initVel.shape[0] == nSamples
-            assert initVel.shape[1] == 2
+            assert initVel.shape[1] == 1
             assert initVel.shape[2] == nAgents
             
             # Now that we know we have a accel and init velocity, compute the
@@ -3149,16 +3149,16 @@ class Flocking(_data):
     
     def computeTrajectory(self, initPos, initVel, duration, **kwargs):
         
-        # Check initPos is of shape batchSize x 2 x nAgents
+        # Check initPos is of shape batchSize x 1 x nAgents
         assert len(initPos.shape) == 3
         batchSize = initPos.shape[0]
         assert initPos.shape[1]
         nAgents = initPos.shape[2]
         
-        # Check initVel is of shape batchSize x 2 x nAgents
+        # Check initVel is of shape batchSize x 1 x nAgents
         assert len(initVel.shape) == 3
         assert initVel.shape[0] == batchSize
-        assert initVel.shape[1] == 2
+        assert initVel.shape[1] == 1
         assert initVel.shape[2] == nAgents
         
         # Check what kind of data it is
@@ -3206,13 +3206,12 @@ class Flocking(_data):
             doPrint = self.doPrint # Use default
         
         # Now create the outputs that will be filled afterwards
-        pos = np.zeros((batchSize, tSamples, 2, nAgents), dtype = np.float)
-        vel = np.zeros((batchSize, tSamples, 2, nAgents), dtype = np.float)
+        pos = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float)
+        vel = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float)
         if useArchit:
             accel = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float)
-            state = np.zeros((batchSize, tSamples, 6, nAgents), dtype=np.float)
-            graph = np.zeros((batchSize, tSamples, nAgents, nAgents),
-                             dtype = np.float)
+            state = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float)
+            graph = np.zeros((batchSize, tSamples, nAgents, nAgents), dtype = np.float)
             
         # Assign the initial positions and velocities
         if useTorch:
@@ -3264,16 +3263,13 @@ class Flocking(_data):
                 # Now that we have computed the acceleration, we only care 
                 # about the last element in time
                 thisAccel = thisAccel.cpu().numpy()[:,-1,:,:]
-                thisAccel[thisAccel > self.accelMax] = self.accelMax
-                thisAccel[thisAccel < -self.accelMax] = self.accelMax
                 # And save it
                 accel[:,t-1,:,:] = thisAccel
                 
             # Now that we have the acceleration, we can update position and
             # velocity
-            vel[:,t,:,:] = accel[:,t-1,:,:] * self.samplingTime +vel[:,t-1,:,:]
-            pos[:,t,:,:] = accel[:,t-1,:,:] * (self.samplingTime ** 2)/2 + \
-                            vel[:,t-1,:,:] * self.samplingTime + pos[:,t-1,:,:]
+            vel[:,t,:,:] = vel[:,t-1,:,:] + 0.02 * np.expand_dims(accel[:,t-1,0,:], 1)
+            pos[:,t,:,:] = pos[:,t-1,:,:] + 0.02 * np.expand_dims(accel[:,t-1,1,:], 1) + vel[:,t,:,:] * self.samplingTime                       
             
             if doPrint:
                 # Sample percentage count
@@ -3300,8 +3296,6 @@ class Flocking(_data):
         with torch.no_grad():
             thisAccel = archit(x, S)
         thisAccel = thisAccel.cpu().numpy()[:,-1,:,:]
-        thisAccel[thisAccel > self.accelMax] = self.accelMax
-        thisAccel[thisAccel < -self.accelMax] = self.accelMax
         # And save it
         accel[:,-1,:,:] = thisAccel
                 
@@ -3348,7 +3342,7 @@ class Flocking(_data):
         #   nSamples x tSamples x 2 x nAgents
         nSamples = u.shape[0]
         tSamples = u.shape[1]
-        assert u.shape[2] == 2
+        assert u.shape[2] == 1
         nAgents = u.shape[3]
         
         # Compute the difference along each axis. For this, we subtract a
@@ -3362,20 +3356,14 @@ class Flocking(_data):
         uRow_x = u[:,:,0,:].reshape((nSamples, tSamples, 1, nAgents))
         #   Subtract them
         uDiff_x = uCol_x - uRow_x # nSamples x tSamples x nAgents x nAgents
-        # Second, for axis y
-        uCol_y = u[:,:,1,:].reshape((nSamples, tSamples, nAgents, 1))
-        uRow_y = u[:,:,1,:].reshape((nSamples, tSamples, 1, nAgents))
-        uDiff_y = uCol_y - uRow_y # nSamples x tSamples x nAgents x nAgents
-        # Third, compute the distance tensor of shape
+        # Second, compute the distance tensor of shape
         #   nSamples x tSamples x nAgents x nAgents
-        uDistSq = uDiff_x ** 2 + uDiff_y ** 2
+        uDistSq = uDiff_x ** 2 
         # Finally, concatenate to obtain the tensor of differences
         #   Add the extra dimension in the position
         uDiff_x = np.expand_dims(uDiff_x, 2)
-        uDiff_y = np.expand_dims(uDiff_y, 2)
-        #   And concatenate them
-        uDiff = np.concatenate((uDiff_x, uDiff_y), 2)
-        #   nSamples x tSamples x 2 x nAgents x nAgents
+        uDiff = uDiff_x
+        #   nSamples x tSamples x 1 x nAgents x nAgents
             
         # Get rid of the time dimension if we don't need it
         if not hasTimeDim:
@@ -3402,7 +3390,7 @@ class Flocking(_data):
         # Check that initPos and initVel as nSamples x 2 x nAgents arrays
         assert len(initPos.shape) == len(initVel.shape) == 3
         nSamples = initPos.shape[0]
-        assert initPos.shape[1] == initVel.shape[1] == 2
+        assert initPos.shape[1] == initVel.shape[1] == 1
         nAgents = initPos.shape[2]
         assert initVel.shape[0] == nSamples
         assert initVel.shape[2] == nAgents
@@ -3412,10 +3400,10 @@ class Flocking(_data):
         tSamples = len(time) # number of time samples
         
         # Create arrays to store the trajectory
-        pos = np.zeros((nSamples, tSamples, 2, nAgents))
-        vel = np.zeros((nSamples, tSamples, 2, nAgents))
-        deltaVel = np.zeros((nSamples, tSamples, 2, nAgents))        
-        deltaPos = np.zeros((nSamples, tSamples, 2, nAgents))                
+        pos = np.zeros((nSamples, tSamples, 1, nAgents))
+        vel = np.zeros((nSamples, tSamples, 1, nAgents))
+        deltaVel = np.zeros((nSamples, tSamples, 1, nAgents))        
+        deltaPos = np.zeros((nSamples, tSamples, 1, nAgents))                
         
         # Initial settings
         pos[:,0,:,:] = initPos
@@ -3493,147 +3481,36 @@ class Flocking(_data):
     def computeInitialPositions(self, nAgents, nSamples, commRadius,
                                 minDist = 0.1, geometry = 'rectangular',
                                 **kwargs):
+                        
+        initOffsetValue = 100 # initial clock offset = 600 us
+        initSkewValue = 25 # initial clock skew = 50 ppm        
         
-        # It will always be uniform. We can select whether it is rectangular
-        # or circular (or some other shape) and the parameters respecting
-        # that
-        assert geometry == 'rectangular' or geometry == 'circular'
-        assert minDist * (1.+zeroTolerance) <= commRadius * (1.-zeroTolerance)
-        # We use a zeroTolerance buffer zone, just in case
-        minDist = minDist * (1. + zeroTolerance)
-        commRadius = commRadius * (1. - zeroTolerance)
-        
-        # If there are other keys in the kwargs argument, they will just be
-        # ignored
-        
-        # We will first create the grid, whether it is rectangular or
-        # circular.
-        
-        # Let's start by setting the fixed position
-        # Radius for the grid
-        rFixed = (commRadius + minDist)/2.
-        rPerturb = (commRadius - minDist)/4.
-        fixedRadius = np.arange(0, rFixed * nAgents, step = rFixed)+rFixed
-        
-        # Angles for the grid
-        aFixed = (commRadius/fixedRadius + minDist/fixedRadius)/2.
-        for a in range(len(aFixed)):
-            # How many times does aFixed[a] fits within 2pi?
-            nAgentsPerCircle = 2 * np.pi // aFixed[a]
-            # And now divide 2*np.pi by this number
-            aFixed[a] = 2 * np.pi / nAgentsPerCircle
-        #   Fixed angle difference for each value of fixedRadius
-        
-        # Now, let's get the radius, angle coordinates for each agents
-        initRadius = np.empty((0))
-        initAngles = np.empty((0))
-        agentsSoFar = 0 # Number of agents located so far
-        n = 0 # Index for radius
-        while agentsSoFar < nAgents:
-            thisRadius = fixedRadius[n]
-            thisAngles = np.arange(0, 2*np.pi, step = aFixed[n])
-            agentsSoFar += len(thisAngles)
-            initRadius = np.concatenate((initRadius,
-                                         np.repeat(thisRadius,
-                                                   len(thisAngles))))
-            initAngles = np.concatenate((initAngles, thisAngles))
-            n += 1
-            assert len(initRadius) == agentsSoFar
-            
-        # Restrict to the number of agents we need
-        initRadius = initRadius[0:nAgents]
-        initAngles = initAngles[0:nAgents]
-        
-        # Add the number of samples
-        initRadius = np.repeat(np.expand_dims(initRadius, 0), nSamples,
-                               axis = 0)
-        initAngles = np.repeat(np.expand_dims(initAngles, 0), nSamples,
-                               axis = 0)
-        
+        # Let's start by setting the fixed offset and skew 
+        offsetFixed = np.repeat(initOffsetValue, nSamples*nAgents, axis = 0)             
+        skewFixed = np.repeat(initSkewValue, nSamples*nAgents, axis = 0)     
+
         # Add the noise
-        #   First, to the angles
-        for n in range(nAgents):
-            # Get the radius (the angle noise depends on the radius); so
-            # far the radius is the same for all samples
-            thisRadius = initRadius[0,n]
-            aPerturb = (commRadius/thisRadius - minDist/thisRadius)/4.
-            # Add the noise to the angles
-            initAngles[:,n] += np.random.uniform(low = -aPerturb,
-                                                 high = aPerturb,
-                                                 size = (nSamples))
-        #   Then, to the radius
-        initRadius += np.random.uniform(low = -rPerturb,
-                                        high = rPerturb,
-                                        size = (nSamples, nAgents))
+        offsetPerturb = np.random.uniform(low = -50,
+                                          high = 50,
+                                          size = nSamples*nAgents)
+
+        skewPerturb = np.random.uniform(low = -25,
+                                        high = 25,
+                                        size = nSamples*nAgents)
         
-        # And finally, get the positions in the cartesian coordinates
-        initPos = np.zeros((nSamples, 2, nAgents))
-        initPos[:, 0, :] = initRadius * np.cos(initAngles)
-        initPos[:, 1, :] = initRadius * np.sin(initAngles)
-            
-        # Now, check that the conditions are met:
-        #   Compute square distances
-        _, distSq = self.computeDifferences(np.expand_dims(initPos, 1))
-        #   Get rid of the "time" dimension that arises from using the 
-        #   method to compute distances
-        distSq = distSq.squeeze(1)
-        #   Compute the minimum distance (don't forget to add something in
-        #   the diagonal, which otherwise is zero)
-        minDistSq = np.min(distSq + \
-                           2 * commRadius\
-                             *np.eye(distSq.shape[1]).reshape(1,
-                                                              distSq.shape[1],
-                                                              distSq.shape[2])
-                           )
+        # Finally, get the initial offsets and skews 
+        initOffset = offsetFixed + offsetPerturb # nSamples x nNodes     
+        initSkew = skewFixed + skewPerturb # nSamples x nNodes        
         
-        assert minDistSq >= minDist ** 2
-        
-        #   Now the number of neighbors
-        graphMatrix = self.computeCommunicationGraph(np.expand_dims(initPos,1),
-                                                     self.commRadius,
-                                                     False,
-                                                     doPrint = False)
-        graphMatrix = graphMatrix.squeeze(1) # nSamples x nAgents x nAgents  
-        
-        #   Binarize the matrix
-        graphMatrix = (np.abs(graphMatrix) > zeroTolerance)\
-                                                         .astype(initPos.dtype)
-        
-        #   And check that we always have initially connected graphs
-        for n in range(nSamples):
-            assert graph.isConnected(graphMatrix[n,:,:])
-        
-        # We move to compute the initial velocities. Velocities can be
-        # either positive or negative, so we do not need to determine
-        # the lower and higher, just around zero
-        if 'xMaxInitVel' in kwargs.keys():
-            xMaxInitVel = kwargs['xMaxInitVel']
-        else:
-            xMaxInitVel = 3.
-            #   Takes five seconds to traverse half the map
-        # Same for the other axis
-        if 'yMaxInitVel' in kwargs.keys():
-            yMaxInitVel = kwargs['yMaxInitVel']
-        else:
-            yMaxInitVel = 3.
-        
-        # And sample the velocities
-        xInitVel = np.random.uniform(low = -xMaxInitVel, high = xMaxInitVel,
-                                     size = (nSamples, 1, nAgents))
-        yInitVel = np.random.uniform(low = -yMaxInitVel, high = yMaxInitVel,
-                                     size = (nSamples, 1, nAgents))
-        # Add bias
-        xVelBias = np.random.uniform(low = -xMaxInitVel, high = xMaxInitVel,
-                                     size = (nSamples))
-        yVelBias = np.random.uniform(low = -yMaxInitVel, high = yMaxInitVel,
-                                     size = (nSamples))
-        
-        # And concatenate them
-        velBias = np.concatenate((xVelBias, yVelBias)).reshape((nSamples,2,1))
-        initVel = np.concatenate((xInitVel, yInitVel), axis = 1) + velBias
-        #   nSamples x 2 x nAgents
-        
-        return initPos, initVel
+        # And reshape them 
+        initOffset = initOffset.reshape(nSamples, nAgents)        
+        initSkew = initSkew.reshape(nSamples, nAgents)    
+
+        # Add the extra feature=1 dimensions
+        initOffset = np.expand_dims(initOffset, 1) # nSamples x 1 x nNodes
+        initSkew = np.expand_dims(initSkew, 1) # nSamples x 1 x nNodes            
+                  
+        return initOffset, initSkew
         
         
     def saveVideo(self, saveDir, pos, *args, 
