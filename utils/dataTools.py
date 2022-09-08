@@ -45,6 +45,7 @@ import numpy as np
 import torch
 
 import utils.graphTools as graph
+import scipy.io as spio
 
 zeroTolerance = 1e-9 # Values below this number are considered zero.
 
@@ -2739,11 +2740,11 @@ class Flocking(_data):
                 
                 # Now, we need to compute the differences, in velocities and in 
                 # positions, for each agent, for each time instante
-                posDiff, posDistSq = self.computeDifferences(posBatch)
-                #   posDiff: batchSize[b] x tSamples x 2 x nAgents x nAgents
+                posDiff, _ = self.computeDifferences(posBatch)
+                #   posDiff: batchSize[b] x tSamples x 1 x nAgents x nAgents
                 #   posDistSq: batchSize[b] x tSamples x nAgents x nAgents
                 velDiff, _ = self.computeDifferences(velBatch)
-                #   velDiff: batchSize[b] x tSamples x 2 x nAgents x nAgents
+                #   velDiff: batchSize[b] x tSamples x 1 x nAgents x nAgents
                 
                 # Next, we need to get ride of all those places where there are
                 # no neighborhoods. That is given by the nonzero elements of the 
@@ -2751,8 +2752,6 @@ class Flocking(_data):
                 graphMatrixBatch = (np.abs(graphMatrixBatch) > zeroTolerance).astype(pos.dtype)
                 #   graphMatrix: batchSize[b] x tSamples x nAgents x nAgents
                 # We also need to invert the squares of the distances
-                posDistSqInv = invertTensorEW(posDistSq)
-                #   posDistSqInv: batchSize[b] x tSamples x nAgents x nAgents
                 
                 # Now we add the extra dimensions so that all the multiplications
                 # are adequate
@@ -2761,20 +2760,17 @@ class Flocking(_data):
                 
                 # Then, we can get rid of non-neighbors
                 posDiff = posDiff * graphMatrixBatch
-                posDistSqInv = np.expand_dims(posDistSqInv, 2)\
-                                                             * graphMatrixBatch
                 velDiff = velDiff * graphMatrixBatch
                 
                 # Finally, we can compute the states
                 stateVel = np.sum(velDiff, axis = 4)
                 #   stateVel: batchSize[b] x tSamples x 2 x nAgents
-                statePosFourth = np.sum(posDiff * (posDistSqInv ** 2), axis = 4)
                 #   statePosFourth: batchSize[b] x tSamples x 2 x nAgents
-                statePosSq = np.sum(posDiff, axis = 4)
+                statePos = np.sum(posDiff, axis = 4)
                 #   statePosSq: batchSize[b] x tSamples x 2 x nAgents
                 
                 # Concatentate the states and return the result
-                state[batchIndex[b]:batchIndex[b+1]] = np.concatenate((stateVel, statePosSq), axis = 2)
+                state[batchIndex[b]:batchIndex[b+1]] = np.concatenate((stateVel, statePos), axis = 2)
                 #   state: batchSize[b] x tSamples x 2 x nAgents
                                                 
                 if doPrint:
@@ -2807,200 +2803,19 @@ class Flocking(_data):
         # Output will be of shape
         #   nSamples x tSamples x nAgents x nAgents
         
-        assert commRadius > 0
-        assert len(pos.shape) == 4
-        nSamples = pos.shape[0]
-        tSamples = pos.shape[1]
-        assert pos.shape[2] == 1
-        nAgents = pos.shape[3]
+        duration = 2. # Duration of the trajectory
+        samplingTime = 0.01 # Sampling time
         
-        # Graph type options
-        #   Kernel type (only Gaussian implemented so far)
-        if 'kernelType' in kwargs.keys():
-            kernelType = kwargs['kernelType']
-        else:
-            kernelType = 'gaussian'
-        #   Decide if the graph is weighted or not
-        if 'weighted' in kwargs.keys():
-            weighted = kwargs['weighted']
-        else:
-            weighted = False
+        # loading the configurations of the directed tree network consisting of 50 nodes
+        treeNwk = spio.loadmat('tree.mat', squeeze_me=True)
+        adjMatrix = treeNwk['Tree'] # Adjacency matrix of a minimal spanning tree network
+
+        adjMatrix = np.transpose(adjMatrix, (2, 0, 1))
+        adjMatrix = np.expand_dims(adjMatrix, axis=1)
+        adjMatrix = np.repeat(adjMatrix, int(duration/samplingTime), axis = 1)                     
         
-        # If it is a Gaussian kernel, we need to determine the scale
-        if kernelType == 'gaussian':
-            if 'kernelScale' in kwargs.keys():
-                kernelScale = kwargs['kernelScale']
-            else:
-                kernelScale = 1.
-        
-        # The print for this one can be settled independently, if not, use the
-        # default of the data object
-        if 'doPrint' in kwargs.keys():
-            doPrint = kwargs['doPrint']
-        else:
-            doPrint = self.doPrint
-                
-        # If we have a lot of batches and a particularly long sequence, this
-        # is bound to fail, memory-wise, so let's do it time instant by time
-        # instant if we have a large number of time instants, and split the
-        # batches
-        maxTimeSamples = 200 # Set the maximum number of t.Samples before
-            # which to start doing this time by time.
-        maxBatchSize = 100 # Maximum number of samples to process at a given
-            # time
-        
-        # Compute the number of samples, and split the indices accordingly
-        if nSamples < maxBatchSize:
-            nBatches = 1
-            batchSize = [nSamples]
-        elif nSamples % maxBatchSize != 0:
-            # If we know it's not divisible, then we do floor division and
-            # add one more batch
-            nBatches = nSamples // maxBatchSize + 1
-            batchSize = [maxBatchSize] * nBatches
-            # But the last batch is actually smaller, so just add the 
-            # remaining ones
-            batchSize[-1] = nSamples - sum(batchSize[0:-1])
-        # If they fit evenly, then just do so.
-        else:
-            nBatches = int(nSamples/maxBatchSize)
-            batchSize = [maxBatchSize] * nBatches
-        # batchIndex is used to determine the first and last element of each
-        # batch. We need to add the 0 because it's the first index.
-        batchIndex = np.cumsum(batchSize).tolist()
-        batchIndex = [0] + batchIndex
-        
-        # Create the output state variable
-        graphMatrix = np.zeros((nSamples, tSamples, nAgents, nAgents))
-        
-        for b in range(nBatches):
-            
-            # Pick the batch elements
-            posBatch = pos[batchIndex[b]:batchIndex[b+1]]
-                
-            if tSamples > maxTimeSamples:
-                # If the trajectories are longer than 200 points, then do it 
-                # time by time.
-                
-                # For each time instant
-                for t in range(tSamples):
-                    
-                    # Let's start by computing the distance squared
-                    _, distSq = self.computeDifferences(posBatch[:,t,:,:])
-                    # Apply the Kernel
-                    if kernelType == 'gaussian':
-                        graphMatrixTime = np.exp(-kernelScale * distSq)
-                    else:
-                        graphMatrixTime = distSq
-                    # Now let's place zeros in all places whose distance is greater
-                    # than the radius
-                    graphMatrixTime[distSq > (commRadius ** 2)] = 0.
-                    # Set the diagonal elements to zero
-                    graphMatrixTime[:,\
-                                    np.arange(0,nAgents),np.arange(0,nAgents)]\
-                                                                           = 0.
-                    # If it is unweighted, force all nonzero values to be 1
-                    if not weighted:
-                        graphMatrixTime = (graphMatrixTime > zeroTolerance)\
-                                                          .astype(distSq.dtype)
-                                                              
-                    if normalizeGraph:
-                        isSymmetric = np.allclose(graphMatrixTime,
-                                                  np.transpose(graphMatrixTime,
-                                                               axes = [0,2,1]))
-                        # Tries to make the computation faster, only the 
-                        # eigenvalues (while there is a cost involved in 
-                        # computing whether the matrix is symmetric, 
-                        # experiments found that it is still faster to use the
-                        # symmetric algorithm for the eigenvalues)
-                        if isSymmetric:
-                            W = np.linalg.eigvalsh(graphMatrixTime)
-                        else:
-                            W = np.linalg.eigvals(graphMatrixTime)
-                        maxEigenvalue = np.max(np.real(W), axis = 1)
-                        #   batchSize[b]
-                        # Reshape to be able to divide by the graph matrix
-                        maxEigenvalue=maxEigenvalue.reshape((batchSize[b],1,1))
-                        # Normalize
-                        graphMatrixTime = graphMatrixTime / maxEigenvalue
-                                                              
-                    # And put it in the corresponding time instant
-                    graphMatrix[batchIndex[b]:batchIndex[b+1],t,:,:] = \
-                                                                graphMatrixTime
-                    
-                    if doPrint:
-                        # Sample percentage count
-                        percentageCount = int(100*(t+1+b*tSamples)\
-                                                          /(nBatches*tSamples))
-                        
-                        if t == 0 and b == 0:
-                            # It's the first one, so just print it
-                            print("%3d%%" % percentageCount,
-                                  end = '', flush = True)
-                        else:
-                            # Erase the previous characters
-                            print('\b \b' * 4 + "%3d%%" % percentageCount,
-                                  end = '', flush = True)
-                
-            else:
-                # Let's start by computing the distance squared
-                _, distSq = self.computeDifferences(posBatch)
-                # Apply the Kernel
-                if kernelType == 'gaussian':
-                    graphMatrixBatch = np.exp(-kernelScale * distSq)
-                else:
-                    graphMatrixBatch = distSq
-                # Now let's place zeros in all places whose distance is greater
-                # than the radius
-                graphMatrixBatch[distSq > (commRadius ** 2)] = 0.
-                # Set the diagonal elements to zero
-                graphMatrixBatch[:,:,
-                                 np.arange(0,nAgents),np.arange(0,nAgents)] =0.
-                # If it is unweighted, force all nonzero values to be 1
-                if not weighted:
-                    graphMatrixBatch = (graphMatrixBatch > zeroTolerance)\
-                                                          .astype(distSq.dtype)
-                    
-                if normalizeGraph:
-                    isSymmetric = np.allclose(graphMatrixBatch,
-                                              np.transpose(graphMatrixBatch,
-                                                            axes = [0,1,3,2]))
-                    # Tries to make the computation faster
-                    if isSymmetric:
-                        W = np.linalg.eigvalsh(graphMatrixBatch)
-                    else:
-                        W = np.linalg.eigvals(graphMatrixBatch)
-                    maxEigenvalue = np.max(np.real(W), axis = 2)
-                    #   batchSize[b] x tSamples
-                    # Reshape to be able to divide by the graph matrix
-                    maxEigenvalue = maxEigenvalue.reshape((batchSize[b],
-                                                           tSamples,
-                                                           1, 1))
-                    # Normalize
-                    graphMatrixBatch = graphMatrixBatch / maxEigenvalue
-                    
-                # Store
-                graphMatrix[batchIndex[b]:batchIndex[b+1]] = graphMatrixBatch
-                
-                if doPrint:
-                    # Sample percentage count
-                    percentageCount = int(100*(b+1)/nBatches)
-                    
-                    if b == 0:
-                        # It's the first one, so just print it
-                        print("%3d%%" % percentageCount,
-                              end = '', flush = True)
-                    else:
-                        # Erase the previous characters
-                        print('\b \b' * 4 + "%3d%%" % percentageCount,
-                              end = '', flush = True)
-                    
-        # Print
-        if doPrint:
-            # Erase the percentage
-            print('\b \b' * 4, end = '', flush = True)
-            
-        return graphMatrix
+        endIdx = self.nTrain+self.nValid+self.nTest                           
+        return adjMatrix[0:endIdx,:,:,:]
     
     def getData(self, name, samplesType, *args):
         
@@ -3147,7 +2962,7 @@ class Flocking(_data):
         
         return cost
     
-    def computeTrajectory(self, initPos, initVel, duration, **kwargs):
+    def computeTrajectory(self, initPos, initVel, graph, duration, **kwargs):
         
         # Check initPos is of shape batchSize x 1 x nAgents
         assert len(initPos.shape) == 3
@@ -3160,6 +2975,13 @@ class Flocking(_data):
         assert initVel.shape[0] == batchSize
         assert initVel.shape[1] == 1
         assert initVel.shape[2] == nAgents
+        
+        # Check graph is of shape batchSize x time x nNodes x nNodes
+        assert len(graph.shape) == 4
+        assert graph.shape[0] == batchSize
+        assert graph.shape[1] == int(duration/self.samplingTime)
+        assert graph.shape[2] == nAgents
+        assert graph.shape[3] == nAgents        
         
         # Check what kind of data it is
         #   This is because all the functions are numpy, but if this was
@@ -3211,7 +3033,6 @@ class Flocking(_data):
         if useArchit:
             accel = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float)
             state = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float)
-            graph = np.zeros((batchSize, tSamples, nAgents, nAgents), dtype = np.float)
             
         # Assign the initial positions and velocities
         if useTorch:
@@ -3238,12 +3059,7 @@ class Flocking(_data):
                 # Adjust pos value for graph computation
                 thisPos = np.expand_dims(pos[:,t-1,:,:], 1)
                 # Compute graph
-                thisGraph = self.computeCommunicationGraph(thisPos,
-                                                           self.commRadius,
-                                                           True,
-                                                           doPrint = False)
-                # Save graph
-                graph[:,t-1,:,:] = thisGraph.squeeze(1)
+                thisGraph = np.expand_dims(graph[:,t-1,:,:], 1)
                 # Adjust vel value for state computation
                 thisVel = np.expand_dims(vel[:,t-1,:,:], 1)
                 # Compute state
@@ -3282,9 +3098,7 @@ class Flocking(_data):
         # let's compute them for completeness
         #   Graph
         thisPos = np.expand_dims(pos[:,-1,:,:], 1)
-        thisGraph = self.computeCommunicationGraph(thisPos, self.commRadius,
-                                                   True, doPrint = False)
-        graph[:,-1,:,:] = thisGraph.squeeze(1)
+        thisGraph = np.expand_dims(graph[:,-1,:,:], 1)
         #   State
         thisVel = np.expand_dims(vel[:,-1,:,:], 1)
         thisState = self.computeStates(thisPos, thisVel, thisGraph,
@@ -3420,44 +3234,15 @@ class Flocking(_data):
             
             # Compute the optimal acceleration
             #   Compute the distance between all elements (positions)
-            ijDiffPos, ijDistSq = self.computeDifferences(pos[:,t-1,:,:])
-            #       ijDiffPos: nSamples x 2 x nAgents x nAgents
-            #       ijDistSq:  nSamples x nAgents x nAgents
+            ijDiffPos, _ = self.computeDifferences(pos[:,t-1,:,:])
+            #       ijDiffPos: nSamples x 1 x nAgents x nAgents
             #   And also the difference in velocities
             ijDiffVel, _ = self.computeDifferences(vel[:,t-1,:,:])
-            #       ijDiffVel: nSamples x 2 x nAgents x nAgents
-            #   The last element we need to compute the acceleration is the
-            #   gradient. Note that the gradient only counts when the distance 
-            #   is smaller than the repel distance
-            #       This is the mask to consider each of the differences
-            # repelMask = (ijDistSq < (repelDist**2)).astype(ijDiffPos.dtype)
-            #       Apply the mask to the relevant differences
-            # ijDiffPos = ijDiffPos * np.expand_dims(repelMask, 1)
-            #       Compute the constant (1/||r_ij||^4 + 1/||r_ij||^2)
-            ijDistSqInv = invertTensorEW(ijDistSq)
-            #       Add the extra dimension
-            ijDistSqInv = np.expand_dims(ijDistSqInv, 1)
+            #       ijDiffVel: nSamples x 1 x nAgents x nAgents
             #   Compute the acceleration
-            deltaVel[:,t-1,:,:] = \
-                    -np.sum(ijDiffVel, axis = 3) 
-                               
-            deltaPos[:,t-1,:,:] = \
-                    -np.sum(ijDiffPos, axis = 3)                                
-                    
-            # Finally, note that if the agents are too close together, the
-            # acceleration will be very big to get them as far apart as
-            # possible, and this is physically impossible.
-            # So let's add a limitation to the maximum aceleration
-
-            # Find the places where the acceleration is big
-            thisAccel = deltaVel[:,t-1,:,:].copy()
-            # Values that exceed accelMax, force them to be accelMax
-            # thisAccel[deltaVel[:,t-1,:,:] > accelMax] = accelMax
-            # Values that are smaller than -accelMax, force them to be accelMax
-            # thisAccel[deltaVel[:,t-1,:,:] < -accelMax] = -accelMax
-            # And put it back
-            deltaVel[:,t-1,:,:] = thisAccel
-            
+            deltaVel[:,t-1,:,:] = -np.sum(ijDiffVel, axis = 3)                                
+            deltaPos[:,t-1,:,:] = -np.sum(ijDiffPos, axis = 3)                                
+                                
             # Update the values
             #   Update velocity
             vel[:,t,:,:] = vel[:,t-1,:,:] + 0.02 * deltaVel[:,t-1,:,:]
@@ -3475,8 +3260,8 @@ class Flocking(_data):
         if self.doPrint:
             # Erase the percentage
             print('\b \b' * 4, end = '', flush = True)
-            
-        return pos, vel, deltaPos
+
+        return pos, vel, np.concatenate((deltaPos,deltaVel),axis=2)
         
     def computeInitialPositions(self, nAgents, nSamples, commRadius,
                                 minDist = 0.1, geometry = 'rectangular',

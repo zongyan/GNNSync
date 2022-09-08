@@ -1110,10 +1110,11 @@ class TrainerFlocking(Trainer):
                     # Initial data
                     initPosValid = self.data.getData('initPos','valid')
                     initVelValid = self.data.getData('initVel','valid')
+                    graphValid = self.data.getData('commGraph','valid')                    
                     
                     # Compute trajectories
                     _, velTestValid, _, _, _ = self.data.computeTrajectory(
-                            initPosValid, initVelValid, self.data.duration,
+                            initPosValid, initVelValid, graphValid, self.data.duration,
                             archit = thisArchit, doPrint = False)
                     
                     # Compute evaluation

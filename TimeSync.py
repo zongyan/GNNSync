@@ -47,12 +47,12 @@ import torch; torch.set_default_dtype(torch.float64)
 import torch.nn as nn
 import torch.optim as optim
 
-import utils.dataTools as dataTools # alegnn.
-import utils.graphML as gml # alegnn.utils
-import modules.architecturesTime as architTime # alegnn.
-import modules.model as model # alegnn.modules
-import modules.training as training # alegnn.modules
-import modules.evaluation as evaluation # alegnn.modules
+import utils.dataTools as dataTools
+import utils.graphML as gml
+import modules.architecturesTime as architTime
+import modules.model as model
+import modules.training as training
+import modules.evaluation as evaluation
 
 #\\\ Separate functions:
 from utils.miscTools import writeVarValues
@@ -292,7 +292,7 @@ if doLocalGNN:
                                     else 'cpu'
 
     # Graph convolutional parameters
-    hParamsLocalGNN['dimNodeSignals'] = [2, 64] # Features per layer
+    hParamsLocalGNN['dimNodeSignals'] = [2, 32] # Features per layer
     hParamsLocalGNN['nFilterTaps'] = [3] # Number of filter taps
     hParamsLocalGNN['bias'] = True # Decide whether to include a bias term
     # Nonlinearity
@@ -1345,7 +1345,7 @@ for i in range(0, 1, 1):
     for j in range(0, 50, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), velOptim[i, :, 0, j]) 
+        plt.plot(np.arange(0, 200, 1), posTest[i, :, 0, j]) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')

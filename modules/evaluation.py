@@ -224,7 +224,8 @@ def evaluateFlocking(model, data, **kwargs):
     # Initial data
     initPosTest = data.getData('initPos', 'test')
     initVelTest = data.getData('initVel', 'test')
-
+    graphTest = data.getData('commGraph','test')                    
+                    
     ##############
     # BEST MODEL #
     ##############
@@ -240,7 +241,7 @@ def evaluateFlocking(model, data, **kwargs):
     accelTestBest, \
     stateTestBest, \
     commGraphTestBest = \
-        data.computeTrajectory(initPosTest, initVelTest, data.duration,
+        data.computeTrajectory(initPosTest, initVelTest, graphTest, data.duration,
                                archit = model.archit)
         
     SavedPath ='./gnn_test.npz'
@@ -268,7 +269,7 @@ def evaluateFlocking(model, data, **kwargs):
     accelTestLast, \
     stateTestLast, \
     commGraphTestLast = \
-        data.computeTrajectory(initPosTest, initVelTest, data.duration,
+        data.computeTrajectory(initPosTest, initVelTest, graphTest, data.duration,
                                archit = model.archit)
 
     if doPrint:
