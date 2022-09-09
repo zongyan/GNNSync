@@ -222,9 +222,9 @@ def evaluateFlocking(model, data, **kwargs):
     ########
 
     # Initial data
-    initPosTest = data.getData('initPos', 'test')
-    initVelTest = data.getData('initVel', 'test')
-    graphTest = data.getData('commGraph','test')                    
+    initPosTest = data.getData('initPos', 'train')
+    initVelTest = data.getData('initVel', 'train')
+    graphTest = data.getData('commGraph','train')                    
                     
     ##############
     # BEST MODEL #

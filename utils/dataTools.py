@@ -2685,7 +2685,7 @@ class Flocking(_data):
                     
                     # Now, we need to compute the differences, in velocities and in 
                     # positions, for each agent, for each time instant
-                    posDiff, posDistSq = self.computeDifferences(posBatch[:,t,:,:])
+                    posDiff, _ = self.computeDifferences(posBatch[:,t,:,:])
                     #   posDiff: batchSize[b] x 1 x nAgents x nAgents
                     velDiff, _ = self.computeDifferences(velBatch[:,t,:,:])
                     #   velDiff: batchSize[b] x 1 x nAgents x nAgents
@@ -2695,9 +2695,6 @@ class Flocking(_data):
                     # graph matrix.
                     graphMatrixTime = (np.abs(graphMatrixBatch[:,t,:,:])>zeroTolerance).astype(pos.dtype)
                     #   graphMatrix: batchSize[b] x nAgents x nAgents
-                    # We also need to invert the squares of the distances
-                    posDistSqInv = invertTensorEW(posDistSq)
-                    #   posDistSqInv: batchSize[b] x nAgents x nAgents
                     
                     # Now we add the extra dimensions so that all the 
                     # multiplications are adequate
@@ -2705,21 +2702,17 @@ class Flocking(_data):
                     #   graphMatrix: batchSize[b] x 1 x nAgents x nAgents
                     
                     # Then, we can get rid of non-neighbors
-                    posDiff = posDiff * graphMatrixTime
-                    posDistSqInv = np.expand_dims(posDistSqInv,1) * graphMatrixTime
-                    velDiff = velDiff * graphMatrixTime
+                    posDiff = posDiff * graphMatrixTime # element-wise multiplication 
+                    velDiff = velDiff * graphMatrixTime # element-wise multiplication
                     
                     # Finally, we can compute the states
                     stateVel = np.sum(velDiff, axis = 3)
-                    #   stateVel: batchSize[b] x 2 x nAgents
-                    statePosFourth = np.sum(posDiff * (posDistSqInv ** 2),
-                                            axis = 3)
-                    #   statePosFourth: batchSize[b] x 2 x nAgents
-                    statePosSq = np.sum(posDiff, axis = 3)
+                    #   stateVel: batchSize[b] x 1 x nAgents
+                    statePos = np.sum(posDiff, axis = 3)
                     #   statePosSq: batchSize[b] x 2 x nAgents
                     
                     # Concatentate the states and return the result
-                    state[batchIndex[b]:batchIndex[b+1],t,:,:] = np.concatenate((stateVel, statePosSq), axis = 1)
+                    state[batchIndex[b]:batchIndex[b+1],t,:,:] = np.concatenate((stateVel, statePos), axis = 1)
                     #   batchSize[b] x 2 x nAgents
                     
                     if doPrint:
@@ -2742,7 +2735,6 @@ class Flocking(_data):
                 # positions, for each agent, for each time instante
                 posDiff, _ = self.computeDifferences(posBatch)
                 #   posDiff: batchSize[b] x tSamples x 1 x nAgents x nAgents
-                #   posDistSq: batchSize[b] x tSamples x nAgents x nAgents
                 velDiff, _ = self.computeDifferences(velBatch)
                 #   velDiff: batchSize[b] x tSamples x 1 x nAgents x nAgents
                 
@@ -2751,7 +2743,6 @@ class Flocking(_data):
                 # graph matrix.
                 graphMatrixBatch = (np.abs(graphMatrixBatch) > zeroTolerance).astype(pos.dtype)
                 #   graphMatrix: batchSize[b] x tSamples x nAgents x nAgents
-                # We also need to invert the squares of the distances
                 
                 # Now we add the extra dimensions so that all the multiplications
                 # are adequate
@@ -2759,20 +2750,19 @@ class Flocking(_data):
                 #   graphMatrix:batchSize[b] x tSamples x 1 x nAgents x nAgents
                 
                 # Then, we can get rid of non-neighbors
-                posDiff = posDiff * graphMatrixBatch
-                velDiff = velDiff * graphMatrixBatch
+                posDiff = posDiff * graphMatrixBatch # element-wise multiplication
+                velDiff = velDiff * graphMatrixBatch # element-wise multiplication
                 
                 # Finally, we can compute the states
                 stateVel = np.sum(velDiff, axis = 4)
-                #   stateVel: batchSize[b] x tSamples x 2 x nAgents
-                #   statePosFourth: batchSize[b] x tSamples x 2 x nAgents
+                #   stateVel: batchSize[b] x tSamples x 1 x nAgents
                 statePos = np.sum(posDiff, axis = 4)
-                #   statePosSq: batchSize[b] x tSamples x 2 x nAgents
+                #   statePosSq: batchSize[b] x tSamples x 1 x nAgents
                 
                 # Concatentate the states and return the result
                 state[batchIndex[b]:batchIndex[b+1]] = np.concatenate((stateVel, statePos), axis = 2)
                 #   state: batchSize[b] x tSamples x 2 x nAgents
-                                                
+
                 if doPrint:
                     # Sample percentage count
                     percentageCount = int(100*(b+1)/nBatches)
@@ -2785,6 +2775,34 @@ class Flocking(_data):
                         # Erase the previous characters
                         print('\b \b' * 4 + "%3d%%" % percentageCount,
                               end = '', flush = True)
+        
+        # plt.figure()
+        # # Plot the offset correction input of all agents via the GNN method
+        # for i in range(0, 1, 1):
+        #     plt.rcParams["figure.figsize"] = (6.4,4.8)
+        #     for j in range(0, nAgents, 1):
+        #         plt.plot(np.arange(0, (self.duration/self.samplingTime), 1), state[i, :, 0, j]) 
+        #     # end for 
+        # plt.xlabel(r'$time (s)$')
+        # plt.ylabel(r'$\|{\bf x}_{input}\|_2$')
+        # plt.title(r'$\bf x_{input}$ for gnn')
+        # plt.grid()
+        # plt.show()    
+        # # end for    
+        
+        # plt.figure()
+        # # Plot the skew correction input of all agents via the GNN method
+        # for i in range(0, 1, 1):
+        #     plt.rcParams["figure.figsize"] = (6.4,4.8)
+        #     for j in range(0, nAgents, 1):
+        #         plt.plot(np.arange(0, (self.duration/self.samplingTime), 1), state[i, :, 1, j]) 
+        #     # end for 
+        # plt.xlabel(r'$time (s)$')
+        # plt.ylabel(r'$\|{\bf v}_{input}\|_2$')
+        # plt.title(r'$\bf v_{input}$ for gnn')
+        # plt.grid()
+        # plt.show()    
+        # # end for     
                         
         # Print
         if doPrint:
@@ -2809,10 +2827,21 @@ class Flocking(_data):
         # loading the configurations of the directed tree network consisting of 50 nodes
         treeNwk = spio.loadmat('tree.mat', squeeze_me=True)
         adjMatrix = treeNwk['Tree'] # Adjacency matrix of a minimal spanning tree network
-
+        
+        import networkx as nx
+        M=100
+        G = nx.from_numpy_array(adjMatrix[:,:,M])
+        plt.figure()        
+        nx.draw(G, pos=nx.kamada_kawai_layout(G), with_labels=True)
+        
         adjMatrix = np.transpose(adjMatrix, (2, 0, 1))
         adjMatrix = np.expand_dims(adjMatrix, axis=1)
         adjMatrix = np.repeat(adjMatrix, int(duration/samplingTime), axis = 1)                     
+
+        del G
+        G = nx.from_numpy_array(adjMatrix[M,M,:,:])
+        plt.figure()        
+        nx.draw(G, pos=nx.kamada_kawai_layout(G), with_labels=True)
         
         endIdx = self.nTrain+self.nValid+self.nTest                           
         return adjMatrix[0:endIdx,:,:,:]
@@ -2950,10 +2979,10 @@ class Flocking(_data):
             cost = torch.mean(costPerSample)
         else:
             # Repeat for numpy
-            avgVel = np.mean(vel, axis = 3) # nSamples x tSamples x 2
+            avgVel = np.mean(vel, axis = 3) # nSamples x tSamples x 1
             diffVel = vel - np.tile(np.expand_dims(avgVel, 3),
                                     (1, 1, 1, nAgents))
-            #   nSamples x tSamples x 2 x nAgents
+            #   nSamples x tSamples x 1 x nAgents
             diffVelNorm = np.sum(diffVel ** 2, axis = 2)
             #   nSamples x tSamples x nAgents
             diffVelAvg = np.mean(diffVelNorm, axis = 2) # nSamples x tSamples
@@ -2967,7 +2996,7 @@ class Flocking(_data):
         # Check initPos is of shape batchSize x 1 x nAgents
         assert len(initPos.shape) == 3
         batchSize = initPos.shape[0]
-        assert initPos.shape[1]
+        assert initPos.shape[1] == 1
         nAgents = initPos.shape[2]
         
         # Check initVel is of shape batchSize x 1 x nAgents
@@ -3084,8 +3113,8 @@ class Flocking(_data):
                 
             # Now that we have the acceleration, we can update position and
             # velocity
-            vel[:,t,:,:] = vel[:,t-1,:,:] + 0.02 * np.expand_dims(accel[:,t-1,0,:], 1)
-            pos[:,t,:,:] = pos[:,t-1,:,:] + 0.02 * np.expand_dims(accel[:,t-1,1,:], 1) + vel[:,t,:,:] * self.samplingTime                       
+            vel[:,t,:,:] = vel[:,t-1,:,:] + np.expand_dims(accel[:,t-1,0,:], 1)
+            pos[:,t,:,:] = pos[:,t-1,:,:] + np.expand_dims(accel[:,t-1,1,:], 1) + vel[:,t,:,:] * self.samplingTime                       
             
             if doPrint:
                 # Sample percentage count
@@ -3133,13 +3162,11 @@ class Flocking(_data):
     def computeDifferences(self, u):
         
         # Takes as input a tensor of shape
-        #   nSamples x tSamples x 2 x nAgents
+        #   nSamples x tSamples x 1 x nAgents
         # or of shape
-        #   nSamples x 2 x nAgents
+        #   nSamples x 1 x nAgents
         # And returns the elementwise difference u_i - u_j of shape
-        #   nSamples (x tSamples) x 2 x nAgents x nAgents
-        # And the distance squared ||u_i - u_j||^2 of shape
-        #   nSamples (x tSamples) x nAgents x nAgents
+        #   nSamples (x tSamples) x 1 x nAgents x nAgents
         
         # Check dimensions
         assert len(u.shape) == 3 or len(u.shape) == 4
@@ -3153,7 +3180,7 @@ class Flocking(_data):
             hasTimeDim = True
         
         # Now we have that pos always has shape
-        #   nSamples x tSamples x 2 x nAgents
+        #   nSamples x tSamples x 1 x nAgents
         nSamples = u.shape[0]
         tSamples = u.shape[1]
         assert u.shape[2] == 1
@@ -3166,26 +3193,25 @@ class Flocking(_data):
         # tensor of shape nSamples x tSamples x 2 x nAgents x nAgents
         # First, axis x
         #   Reshape as column and row vector, respectively
-        uCol_x = u[:,:,0,:].reshape((nSamples, tSamples, nAgents, 1))
-        uRow_x = u[:,:,0,:].reshape((nSamples, tSamples, 1, nAgents))
+        uCol = u[:,:,0,:].reshape((nSamples, tSamples, nAgents, 1))
+        uRow = u[:,:,0,:].reshape((nSamples, tSamples, 1, nAgents))
         #   Subtract them
-        uDiff_x = uCol_x - uRow_x # nSamples x tSamples x nAgents x nAgents
+        uDiff = uCol - uRow # nSamples x tSamples x nAgents x nAgents
         # Second, compute the distance tensor of shape
         #   nSamples x tSamples x nAgents x nAgents
-        uDistSq = uDiff_x ** 2 
-        # Finally, concatenate to obtain the tensor of differences
-        #   Add the extra dimension in the position
-        uDiff_x = np.expand_dims(uDiff_x, 2)
-        uDiff = uDiff_x
+        uDistSq = uDiff ** 2 
+        # Finally, add the extra dimension in the position
+        uDiff = np.expand_dims(uDiff, 2)
         #   nSamples x tSamples x 1 x nAgents x nAgents
             
         # Get rid of the time dimension if we don't need it
+        #   since time dimension equals 1 at this time
         if not hasTimeDim:
             # (This fails if tSamples > 1)
             uDistSq = uDistSq.squeeze(1)
             #   nSamples x nAgents x nAgents
             uDiff = uDiff.squeeze(1)
-            #   nSamples x 2 x nAgents x nAgents
+            #   nSamples x 1 x nAgents x nAgents
             
         return uDiff, uDistSq
         
@@ -3201,7 +3227,7 @@ class Flocking(_data):
         # for each agent i=1,...,N, where v_{i} is the velocity and r_{i} the
         # position.
         
-        # Check that initPos and initVel as nSamples x 2 x nAgents arrays
+        # Check that initPos and initVel as nSamples x 1 x nAgents arrays
         assert len(initPos.shape) == len(initVel.shape) == 3
         nSamples = initPos.shape[0]
         assert initPos.shape[1] == initVel.shape[1] == 1
@@ -3245,9 +3271,9 @@ class Flocking(_data):
                                 
             # Update the values
             #   Update velocity
-            vel[:,t,:,:] = vel[:,t-1,:,:] + 0.02 * deltaVel[:,t-1,:,:]
+            vel[:,t,:,:] = vel[:,t-1,:,:] + (1/(nAgents*25)) * deltaVel[:,t-1,:,:]
             #   Update the position
-            pos[:,t,:,:] = pos[:,t-1,:,:] + 0.02 * deltaPos[:,t-1,:,:] + vel[:,t,:,:] * samplingTime            
+            pos[:,t,:,:] = pos[:,t-1,:,:] + vel[:,t,:,:] * self.samplingTime + (1/(nAgents*25)) * deltaPos[:,t-1,:,:]            
             
             if self.doPrint:
                 # Sample percentage count
@@ -3255,6 +3281,65 @@ class Flocking(_data):
                 # Erase previous pecentage and print new value
                 print('\b \b' * 4 + "%3d%%" % percentageCount,
                       end = '', flush = True)
+
+        import matplotlib.pyplot as plt
+                
+        M=10
+        # Plot the position of all agents via the centralised controller
+        plt.figure()
+        for i in range(0+M, 1+M, 1):
+            plt.rcParams["figure.figsize"] = (6.4,4.8)
+            for j in range(0, nAgents, 1):
+                plt.plot(np.arange(0, (self.duration/self.samplingTime), 1), pos[i, :, 0, j]) 
+            # end for 
+        plt.xlabel(r'$time (s)$')
+        plt.ylabel(r'$\|{\bf x}_{cc}\|_2$')
+        plt.title(r'$\bf x_{cc}$ for ' + str(nAgents)+ ' agents (via centralised controller)')
+        plt.grid()
+        plt.show()    
+        # end for
+        
+        plt.figure()
+        # Plot the velocity of all agents via the centralised controller
+        for i in range(0, 1, 1):
+            plt.rcParams["figure.figsize"] = (6.4,4.8)
+            for j in range(0, nAgents, 1):
+                plt.plot(np.arange(0, (self.duration/self.samplingTime), 1), vel[i, :, 0, j]) 
+            # end for 
+        plt.xlabel(r'$time (s)$')
+        plt.ylabel(r'$\|{\bf v}_{cc}\|_2$')
+        plt.title(r'$\bf v_{cc}$ for ' + str(nAgents)+ ' agents (via centralised controller)')
+        plt.grid()
+        plt.show()    
+        # end for
+        
+        plt.figure()
+        # Plot the offset correction input of all agents via the GNN method
+        for i in range(0, 1, 1):
+            plt.rcParams["figure.figsize"] = (6.4,4.8)
+            for j in range(0, nAgents, 1):
+                plt.plot(np.arange(0, (self.duration/self.samplingTime), 1), deltaPos[i, :, 0, j]) 
+            # end for 
+        plt.xlabel(r'$time (s)$')
+        plt.ylabel(r'$\|{\bf x}_{input}\|_2$')
+        plt.title(r'$\bf x_{input}$ for ' + str(nAgents)+ ' agents (via centralised controller)')
+        plt.grid()
+        plt.show()    
+        # end for    
+        
+        plt.figure()
+        # Plot the skew correction input of all agents via the GNN method
+        for i in range(0, 1, 1):
+            plt.rcParams["figure.figsize"] = (6.4,4.8)
+            for j in range(0, nAgents, 1):
+                plt.plot(np.arange(0, (self.duration/self.samplingTime), 1), deltaVel[i, :, 0, j]) 
+            # end for 
+        plt.xlabel(r'$time (s)$')
+        plt.ylabel(r'$\|{\bf v}_{input}\|_2$')
+        plt.title(r'$\bf v_{input}$ for ' + str(nAgents)+ ' agents (via centralised controller)')
+        plt.grid()
+        plt.show()    
+        # end for        
                 
         # Print
         if self.doPrint:
@@ -3267,7 +3352,7 @@ class Flocking(_data):
                                 minDist = 0.1, geometry = 'rectangular',
                                 **kwargs):
                         
-        initOffsetValue = 100 # initial clock offset = 600 us
+        initOffsetValue = 100 # initial clock offset = 100 us
         initSkewValue = 25 # initial clock skew = 50 ppm        
         
         # Let's start by setting the fixed offset and skew 
@@ -3286,6 +3371,23 @@ class Flocking(_data):
         # Finally, get the initial offsets and skews 
         initOffset = offsetFixed + offsetPerturb # nSamples x nNodes     
         initSkew = skewFixed + skewPerturb # nSamples x nNodes        
+
+        import matplotlib.pyplot as plt
+
+        # Plot the histogram of all agents' initial offsets 
+        plt.figure()
+        plt.hist(initOffset)
+        plt.xlabel(r'Initial clock offset ($\mu$s)')
+        plt.title('Histogram of all agents initial clock offsets')
+        plt.show()    
+
+        # Plot the histogram of all agents' initial skews                 
+        plt.figure()
+        plt.hist(initSkew)
+        plt.xlabel(r'Initial clock skew (ppm)')
+        plt.title('Histogram of all agents initial clock skews')
+        plt.show()    
+        # end for
         
         # And reshape them 
         initOffset = initOffset.reshape(nSamples, nAgents)        
@@ -3293,8 +3395,8 @@ class Flocking(_data):
 
         # Add the extra feature=1 dimensions
         initOffset = np.expand_dims(initOffset, 1) # nSamples x 1 x nNodes
-        initSkew = np.expand_dims(initSkew, 1) # nSamples x 1 x nNodes            
-                  
+        initSkew = np.expand_dims(initSkew, 1) # nSamples x 1 x nNodes       
+                          
         return initOffset, initSkew
         
         

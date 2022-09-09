@@ -126,7 +126,7 @@ commRadius = 2. # Communication radius
 repelDist = 1. # Minimum distance before activating repelling potential
 nTrain = 400 # Number of training samples
 nValid = 20 # Number of valid samples
-nTest = 20 # Number of testing samples
+nTest = 50 # Number of testing samples
 duration = 2. # Duration of the trajectory
 samplingTime = 0.01 # Sampling time
 initGeometry = 'circular' # Geometry of initial positions
@@ -630,63 +630,6 @@ for realization in range(nRealizations):
     # PREVIEW #
     ###########
     
-    posTrain = data.getData('pos', 'train')
-    velTrain = data.getData('vel', 'train')
-    accelTrain = data.getData('accel', 'train')      
-
-    M = 9
-    
-    # plot the position of all agents via the centralised controller
-    plt.figure()
-    for i in range(0+M, 1+M, 1):
-        plt.rcParams["figure.figsize"] = (6.4,4.8)
-        for j in range(0, nAgents, 1):
-            # the input and output features are two dimensions, which means that one 
-            # dimension is for x-axis velocity, the other one is for y-axis velocity 
-            plt.plot(np.arange(0, (duration/samplingTime), 1), posTrain[i, :, 0, j]) 
-            # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-        # end for 
-    plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf x}_{cc}\|_2$')
-    plt.title(r'$\bf x_{cc}$ for ' + str(nAgents)+ ' agents (via centralised controller)')
-    plt.grid()
-    plt.show()    
-    # end for
-    
-    plt.figure()
-    # plot the velocity of all agents via the centralised controller
-    for i in range(0, 1, 1):
-        plt.rcParams["figure.figsize"] = (6.4,4.8)
-        for j in range(0, nAgents, 1):
-            # the input and output features are two dimensions, which means that one 
-            # dimension is for x-axis velocity, the other one is for y-axis velocity 
-            plt.plot(np.arange(0, (duration/samplingTime), 1), velTrain[i, :, 0, j]) 
-            # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-        # end for 
-    plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf v}_{cc}\|_2$')
-    plt.title(r'$\bf v_{cc}$ for ' + str(nAgents)+ ' agents (via centralised controller)')
-    plt.grid()
-    plt.show()    
-    # end for
-    
-    plt.figure()
-    # plot the velocity of all agents via the GNN method
-    for i in range(0, 1, 1):
-        plt.rcParams["figure.figsize"] = (6.4,4.8)
-        for j in range(0, nAgents, 1):
-            # the input and output features are two dimensions, which means that one 
-            # dimension is for x-axis velocity, the other one is for y-axis velocity 
-            plt.plot(np.arange(0, (duration/samplingTime), 1), accelTrain[i, :, 0, j]) 
-            # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-        # end for 
-    plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf a}_{cc}\|_2$')
-    plt.title(r'$\bf a_{cc}$ for ' + str(nAgents)+ ' agents (via centralised controller)')
-    plt.grid()
-    plt.show()    
-    # end for    
-
     if doPrint:
         print("Preview data", end = '')
         if nRealizations > 1:
@@ -879,23 +822,25 @@ for realization in range(nRealizations):
             print("...", flush = True)
 
         #   Load the data, which will give a specific split
-        dataTest = dataTools.Flocking(
-                        # Structure
-                        nAgentsTest[n],
-                        commRadius,
-                        repelDist,
-                        # Samples
-                        1, # We don't care about training
-                        1, # nor validation
-                        nTest,
-                        # Time
-                        duration,
-                        samplingTime,
-                        # Initial conditions
-                        initGeometry = initGeometry,
-                        initVelValue = initVelValue,
-                        initMinDist = initMinDist,
-                        accelMax = accelMax)
+        # dataTest = dataTools.Flocking(
+        #                 # Structure
+        #                 nAgentsTest[n],
+        #                 commRadius,
+        #                 repelDist,
+        #                 # Samples
+        #                 1, # We don't care about training
+        #                 1, # nor validation
+        #                 nTest,
+        #                 # Time
+        #                 duration,
+        #                 samplingTime,
+        #                 # Initial conditions
+        #                 initGeometry = initGeometry,
+        #                 initVelValue = initVelValue,
+        #                 initMinDist = initMinDist,
+        #                 accelMax = accelMax)
+        
+        dataTest=data
     
         ###########
         # OPTIMAL #
@@ -1332,7 +1277,7 @@ for i in range(0, 1, 1):
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
+    plt.ylabel(r'$\|{\bf v}_{gnn}\|_2$')
     plt.title(r'$\bf v_{gnn}$ for ' + str(50)+ ' agents (gnn controller)')
     plt.grid()
     plt.show()    
@@ -1349,8 +1294,8 @@ for i in range(0, 1, 1):
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf v}_{in}\|_2$')
-    plt.title(r'$\bf v_{cc}$ for ' + str(50)+ ' agents (centralised controller)')
+    plt.ylabel(r'$\|{\bf x}_{gnn}\|_2$')
+    plt.title(r'$\bf x_{gnn}$ for ' + str(50)+ ' agents (centralised controller)')
     plt.grid()
     plt.show()    
 # end for
