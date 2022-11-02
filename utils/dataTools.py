@@ -2861,9 +2861,9 @@ class Flocking(_data):
         # instant if we have a large number of time instants, and split the
         # batches
         maxTimeSamples = 200 # Set the maximum number of t.Samples before
-            # which to start doing this time by time.
+                             # which to start doing this time by time.
         maxBatchSize = 100 # Maximum number of samples to process at a given
-            # time
+                           # time
         
         # Compute the number of samples, and split the indices accordingly
         if nSamples < maxBatchSize:
@@ -3016,34 +3016,7 @@ class Flocking(_data):
             # Erase the percentage
             print('\b \b' * 4, end = '', flush = True)        
         
-        
-        
-        #############################################
-        
-        duration = 2. # Duration of the trajectory
-        samplingTime = 0.01 # Sampling time
-        
-        # loading the configurations of the directed tree network consisting of 50 nodes
-        treeNwk = spio.loadmat('tree.mat', squeeze_me=True)
-        adjMatrix = treeNwk['Tree'] # Adjacency matrix of a minimal spanning tree network
-        
-        import networkx as nx
-        M=100
-        G = nx.from_numpy_array(adjMatrix[:,:,M])
-        plt.figure()        
-        nx.draw(G, pos=nx.kamada_kawai_layout(G), with_labels=True)
-        
-        adjMatrix = np.transpose(adjMatrix, (2, 0, 1))
-        adjMatrix = np.expand_dims(adjMatrix, axis=1)
-        adjMatrix = np.repeat(adjMatrix, int(duration/samplingTime), axis = 1)                     
-
-        del G
-        G = nx.from_numpy_array(adjMatrix[M,M,:,:])
-        plt.figure()        
-        nx.draw(G, pos=nx.kamada_kawai_layout(G), with_labels=True)
-        
-        endIdx = self.nTrain+self.nValid+self.nTest                           
-        return adjMatrix[0:endIdx,:,:,:]
+        return graphMatrix
     
     def getData(self, name, samplesType, *args):
         
