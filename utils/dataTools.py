@@ -2476,8 +2476,9 @@ class Flocking(_data):
         if self.doPrint:
             print("\tComputing initial conditions...", end = ' ', flush = True)
         
-        # Compute the initial positions
-        initPosAll, initVelAll = self.computeInitialPositions(
+        # Compute the initial conditions        
+        initPosAll, initVelAll, \
+            initOffsetAll, initSkewAll = self.computeInitialPositions(
                                           self.nAgents, nSamples, self.commRadius,
                                           minDist = self.initMinDist,
                                           geometry = self.initGeometry,
@@ -3215,7 +3216,7 @@ class Flocking(_data):
             
         return uDiff, uDistSq
         
-    def computeOptimalTrajectory(self, initPos, initVel, duration, 
+    def computeOptimalTrajectory(self, initPos, initVel, initOffset, initSkew, duration, 
                                  samplingTime, repelDist,
                                  accelMax = 100.):
         
@@ -3234,7 +3235,15 @@ class Flocking(_data):
         nAgents = initPos.shape[2]
         assert initVel.shape[0] == nSamples
         assert initVel.shape[2] == nAgents
-        
+
+        # Check that initOffset and initSkew as nSamples x 1 x nAgents arrays
+        assert len(initOffset.shape) == len(initSkew.shape) == 3
+        assert nSamples == initOffset.shape[0]
+        assert initOffset.shape[1] == initSkew.shape[1] == 1
+        assert nAgents == initOffset.shape[2]
+        assert initSkew.shape[0] == nSamples
+        assert initSkew.shape[2] == nAgents
+       
         # time
         time = np.arange(0, duration, samplingTime)
         tSamples = len(time) # number of time samples
@@ -3242,11 +3251,17 @@ class Flocking(_data):
         # Create arrays to store the trajectory
         pos = np.zeros((nSamples, tSamples, 2, nAgents))
         vel = np.zeros((nSamples, tSamples, 2, nAgents))
-        accel = np.zeros((nSamples, tSamples, 2, nAgents))
+        accel = np.zeros((nSamples, tSamples, 2, nAgents))        
+        offset = np.zeros((nSamples, tSamples, 1, nAgents))
+        skew = np.zeros((nSamples, tSamples, 1, nAgents))
+        deltaOffset = np.zeros((nSamples, tSamples, 1, nAgents))        
+        deltaSkew = np.zeros((nSamples, tSamples, 1, nAgents))                
         
         # Initial settings
         pos[:,0,:,:] = initPos
-        vel[:,0,:,:] = initVel
+        vel[:,0,:,:] = initVel        
+        offset[:,0,:,:] = initOffset
+        skew[:,0,:,:] = initSkew        
         
         if self.doPrint:
             # Sample percentage count
@@ -3257,7 +3272,7 @@ class Flocking(_data):
         # For each time instant
         for t in range(1,tSamples):
             
-            # Compute the optimal acceleration
+            ### Compute the optimal acceleration ###
             #   Compute the distance between all elements (positions)
             ijDiffPos, ijDistSq = self.computeDifferences(pos[:,t-1,:,:])
             #       ijDiffPos: nSamples x 2 x nAgents x nAgents
@@ -3296,12 +3311,28 @@ class Flocking(_data):
             # And put it back
             accel[:,t-1,:,:] = thisAccel
             
-            # Update the values
+            ### Compute the optimal clock offset and skew correction values ###
+            #   Compute the distance between all elements (offsets)
+            ijDiffOffset, _ = self.computeDifferences(offset[:,t-1,:,:])
+            #       ijDiffOffset: nSamples x 1 x nAgents x nAgents
+            #   And also the difference in skews
+            ijDiffSkew, _ = self.computeDifferences(skew[:,t-1,:,:])
+            #       ijDiffVel: nSamples x 1 x nAgents x nAgents
+            #   Compute the clock offset and skew correction
+            deltaOffset[:,t-1,:,:] = -np.sum(ijDiffOffset, axis = 3)                                
+            deltaSkew[:,t-1,:,:] = -np.sum(ijDiffSkew, axis = 3)                  
+                        
+            ### Update the values ###
             #   Update velocity
             vel[:,t,:,:] = vel[:,t-1,:,:] + accel[:,t-1,:,:] * samplingTime
             #   Update the position
             pos[:,t,:,:] = pos[:,t-1,:,:] + vel[:,t-1,:,:] * samplingTime + accel[:,t-1,:,:] * (samplingTime ** 2)/2 
             
+            #   Update the clock skew
+            skew[:,t,:,:] = skew[:,t-1,:,:] + (1/(nAgents*25)) * deltaSkew[:,t-1,:,:]
+            #   Update the clock offset
+            offset[:,t,:,:] = offset[:,t-1,:,:] + skew[:,t,:,:] * self.samplingTime + (1/(nAgents*25)) * deltaOffset[:,t-1,:,:]                        
+            
             if self.doPrint:
                 # Sample percentage count
                 percentageCount = int(100*(t+1)/tSamples)
@@ -3314,133 +3345,7 @@ class Flocking(_data):
             # Erase the percentage
             print('\b \b' * 4, end = '', flush = True)
 
-
-
-
-######################################################################################
-
-
-        
-        # Check that initPos and initVel as nSamples x 1 x nAgents arrays
-        assert len(initPos.shape) == len(initVel.shape) == 3
-        nSamples = initPos.shape[0]
-        assert initPos.shape[1] == initVel.shape[1] == 1
-        nAgents = initPos.shape[2]
-        assert initVel.shape[0] == nSamples
-        assert initVel.shape[2] == nAgents
-        
-        # time
-        time = np.arange(0, duration, samplingTime)
-        tSamples = len(time) # number of time samples
-        
-        # Create arrays to store the trajectory
-        pos = np.zeros((nSamples, tSamples, 1, nAgents))
-        vel = np.zeros((nSamples, tSamples, 1, nAgents))
-        deltaVel = np.zeros((nSamples, tSamples, 1, nAgents))        
-        deltaPos = np.zeros((nSamples, tSamples, 1, nAgents))                
-        
-        # Initial settings
-        pos[:,0,:,:] = initPos
-        vel[:,0,:,:] = initVel
-        
-        if self.doPrint:
-            # Sample percentage count
-            percentageCount = int(100/tSamples)
-            # Print new value
-            print("%3d%%" % percentageCount, end = '', flush = True)
-        
-        # For each time instant
-        for t in range(1,tSamples):
-            
-            # Compute the optimal acceleration
-            #   Compute the distance between all elements (positions)
-            ijDiffPos, _ = self.computeDifferences(pos[:,t-1,:,:])
-            #       ijDiffPos: nSamples x 1 x nAgents x nAgents
-            #   And also the difference in velocities
-            ijDiffVel, _ = self.computeDifferences(vel[:,t-1,:,:])
-            #       ijDiffVel: nSamples x 1 x nAgents x nAgents
-            #   Compute the acceleration
-            deltaVel[:,t-1,:,:] = -np.sum(ijDiffVel, axis = 3)                                
-            deltaPos[:,t-1,:,:] = -np.sum(ijDiffPos, axis = 3)                                
-                                
-            # Update the values
-            #   Update velocity
-            vel[:,t,:,:] = vel[:,t-1,:,:] + (1/(nAgents*25)) * deltaVel[:,t-1,:,:]
-            #   Update the position
-            pos[:,t,:,:] = pos[:,t-1,:,:] + vel[:,t,:,:] * self.samplingTime + (1/(nAgents*25)) * deltaPos[:,t-1,:,:]            
-            
-            if self.doPrint:
-                # Sample percentage count
-                percentageCount = int(100*(t+1)/tSamples)
-                # Erase previous pecentage and print new value
-                print('\b \b' * 4 + "%3d%%" % percentageCount,
-                      end = '', flush = True)
-
-        import matplotlib.pyplot as plt
-                
-        M=10
-        # Plot the position of all agents via the centralised controller
-        plt.figure()
-        for i in range(0+M, 1+M, 1):
-            plt.rcParams["figure.figsize"] = (6.4,4.8)
-            for j in range(0, nAgents, 1):
-                plt.plot(np.arange(0, (self.duration/self.samplingTime), 1), pos[i, :, 0, j]) 
-            # end for 
-        plt.xlabel(r'$time (s)$')
-        plt.ylabel(r'$\|{\bf x}_{cc}\|_2$')
-        plt.title(r'$\bf x_{cc}$ for ' + str(nAgents)+ ' agents (via centralised controller)')
-        plt.grid()
-        plt.show()    
-        # end for
-        
-        plt.figure()
-        # Plot the velocity of all agents via the centralised controller
-        for i in range(0, 1, 1):
-            plt.rcParams["figure.figsize"] = (6.4,4.8)
-            for j in range(0, nAgents, 1):
-                plt.plot(np.arange(0, (self.duration/self.samplingTime), 1), vel[i, :, 0, j]) 
-            # end for 
-        plt.xlabel(r'$time (s)$')
-        plt.ylabel(r'$\|{\bf v}_{cc}\|_2$')
-        plt.title(r'$\bf v_{cc}$ for ' + str(nAgents)+ ' agents (via centralised controller)')
-        plt.grid()
-        plt.show()    
-        # end for
-        
-        plt.figure()
-        # Plot the offset correction input of all agents via the GNN method
-        for i in range(0, 1, 1):
-            plt.rcParams["figure.figsize"] = (6.4,4.8)
-            for j in range(0, nAgents, 1):
-                plt.plot(np.arange(0, (self.duration/self.samplingTime), 1), deltaPos[i, :, 0, j]) 
-            # end for 
-        plt.xlabel(r'$time (s)$')
-        plt.ylabel(r'$\|{\bf x}_{input}\|_2$')
-        plt.title(r'$\bf x_{input}$ for ' + str(nAgents)+ ' agents (via centralised controller)')
-        plt.grid()
-        plt.show()    
-        # end for    
-        
-        plt.figure()
-        # Plot the skew correction input of all agents via the GNN method
-        for i in range(0, 1, 1):
-            plt.rcParams["figure.figsize"] = (6.4,4.8)
-            for j in range(0, nAgents, 1):
-                plt.plot(np.arange(0, (self.duration/self.samplingTime), 1), deltaVel[i, :, 0, j]) 
-            # end for 
-        plt.xlabel(r'$time (s)$')
-        plt.ylabel(r'$\|{\bf v}_{input}\|_2$')
-        plt.title(r'$\bf v_{input}$ for ' + str(nAgents)+ ' agents (via centralised controller)')
-        plt.grid()
-        plt.show()    
-        # end for        
-                
-        # Print
-        if self.doPrint:
-            # Erase the percentage
-            print('\b \b' * 4, end = '', flush = True)
-
-        return pos, vel, np.concatenate((deltaPos,deltaVel),axis=2)
+        return pos, vel, accel, offset, skew,  deltaOffset, deltaSkew
     
     # def computeInitialConditions
     def computeInitialPositions(self, nAgents, nSamples, commRadius,
