@@ -2611,7 +2611,209 @@ class Flocking(_data):
         # Just avoid the 'expandDims' method in the parent class
         pass
         
-    def computeStates(self, pos, vel, graphMatrix, **kwargs):
+    def computeStates(self, pos, vel, offset, skew, graphMatrix, **kwargs):
+
+        # We get the following inputs.
+        # positions: nSamples x tSamples x 2 x nAgents
+        # velocities: nSamples x tSamples x 2 x nAgents
+        # graphMatrix: nSaples x tSamples x nAgents x nAgents
+        
+        # And we want to build the state, which is a vector of dimension 6 on 
+        # each node, that is, the output shape is
+        #   nSamples x tSamples x 6 x nAgents
+        
+        # The print for this one can be settled independently, if not, use the
+        # default of the data object
+        if 'doPrint' in kwargs.keys():
+            doPrint = kwargs['doPrint']
+        else:
+            doPrint = self.doPrint
+        
+        # Check correct dimensions
+        assert len(pos.shape) == len(vel.shape) == len(graphMatrix.shape) == 4
+        nSamples = pos.shape[0]
+        tSamples = pos.shape[1]
+        assert pos.shape[2] == 2
+        nAgents = pos.shape[3]
+        assert vel.shape[0] == graphMatrix.shape[0] == nSamples
+        assert vel.shape[1] == graphMatrix.shape[1] == tSamples
+        assert vel.shape[2] == 2
+        assert vel.shape[3] == graphMatrix.shape[2] == graphMatrix.shape[3] \
+                == nAgents
+                
+        # If we have a lot of batches and a particularly long sequence, this
+        # is bound to fail, memory-wise, so let's do it time instant by time
+        # instant if we have a large number of time instants, and split the
+        # batches
+        maxTimeSamples = 200 # Set the maximum number of t.Samples before
+            # which to start doing this time by time.
+        maxBatchSize = 100 # Maximum number of samples to process at a given
+            # time
+        
+        # Compute the number of samples, and split the indices accordingly
+        if nSamples < maxBatchSize:
+            nBatches = 1
+            batchSize = [nSamples]
+        elif nSamples % maxBatchSize != 0:
+            # If we know it's not divisible, then we do floor division and
+            # add one more batch
+            nBatches = nSamples // maxBatchSize + 1
+            batchSize = [maxBatchSize] * nBatches
+            # But the last batch is actually smaller, so just add the 
+            # remaining ones
+            batchSize[-1] = nSamples - sum(batchSize[0:-1])
+        # If they fit evenly, then just do so.
+        else:
+            nBatches = int(nSamples/maxBatchSize)
+            batchSize = [maxBatchSize] * nBatches
+        # batchIndex is used to determine the first and last element of each
+        # batch. We need to add the 0 because it's the first index.
+        batchIndex = np.cumsum(batchSize).tolist()
+        batchIndex = [0] + batchIndex
+        
+        # Create the output state variable
+        state = np.zeros((nSamples, tSamples, 6, nAgents))
+        
+        for b in range(nBatches):
+            
+            # Pick the batch elements
+            posBatch = pos[batchIndex[b]:batchIndex[b+1]]
+            velBatch = vel[batchIndex[b]:batchIndex[b+1]]
+            graphMatrixBatch = graphMatrix[batchIndex[b]:batchIndex[b+1]]
+        
+            if tSamples > maxTimeSamples:
+                
+                # For each time instant
+                for t in range(tSamples):
+                    
+                    # Now, we need to compute the differences, in velocities and in 
+                    # positions, for each agent, for each time instant
+                    posDiff, posDistSq = \
+                                     self.computeDifferences(posBatch[:,t,:,:])
+                    #   posDiff: batchSize[b] x 2 x nAgents x nAgents
+                    #   posDistSq: batchSize[b] x nAgents x nAgents
+                    velDiff, _ = self.computeDifferences(velBatch[:,t,:,:])
+                    #   velDiff: batchSize[b] x 2 x nAgents x nAgents
+                    
+                    # Next, we need to get ride of all those places where there are
+                    # no neighborhoods. That is given by the nonzero elements of the 
+                    # graph matrix.
+                    graphMatrixTime = (np.abs(graphMatrixBatch[:,t,:,:])\
+                                                               >zeroTolerance)\
+                                                             .astype(pos.dtype)
+                    #   graphMatrix: batchSize[b] x nAgents x nAgents
+                    # We also need to invert the squares of the distances
+                    posDistSqInv = invertTensorEW(posDistSq)
+                    #   posDistSqInv: batchSize[b] x nAgents x nAgents
+                    
+                    # Now we add the extra dimensions so that all the 
+                    # multiplications are adequate
+                    graphMatrixTime = np.expand_dims(graphMatrixTime, 1)
+                    #   graphMatrix: batchSize[b] x 1 x nAgents x nAgents
+                    
+                    # Then, we can get rid of non-neighbors
+                    posDiff = posDiff * graphMatrixTime
+                    posDistSqInv = np.expand_dims(posDistSqInv,1)\
+                                                              * graphMatrixTime
+                    velDiff = velDiff * graphMatrixTime
+                    
+                    # Finally, we can compute the states
+                    stateVel = np.sum(velDiff, axis = 3)
+                    #   stateVel: batchSize[b] x 2 x nAgents
+                    statePosFourth = np.sum(posDiff * (posDistSqInv ** 2),
+                                            axis = 3)
+                    #   statePosFourth: batchSize[b] x 2 x nAgents
+                    statePosSq = np.sum(posDiff * posDistSqInv, axis = 3)
+                    #   statePosSq: batchSize[b] x 2 x nAgents
+                    
+                    # Concatentate the states and return the result
+                    state[batchIndex[b]:batchIndex[b+1],t,:,:] = \
+                                                np.concatenate((stateVel,
+                                                                statePosFourth,
+                                                                statePosSq),
+                                                               axis = 1)
+                    #   batchSize[b] x 6 x nAgents
+                    
+                    if doPrint:
+                        # Sample percentage count
+                        percentageCount = int(100*(t+1+b*tSamples)\
+                                                          /(nBatches*tSamples))
+                        
+                        if t == 0 and b == 0:
+                            # It's the first one, so just print it
+                            print("%3d%%" % percentageCount,
+                                  end = '', flush = True)
+                        else:
+                            # Erase the previous characters
+                            print('\b \b' * 4 + "%3d%%" % percentageCount,
+                                  end = '', flush = True)
+                
+            else:
+                
+                # Now, we need to compute the differences, in velocities and in 
+                # positions, for each agent, for each time instante
+                posDiff, posDistSq = self.computeDifferences(posBatch)
+                #   posDiff: batchSize[b] x tSamples x 2 x nAgents x nAgents
+                #   posDistSq: batchSize[b] x tSamples x nAgents x nAgents
+                velDiff, _ = self.computeDifferences(velBatch)
+                #   velDiff: batchSize[b] x tSamples x 2 x nAgents x nAgents
+                
+                # Next, we need to get ride of all those places where there are
+                # no neighborhoods. That is given by the nonzero elements of the 
+                # graph matrix.
+                graphMatrixBatch = (np.abs(graphMatrixBatch) > zeroTolerance)\
+                                                             .astype(pos.dtype)
+                #   graphMatrix: batchSize[b] x tSamples x nAgents x nAgents
+                # We also need to invert the squares of the distances
+                posDistSqInv = invertTensorEW(posDistSq)
+                #   posDistSqInv: batchSize[b] x tSamples x nAgents x nAgents
+                
+                # Now we add the extra dimensions so that all the multiplications
+                # are adequate
+                graphMatrixBatch = np.expand_dims(graphMatrixBatch, 2)
+                #   graphMatrix:batchSize[b] x tSamples x 1 x nAgents x nAgents
+                
+                # Then, we can get rid of non-neighbors
+                posDiff = posDiff * graphMatrixBatch
+                posDistSqInv = np.expand_dims(posDistSqInv, 2)\
+                                                             * graphMatrixBatch
+                velDiff = velDiff * graphMatrixBatch
+                
+                # Finally, we can compute the states
+                stateVel = np.sum(velDiff, axis = 4)
+                #   stateVel: batchSize[b] x tSamples x 2 x nAgents
+                statePosFourth = np.sum(posDiff * (posDistSqInv ** 2), axis = 4)
+                #   statePosFourth: batchSize[b] x tSamples x 2 x nAgents
+                statePosSq = np.sum(posDiff * posDistSqInv, axis = 4)
+                #   statePosSq: batchSize[b] x tSamples x 2 x nAgents
+                
+                # Concatentate the states and return the result
+                state[batchIndex[b]:batchIndex[b+1]] = \
+                                                np.concatenate((stateVel,
+                                                                statePosFourth,
+                                                                statePosSq),
+                                                               axis = 2)
+                #   state: batchSize[b] x tSamples x 6 x nAgents
+                                                
+                if doPrint:
+                    # Sample percentage count
+                    percentageCount = int(100*(b+1)/nBatches)
+                    
+                    if b == 0:
+                        # It's the first one, so just print it
+                        print("%3d%%" % percentageCount,
+                              end = '', flush = True)
+                    else:
+                        # Erase the previous characters
+                        print('\b \b' * 4 + "%3d%%" % percentageCount,
+                              end = '', flush = True)
+                        
+        # Print
+        if doPrint:
+            # Erase the percentage
+            print('\b \b' * 4, end = '', flush = True)        
+        
+####################################################################################        
         
         # We get the following inputs.
         # positions: nSamples x tSamples x 1 x nAgents
