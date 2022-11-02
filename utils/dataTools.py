@@ -3347,11 +3347,140 @@ class Flocking(_data):
             print('\b \b' * 4, end = '', flush = True)
 
         return pos, vel, np.concatenate((deltaPos,deltaVel),axis=2)
-        
+    
+    # def computeInitialConditions
     def computeInitialPositions(self, nAgents, nSamples, commRadius,
-                                minDist = 0.1, geometry = 'rectangular',
+                                minDist = 0.1, geometry = 'circular',
                                 **kwargs):
-                        
+
+        assert geometry == 'circular'
+        assert minDist * (1.+zeroTolerance) <= commRadius * (1.-zeroTolerance)
+        # We use a zeroTolerance buffer zone, just in case
+        minDist = minDist * (1. + zeroTolerance)
+        commRadius = commRadius * (1. - zeroTolerance)
+        
+        #### We first generate the position information of UAVs ####       
+        # Radius for the grid
+        rFixed = (commRadius + minDist)/2.
+        rPerturb = (commRadius - minDist)/4.
+        fixedRadius = np.arange(0, rFixed*nAgents, step=rFixed) + rFixed        
+        
+        # Angles for the grid
+        aFixed = (commRadius/fixedRadius + minDist/fixedRadius)/2.
+        for a in range(len(aFixed)):
+            # How many times does aFixed[a] fits within 2pi?
+            nAgentsPerCircle = 2 * np.pi // aFixed[a]
+            # And now divide 2*np.pi by this number
+            aFixed[a] = 2 * np.pi / nAgentsPerCircle
+        #   Fixed angle difference for each value of fixedRadius
+
+        # Now, let's get the radius, angle coordinates for each agents
+        initRadius = np.empty((0))
+        initAngles = np.empty((0))
+        agentsSoFar = 0 # Number of agents located so far
+        n = 0 # Index for radius
+        while agentsSoFar < nAgents:
+            thisRadius = fixedRadius[n]
+            thisAngles = np.arange(0, 2*np.pi, step=aFixed[n])
+            agentsSoFar += len(thisAngles)
+            initRadius = np.concatenate((initRadius,
+                                         np.repeat(thisRadius, len(thisAngles))))
+            initAngles = np.concatenate((initAngles, thisAngles))
+            n += 1
+            assert len(initRadius) == agentsSoFar
+            
+        # Restrict to the number of agents we need
+        initRadius = initRadius[0:nAgents]
+        initAngles = initAngles[0:nAgents]            
+
+        # Add the number of samples
+        initRadius = np.repeat(np.expand_dims(initRadius, 0), nSamples, axis=0)
+        initAngles = np.repeat(np.expand_dims(initAngles, 0), nSamples, axis=0)
+        
+        # Add the noise
+        #   First, to the angles
+        for n in range(nAgents):
+            # Get the radius (the angle noise depends on the radius); so
+            # far the radius is the same for all samples
+            thisRadius = initRadius[0,n]
+            aPerturb = (commRadius/thisRadius - minDist/thisRadius)/4.
+            # Add the noise to the angles
+            initAngles[:,n] += np.random.uniform(low = -aPerturb,
+                                                 high = aPerturb,
+                                                 size = (nSamples))
+        #   Then, to the radius
+        initRadius += np.random.uniform(low = -rPerturb,
+                                        high = rPerturb,
+                                        size = (nSamples, nAgents))
+        
+        # And finally, get the positions in the cartesian coordinates
+        initPos = np.zeros((nSamples, 3, nAgents))
+        initPos[:, 0, :] = initRadius * np.cos(initAngles)
+        initPos[:, 1, :] = initRadius * np.sin(initAngles)        
+        
+        # Now, check that the conditions are met:
+        #   Compute square distances
+        _, distSq = self.computeDifferences(np.expand_dims(initPos, 1))
+        #   Get rid of the "time" dimension that arises from using the 
+        #   method to compute distances
+        distSq = distSq.squeeze(1)
+        #   Compute the minimum distance (don't forget to add something in
+        #   the diagonal, which otherwise is zero)
+        minDistSq = np.min(distSq + \
+                           2 * commRadius\
+                             *np.eye(distSq.shape[1]).reshape(1,
+                                                              distSq.shape[1],
+                                                              distSq.shape[2])
+                           )        
+        
+        assert minDistSq >= minDist ** 2
+        
+        #   Now the number of neighbors
+        graphMatrix = self.computeCommunicationGraph(np.expand_dims(initPos,1),
+                                                     self.commRadius,
+                                                     False,
+                                                     doPrint = False)
+        graphMatrix = graphMatrix.squeeze(1) # nSamples x nAgents x nAgents  
+        
+        #   Binarize the matrix
+        graphMatrix = (np.abs(graphMatrix) > zeroTolerance)\
+                                                         .astype(initPos.dtype)
+        
+        #   And check that we always have initially connected graphs
+        for n in range(nSamples):
+            assert graph.isConnected(graphMatrix[n,:,:])
+
+        #### We then generate the velocity information of UAVs ####                       
+        # Velocities can be either positive or negative, so we do not need 
+        # to determine the lower and higher, just around zero
+        if 'xMaxInitVel' in kwargs.keys():
+            xMaxInitVel = kwargs['xMaxInitVel']
+        else:
+            xMaxInitVel = 3.
+            #   Takes five seconds to traverse half the map
+        # Same for the other axis
+        if 'yMaxInitVel' in kwargs.keys():
+            yMaxInitVel = kwargs['yMaxInitVel']
+        else:
+            yMaxInitVel = 3.
+        
+        # And sample the velocities
+        xInitVel = np.random.uniform(low = -xMaxInitVel, high = xMaxInitVel,
+                                     size = (nSamples, 1, nAgents))
+        yInitVel = np.random.uniform(low = -yMaxInitVel, high = yMaxInitVel,
+                                     size = (nSamples, 1, nAgents))
+        # Add bias
+        xVelBias = np.random.uniform(low = -xMaxInitVel, high = xMaxInitVel,
+                                     size = (nSamples))
+        yVelBias = np.random.uniform(low = -yMaxInitVel, high = yMaxInitVel,
+                                     size = (nSamples))
+        
+        # And concatenate them
+        velBias = np.concatenate((xVelBias, yVelBias)).reshape((nSamples,2,1))
+        initVel = np.concatenate((xInitVel, yInitVel), axis = 1) + velBias
+        #   nSamples x 2 x nAgents            
+        
+        #### We next generate the time information of UAVs ####                        
         initOffsetValue = 100 # initial clock offset = 100 us
         initSkewValue = 25 # initial clock skew = 50 ppm        
         
@@ -3373,6 +3502,37 @@ class Flocking(_data):
         initSkew = skewFixed + skewPerturb # nSamples x nNodes        
 
         import matplotlib.pyplot as plt
+
+
+        # Plot the histogram of all agents' initial offsets 
+        plt.figure()
+        plt.hist(initPos[0,0,:])
+        plt.xlabel(r'Initial clock offset ($\mu$s)')
+        plt.title('Histogram of all agents initial clock offsets')
+        plt.show()    
+
+        # Plot the histogram of all agents' initial skews                 
+        plt.figure()
+        plt.hist(initPos[0,1,:])
+        plt.xlabel(r'Initial clock skew (ppm)')
+        plt.title('Histogram of all agents initial clock skews')
+        plt.show()    
+        # end for
+        
+        # Plot the histogram of all agents' initial offsets 
+        plt.figure()
+        plt.hist(initVel[0,0,:])
+        plt.xlabel(r'Initial clock offset ($\mu$s)')
+        plt.title('Histogram of all agents initial clock offsets')
+        plt.show()    
+
+        # Plot the histogram of all agents' initial skews                 
+        plt.figure()
+        plt.hist(initVel[0,1,:])
+        plt.xlabel(r'Initial clock skew (ppm)')
+        plt.title('Histogram of all agents initial clock skews')
+        plt.show()    
+        # end for        
 
         # Plot the histogram of all agents' initial offsets 
         plt.figure()
