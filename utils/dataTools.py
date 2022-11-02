@@ -3226,6 +3226,100 @@ class Flocking(_data):
         #                                 1{\|r_{ij}\| < R}
         # for each agent i=1,...,N, where v_{i} is the velocity and r_{i} the
         # position.
+
+        # Check that initPos and initVel as nSamples x 2 x nAgents arrays
+        assert len(initPos.shape) == len(initVel.shape) == 3
+        nSamples = initPos.shape[0]
+        assert initPos.shape[1] == initVel.shape[1] == 2
+        nAgents = initPos.shape[2]
+        assert initVel.shape[0] == nSamples
+        assert initVel.shape[2] == nAgents
+        
+        # time
+        time = np.arange(0, duration, samplingTime)
+        tSamples = len(time) # number of time samples
+        
+        # Create arrays to store the trajectory
+        pos = np.zeros((nSamples, tSamples, 2, nAgents))
+        vel = np.zeros((nSamples, tSamples, 2, nAgents))
+        accel = np.zeros((nSamples, tSamples, 2, nAgents))
+        
+        # Initial settings
+        pos[:,0,:,:] = initPos
+        vel[:,0,:,:] = initVel
+        
+        if self.doPrint:
+            # Sample percentage count
+            percentageCount = int(100/tSamples)
+            # Print new value
+            print("%3d%%" % percentageCount, end = '', flush = True)        
+
+        # For each time instant
+        for t in range(1,tSamples):
+            
+            # Compute the optimal acceleration
+            #   Compute the distance between all elements (positions)
+            ijDiffPos, ijDistSq = self.computeDifferences(pos[:,t-1,:,:])
+            #       ijDiffPos: nSamples x 2 x nAgents x nAgents
+            #       ijDistSq:  nSamples x nAgents x nAgents
+            #   And also the difference in velocities
+            ijDiffVel, _ = self.computeDifferences(vel[:,t-1,:,:])
+            #       ijDiffVel: nSamples x 2 x nAgents x nAgents
+            #   The last element we need to compute the acceleration is the
+            #   gradient. Note that the gradient only counts when the distance 
+            #   is smaller than the repel distance
+            #       This is the mask to consider each of the differences
+            repelMask = (ijDistSq < (repelDist**2)).astype(ijDiffPos.dtype)
+            #       Apply the mask to the relevant differences
+            ijDiffPos = ijDiffPos * np.expand_dims(repelMask, 1)
+            #       Compute the constant (1/||r_ij||^4 + 1/||r_ij||^2)
+            ijDistSqInv = invertTensorEW(ijDistSq)
+            #       Add the extra dimension
+            ijDistSqInv = np.expand_dims(ijDistSqInv, 1)
+            #   Compute the acceleration
+            accel[:,t-1,:,:] = \
+                    -np.sum(ijDiffVel, axis = 3) \
+                    +2* np.sum(ijDiffPos * (ijDistSqInv ** 2 + ijDistSqInv),
+                               axis = 3)
+                    
+            # Finally, note that if the agents are too close together, the
+            # acceleration will be very big to get them as far apart as
+            # possible, and this is physically impossible.
+            # So let's add a limitation to the maximum aceleration
+
+            # Find the places where the acceleration is big
+            thisAccel = accel[:,t-1,:,:].copy()
+            # Values that exceed accelMax, force them to be accelMax
+            thisAccel[accel[:,t-1,:,:] > accelMax] = accelMax
+            # Values that are smaller than -accelMax, force them to be accelMax
+            thisAccel[accel[:,t-1,:,:] < -accelMax] = -accelMax
+            # And put it back
+            accel[:,t-1,:,:] = thisAccel
+            
+            # Update the values
+            #   Update velocity
+            vel[:,t,:,:] = vel[:,t-1,:,:] + accel[:,t-1,:,:] * samplingTime
+            #   Update the position
+            pos[:,t,:,:] = pos[:,t-1,:,:] + vel[:,t-1,:,:] * samplingTime + accel[:,t-1,:,:] * (samplingTime ** 2)/2 
+            
+            if self.doPrint:
+                # Sample percentage count
+                percentageCount = int(100*(t+1)/tSamples)
+                # Erase previous pecentage and print new value
+                print('\b \b' * 4 + "%3d%%" % percentageCount,
+                      end = '', flush = True)
+                
+        # Print
+        if self.doPrint:
+            # Erase the percentage
+            print('\b \b' * 4, end = '', flush = True)
+
+
+
+
+######################################################################################
+
+
         
         # Check that initPos and initVel as nSamples x 1 x nAgents arrays
         assert len(initPos.shape) == len(initVel.shape) == 3
