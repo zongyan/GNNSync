@@ -2497,7 +2497,8 @@ class Flocking(_data):
                   end=' ', flush=True)
         
         # Compute the optimal trajectory
-        posAll, velAll, accelAll = self.computeOptimalTrajectory(
+        posAll, velAll, accelAll, \
+            offsetAll, skewAll, offsetAdjAll, skewAdjAll = self.computeOptimalTrajectory(
                                         initPosAll, initVelAll, self.duration,
                                         self.samplingTime, self.repelDist,
                                         accelMax = self.accelMax)
@@ -2821,6 +2822,203 @@ class Flocking(_data):
         #   nSamples x tSamples x 2 x nAgents
         # Output will be of shape
         #   nSamples x tSamples x nAgents x nAgents
+        
+        assert commRadius > 0
+        assert len(pos.shape) == 4
+        nSamples = pos.shape[0]
+        tSamples = pos.shape[1]
+        assert pos.shape[2] == 2
+        nAgents = pos.shape[3]
+        
+        # Graph type options
+        #   Kernel type (only Gaussian implemented so far)
+        if 'kernelType' in kwargs.keys():
+            kernelType = kwargs['kernelType']
+        else:
+            kernelType = 'gaussian'
+        #   Decide if the graph is weighted or not
+        if 'weighted' in kwargs.keys():
+            weighted = kwargs['weighted']
+        else:
+            weighted = False
+        
+        # If it is a Gaussian kernel, we need to determine the scale
+        if kernelType == 'gaussian':
+            if 'kernelScale' in kwargs.keys():
+                kernelScale = kwargs['kernelScale']
+            else:
+                kernelScale = 1.
+        
+        # The print for this one can be settled independently, if not, use the
+        # default of the data object
+        if 'doPrint' in kwargs.keys():
+            doPrint = kwargs['doPrint']
+        else:
+            doPrint = self.doPrint
+                
+        # If we have a lot of batches and a particularly long sequence, this
+        # is bound to fail, memory-wise, so let's do it time instant by time
+        # instant if we have a large number of time instants, and split the
+        # batches
+        maxTimeSamples = 200 # Set the maximum number of t.Samples before
+            # which to start doing this time by time.
+        maxBatchSize = 100 # Maximum number of samples to process at a given
+            # time
+        
+        # Compute the number of samples, and split the indices accordingly
+        if nSamples < maxBatchSize:
+            nBatches = 1
+            batchSize = [nSamples]
+        elif nSamples % maxBatchSize != 0:
+            # If we know it's not divisible, then we do floor division and
+            # add one more batch
+            nBatches = nSamples // maxBatchSize + 1
+            batchSize = [maxBatchSize] * nBatches
+            # But the last batch is actually smaller, so just add the 
+            # remaining ones
+            batchSize[-1] = nSamples - sum(batchSize[0:-1])
+        # If they fit evenly, then just do so.
+        else:
+            nBatches = int(nSamples/maxBatchSize)
+            batchSize = [maxBatchSize] * nBatches
+        # batchIndex is used to determine the first and last element of each
+        # batch. We need to add the 0 because it's the first index.
+        batchIndex = np.cumsum(batchSize).tolist()
+        batchIndex = [0] + batchIndex
+        
+        # Create the output state variable
+        graphMatrix = np.zeros((nSamples, tSamples, nAgents, nAgents))
+        
+        for b in range(nBatches):
+            
+            # Pick the batch elements
+            posBatch = pos[batchIndex[b]:batchIndex[b+1]]
+                
+            if tSamples > maxTimeSamples:
+                # If the trajectories are longer than 200 points, then do it 
+                # time by time.
+                
+                # For each time instant
+                for t in range(tSamples):
+                    
+                    # Let's start by computing the distance squared
+                    _, distSq = self.computeDifferences(posBatch[:,t,:,:])
+                    # Apply the Kernel
+                    if kernelType == 'gaussian':
+                        graphMatrixTime = np.exp(-kernelScale * distSq)
+                    else:
+                        graphMatrixTime = distSq
+                    # Now let's place zeros in all places whose distance is greater
+                    # than the radius
+                    graphMatrixTime[distSq > (commRadius ** 2)] = 0.
+                    # Set the diagonal elements to zero
+                    graphMatrixTime[:,\
+                                    np.arange(0,nAgents),np.arange(0,nAgents)]\
+                                                                           = 0.
+                    # If it is unweighted, force all nonzero values to be 1
+                    if not weighted:
+                        graphMatrixTime = (graphMatrixTime > zeroTolerance)\
+                                                          .astype(distSq.dtype)
+                                                              
+                    if normalizeGraph:
+                        isSymmetric = np.allclose(graphMatrixTime,
+                                                  np.transpose(graphMatrixTime,
+                                                               axes = [0,2,1]))
+                        # Tries to make the computation faster, only the 
+                        # eigenvalues (while there is a cost involved in 
+                        # computing whether the matrix is symmetric, 
+                        # experiments found that it is still faster to use the
+                        # symmetric algorithm for the eigenvalues)
+                        if isSymmetric:
+                            W = np.linalg.eigvalsh(graphMatrixTime)
+                        else:
+                            W = np.linalg.eigvals(graphMatrixTime)
+                        maxEigenvalue = np.max(np.real(W), axis = 1)
+                        #   batchSize[b]
+                        # Reshape to be able to divide by the graph matrix
+                        maxEigenvalue=maxEigenvalue.reshape((batchSize[b],1,1))
+                        # Normalize
+                        graphMatrixTime = graphMatrixTime / maxEigenvalue
+                                                              
+                    # And put it in the corresponding time instant
+                    graphMatrix[batchIndex[b]:batchIndex[b+1],t,:,:] = \
+                                                                graphMatrixTime
+                    
+                    if doPrint:
+                        # Sample percentage count
+                        percentageCount = int(100*(t+1+b*tSamples)\
+                                                          /(nBatches*tSamples))
+                        
+                        if t == 0 and b == 0:
+                            # It's the first one, so just print it
+                            print("%3d%%" % percentageCount,
+                                  end = '', flush = True)
+                        else:
+                            # Erase the previous characters
+                            print('\b \b' * 4 + "%3d%%" % percentageCount,
+                                  end = '', flush = True)
+                
+            else:
+                # Let's start by computing the distance squared
+                _, distSq = self.computeDifferences(posBatch)
+                # Apply the Kernel
+                if kernelType == 'gaussian':
+                    graphMatrixBatch = np.exp(-kernelScale * distSq)
+                else:
+                    graphMatrixBatch = distSq
+                # Now let's place zeros in all places whose distance is greater
+                # than the radius
+                graphMatrixBatch[distSq > (commRadius ** 2)] = 0.
+                # Set the diagonal elements to zero
+                graphMatrixBatch[:,:,
+                                 np.arange(0,nAgents),np.arange(0,nAgents)] =0.
+                # If it is unweighted, force all nonzero values to be 1
+                if not weighted:
+                    graphMatrixBatch = (graphMatrixBatch > zeroTolerance)\
+                                                          .astype(distSq.dtype)
+                    
+                if normalizeGraph:
+                    isSymmetric = np.allclose(graphMatrixBatch,
+                                              np.transpose(graphMatrixBatch,
+                                                            axes = [0,1,3,2]))
+                    # Tries to make the computation faster
+                    if isSymmetric:
+                        W = np.linalg.eigvalsh(graphMatrixBatch)
+                    else:
+                        W = np.linalg.eigvals(graphMatrixBatch)
+                    maxEigenvalue = np.max(np.real(W), axis = 2)
+                    #   batchSize[b] x tSamples
+                    # Reshape to be able to divide by the graph matrix
+                    maxEigenvalue = maxEigenvalue.reshape((batchSize[b],
+                                                           tSamples,
+                                                           1, 1))
+                    # Normalize
+                    graphMatrixBatch = graphMatrixBatch / maxEigenvalue
+                    
+                # Store
+                graphMatrix[batchIndex[b]:batchIndex[b+1]] = graphMatrixBatch
+                
+                if doPrint:
+                    # Sample percentage count
+                    percentageCount = int(100*(b+1)/nBatches)
+                    
+                    if b == 0:
+                        # It's the first one, so just print it
+                        print("%3d%%" % percentageCount,
+                              end = '', flush = True)
+                    else:
+                        # Erase the previous characters
+                        print('\b \b' * 4 + "%3d%%" % percentageCount,
+                              end = '', flush = True)
+                    
+        # Print
+        if doPrint:
+            # Erase the percentage
+            print('\b \b' * 4, end = '', flush = True)        
+        
+        
+        
+        #############################################
         
         duration = 2. # Duration of the trajectory
         samplingTime = 0.01 # Sampling time
