@@ -3350,9 +3350,11 @@ class Flocking(_data):
     
     # def computeInitialConditions
     def computeInitialPositions(self, nAgents, nSamples, commRadius,
-                                minDist = 0.1, geometry = 'circular',
-                                **kwargs):
-
+                                minDist=0.1, geometry='circular',
+                                initOffsetVal=100, initSkewVal=25,
+                                maxOffset=50., maxSkew=25.,                                
+                                **kwargs):        
+                
         assert geometry == 'circular'
         assert minDist * (1.+zeroTolerance) <= commRadius * (1.-zeroTolerance)
         # We use a zeroTolerance buffer zone, just in case
@@ -3414,7 +3416,7 @@ class Flocking(_data):
                                         size = (nSamples, nAgents))
         
         # And finally, get the positions in the cartesian coordinates
-        initPos = np.zeros((nSamples, 3, nAgents))
+        initPos = np.zeros((nSamples, 2, nAgents))
         initPos[:, 0, :] = initRadius * np.cos(initAngles)
         initPos[:, 1, :] = initRadius * np.sin(initAngles)        
         
@@ -3480,74 +3482,23 @@ class Flocking(_data):
         initVel = np.concatenate((xInitVel, yInitVel), axis = 1) + velBias
         #   nSamples x 2 x nAgents            
         
-        #### We next generate the time information of UAVs ####                        
-        initOffsetValue = 100 # initial clock offset = 100 us
-        initSkewValue = 25 # initial clock skew = 50 ppm        
-        
+        #### We next generate the time information of UAVs ####                                
         # Let's start by setting the fixed offset and skew 
-        offsetFixed = np.repeat(initOffsetValue, nSamples*nAgents, axis = 0)             
-        skewFixed = np.repeat(initSkewValue, nSamples*nAgents, axis = 0)     
-
+        offsetFixed = np.repeat(initOffsetVal, nSamples*nAgents, axis = 0)             
+        skewFixed = np.repeat(initSkewVal, nSamples*nAgents, axis = 0)     
+                
         # Add the noise
-        offsetPerturb = np.random.uniform(low = -50,
-                                          high = 50,
+        offsetPerturb = np.random.uniform(low = -maxOffset,
+                                          high = maxOffset,
                                           size = nSamples*nAgents)
 
-        skewPerturb = np.random.uniform(low = -25,
-                                        high = 25,
+        skewPerturb = np.random.uniform(low = -maxSkew,
+                                        high = maxSkew,
                                         size = nSamples*nAgents)
         
         # Finally, get the initial offsets and skews 
         initOffset = offsetFixed + offsetPerturb # nSamples x nNodes     
         initSkew = skewFixed + skewPerturb # nSamples x nNodes        
-
-        import matplotlib.pyplot as plt
-
-
-        # Plot the histogram of all agents' initial offsets 
-        plt.figure()
-        plt.hist(initPos[0,0,:])
-        plt.xlabel(r'Initial clock offset ($\mu$s)')
-        plt.title('Histogram of all agents initial clock offsets')
-        plt.show()    
-
-        # Plot the histogram of all agents' initial skews                 
-        plt.figure()
-        plt.hist(initPos[0,1,:])
-        plt.xlabel(r'Initial clock skew (ppm)')
-        plt.title('Histogram of all agents initial clock skews')
-        plt.show()    
-        # end for
-        
-        # Plot the histogram of all agents' initial offsets 
-        plt.figure()
-        plt.hist(initVel[0,0,:])
-        plt.xlabel(r'Initial clock offset ($\mu$s)')
-        plt.title('Histogram of all agents initial clock offsets')
-        plt.show()    
-
-        # Plot the histogram of all agents' initial skews                 
-        plt.figure()
-        plt.hist(initVel[0,1,:])
-        plt.xlabel(r'Initial clock skew (ppm)')
-        plt.title('Histogram of all agents initial clock skews')
-        plt.show()    
-        # end for        
-
-        # Plot the histogram of all agents' initial offsets 
-        plt.figure()
-        plt.hist(initOffset)
-        plt.xlabel(r'Initial clock offset ($\mu$s)')
-        plt.title('Histogram of all agents initial clock offsets')
-        plt.show()    
-
-        # Plot the histogram of all agents' initial skews                 
-        plt.figure()
-        plt.hist(initSkew)
-        plt.xlabel(r'Initial clock skew (ppm)')
-        plt.title('Histogram of all agents initial clock skews')
-        plt.show()    
-        # end for
         
         # And reshape them 
         initOffset = initOffset.reshape(nSamples, nAgents)        
@@ -3557,8 +3508,7 @@ class Flocking(_data):
         initOffset = np.expand_dims(initOffset, 1) # nSamples x 1 x nNodes
         initSkew = np.expand_dims(initSkew, 1) # nSamples x 1 x nNodes       
                           
-        return initOffset, initSkew
-        
+        return initPos, initVel, initOffset, initSkew        
         
     def saveVideo(self, saveDir, pos, *args, 
                   commGraph = None, **kwargs):
