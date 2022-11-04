@@ -2499,8 +2499,8 @@ class Flocking(_data):
         # Compute the optimal trajectory
         posAll, velAll, accelAll, \
             offsetAll, skewAll, offsetAdjAll, skewAdjAll = self.computeOptimalTrajectory(
-                                        initPosAll, initVelAll, self.duration,
-                                        self.samplingTime, self.repelDist,
+                                        initPosAll, initVelAll, initOffsetAll, initSkewAll, 
+                                        self.duration, self.samplingTime, self.repelDist,
                                         accelMax = self.accelMax)
         
         self.pos = {}
@@ -2525,7 +2525,7 @@ class Flocking(_data):
             print("\tComputing the agent states...", end = ' ', flush = True)
         
         # Compute the states
-        stateAll = self.computeStates(posAll, velAll, offsetAll, skewAll, commGraphAll)
+        stateAll = self.computeStates(offsetAll, skewAll, commGraphAll)
         
         self.state = {}
         
