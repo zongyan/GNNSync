@@ -885,9 +885,9 @@ class TrainerFlocking(Trainer):
         # Get original dataset
         xTrainOrig, yTrainOrig = self.data.getSamples('train')
         StrainOrig = self.data.getData('commGraph', 'train')
-        initVelTrainAll = self.data.getData('initVel', 'train')
+        initVelTrainAll = self.data.getData('initSkew', 'train')
         if doDAGger:
-            initPosTrainAll = self.data.getData('initPos', 'train')
+            initPosTrainAll = self.data.getData('initOffset', 'train')
 
         # And save it as the original "all samples"
         xTrainAll = xTrainOrig
@@ -1108,8 +1108,8 @@ class TrainerFlocking(Trainer):
                     # Create trajectories
                     
                     # Initial data
-                    initPosValid = self.data.getData('initPos','valid')
-                    initVelValid = self.data.getData('initVel','valid')
+                    initPosValid = self.data.getData('initOffset','valid')
+                    initVelValid = self.data.getData('initSkew','valid')
                     graphValid = self.data.getData('commGraph','valid')                    
                     
                     # Compute trajectories

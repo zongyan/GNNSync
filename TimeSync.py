@@ -852,8 +852,8 @@ for realization in range(nRealizations):
         # Save videos for the optimal trajectories of the test set (before it
         # was for the otpimal trajectories of the training set)
         
-        posTest = dataTest.getData('pos', 'test')
-        velTest = dataTest.getData('vel', 'test')
+        posTest = dataTest.getData('offset', 'test')
+        velTest = dataTest.getData('skew', 'test')
         commGraphTest = dataTest.getData('commGraph', 'test')
     
         if doPrint:
@@ -1259,12 +1259,12 @@ accelTest = gnn_test['accelTestBest']
 stateTest = gnn_test['stateTestBest']
 commGraphTest = gnn_test['commGraphTestBest']
 
-posOptim, velOptim, accelOptim = data.computeOptimalTrajectory(posTest[:,0,:,:], \
-                                                               posTest[:,0,:,:], \
-                                                                   duration=data.duration, \
-                                                                       samplingTime=data.samplingTime, \
-                                                                           repelDist=data.repelDist, \
-                                                                               accelMax=data.accelMax)
+# posOptim, velOptim, accelOptim = data.computeOptimalTrajectory(posTest[:,0,:,:], \
+#                                                                posTest[:,0,:,:], \
+#                                                                    duration=data.duration, \
+#                                                                        samplingTime=data.samplingTime, \
+#                                                                            repelDist=data.repelDist, \
+#                                                                                accelMax=data.accelMax)
 
 # plot the velocity of all agents via the GNN method
 for i in range(0, 1, 1):

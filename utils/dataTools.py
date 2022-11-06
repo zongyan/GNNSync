@@ -2465,11 +2465,11 @@ class Flocking(_data):
         self.doPrint = doPrint
         
         #   Places to store the data
-        self.initPos = None
-        self.initVel = None
-        self.pos = None
-        self.vel = None
-        self.accel = None
+        self.initOffset = None
+        self.initSkew = None
+        self.offset = None
+        self.skew = None
+        self.adj = None
         self.commGraph = None
         self.state = None
         
@@ -2487,8 +2487,8 @@ class Flocking(_data):
                                                               )
         #   Once we have all positions and velocities, we will need to split 
         #   them in the corresponding datasets (train, valid and test)
-        self.initPos = {}
-        self.initVel = {}
+        self.initOffset = {}
+        self.initSkew = {}
         
         if self.doPrint:
             print("OK", flush = True)
@@ -2498,14 +2498,14 @@ class Flocking(_data):
         
         # Compute the optimal trajectory
         posAll, velAll, accelAll, \
-            offsetAll, skewAll, offsetAdjAll, skewAdjAll = self.computeOptimalTrajectory(
+            offsetAll, skewAll, adjAll = self.computeOptimalTrajectory(
                                         initPosAll, initVelAll, initOffsetAll, initSkewAll, 
                                         self.duration, self.samplingTime, self.repelDist,
                                         accelMax = self.accelMax)
         
-        self.pos = {}
-        self.vel = {}
-        self.accel = {}
+        self.offset = {}
+        self.skew = {}
+        self.adj = {}
         
         if self.doPrint:
             print("OK", flush = True)
@@ -2537,36 +2537,36 @@ class Flocking(_data):
         # and save them
         #   Training set
         self.samples['train']['signals'] = stateAll[0:self.nTrain].copy()
-        self.samples['train']['targets'] = accelAll[0:self.nTrain].copy()
-        self.initPos['train'] = initPosAll[0:self.nTrain]
-        self.initVel['train'] = initVelAll[0:self.nTrain]
-        self.pos['train'] = posAll[0:self.nTrain]
-        self.vel['train'] = velAll[0:self.nTrain]
-        self.accel['train'] = accelAll[0:self.nTrain]
+        self.samples['train']['targets'] = adjAll[0:self.nTrain].copy()
+        self.initOffset['train'] = initOffsetAll[0:self.nTrain]
+        self.initSkew['train'] = initSkewAll[0:self.nTrain]
+        self.offset['train'] = offsetAll[0:self.nTrain]
+        self.skew['train'] = skewAll[0:self.nTrain]
+        self.adj['train'] = adjAll[0:self.nTrain]
         self.commGraph['train'] = commGraphAll[0:self.nTrain]
         self.state['train'] = stateAll[0:self.nTrain]
         #   Validation set
         startSample = self.nTrain
         endSample = self.nTrain + self.nValid
         self.samples['valid']['signals']=stateAll[startSample:endSample].copy()
-        self.samples['valid']['targets']=accelAll[startSample:endSample].copy()
-        self.initPos['valid'] = initPosAll[startSample:endSample]
-        self.initVel['valid'] = initVelAll[startSample:endSample]
-        self.pos['valid'] = posAll[startSample:endSample]
-        self.vel['valid'] = velAll[startSample:endSample]
-        self.accel['valid'] = accelAll[startSample:endSample]
+        self.samples['valid']['targets']=adjAll[startSample:endSample].copy()
+        self.initOffset['valid'] = initOffsetAll[startSample:endSample]
+        self.initSkew['valid'] = initSkewAll[startSample:endSample]
+        self.offset['valid'] = offsetAll[startSample:endSample]
+        self.skew['valid'] = skewAll[startSample:endSample]
+        self.adj['valid'] = adjAll[startSample:endSample]
         self.commGraph['valid'] = commGraphAll[startSample:endSample]
         self.state['valid'] = stateAll[startSample:endSample]
         #   Testing set
         startSample = self.nTrain + self.nValid
         endSample = self.nTrain + self.nValid + self.nTest
         self.samples['test']['signals']=stateAll[startSample:endSample].copy()
-        self.samples['test']['targets']=accelAll[startSample:endSample].copy()
-        self.initPos['test'] = initPosAll[startSample:endSample]
-        self.initVel['test'] = initVelAll[startSample:endSample]
-        self.pos['test'] = posAll[startSample:endSample]
-        self.vel['test'] = velAll[startSample:endSample]
-        self.accel['test'] = accelAll[startSample:endSample]
+        self.samples['test']['targets']=adjAll[startSample:endSample].copy()
+        self.initOffset['test'] = initOffsetAll[startSample:endSample]
+        self.initSkew['test'] = initSkewAll[startSample:endSample]
+        self.offset['test'] = offsetAll[startSample:endSample]
+        self.skew['test'] = skewAll[startSample:endSample]
+        self.adj['test'] = adjAll[startSample:endSample]
         self.commGraph['test'] = commGraphAll[startSample:endSample]
         self.state['test'] = stateAll[startSample:endSample]
         
@@ -2579,11 +2579,11 @@ class Flocking(_data):
         # Change all other signals to the correct place
         datasetType = ['train', 'valid', 'test']
         for key in datasetType:
-            self.initPos[key] = changeDataType(self.initPos[key], dataType)
-            self.initVel[key] = changeDataType(self.initVel[key], dataType)
-            self.pos[key] = changeDataType(self.pos[key], dataType)
-            self.vel[key] = changeDataType(self.vel[key], dataType)
-            self.accel[key] = changeDataType(self.accel[key], dataType)
+            self.initOffset[key] = changeDataType(self.initOffset[key], dataType)
+            self.initSkew[key] = changeDataType(self.initSkew[key], dataType)
+            self.offset[key] = changeDataType(self.offset[key], dataType)
+            self.skew[key] = changeDataType(self.skew[key], dataType)
+            self.adj[key] = changeDataType(self.adj[key], dataType)
             self.commGraph[key] = changeDataType(self.commGraph[key], dataType)
             self.state[key] = changeDataType(self.state[key], dataType)
         
@@ -3515,13 +3515,15 @@ class Flocking(_data):
                 # Erase previous pecentage and print new value
                 print('\b \b' * 4 + "%3d%%" % percentageCount,
                       end = '', flush = True)
+        
+        adjust = np.concatenate((deltaOffset,deltaSkew),axis=2)
                 
         # Print
         if self.doPrint:
             # Erase the percentage
             print('\b \b' * 4, end = '', flush = True)
 
-        return pos, vel, accel, offset, skew,  deltaOffset, deltaSkew
+        return pos, vel, accel, offset, skew, adjust
     
     # def computeInitialConditions
     def computeInitialPositions(self, nAgents, nSamples, commRadius,
