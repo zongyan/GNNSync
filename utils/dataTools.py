@@ -2482,10 +2482,10 @@ class Flocking(_data):
                                           self.nAgents, nSamples, self.commRadius,
                                           minDist = self.initMinDist,
                                           geometry = self.initGeometry,
-                                          initOffsetVal=100., # us
-                                          initSkewVal=25., # ppm
-                                          maxOffset=50., # us
-                                          maxSkew=25., # ppm                                                                                           
+                                          initOffsetVal=1, # x100 us
+                                          initSkewVal=1, # x10 ppm
+                                          maxOffset=0.5, # x100 us
+                                          maxSkew=0.5, # x10 ppm                                                                                           
                                           xMaxInitVel = self.initVelValue,
                                           yMaxInitVel = self.initVelValue
                                                               )
@@ -2573,7 +2573,7 @@ class Flocking(_data):
         self.adj['test'] = adjAll[startSample:endSample]
         self.commGraph['test'] = commGraphAll[startSample:endSample]
         self.state['test'] = stateAll[startSample:endSample]
-        
+                        
         # Change data to specified type and device
         self.astype(self.dataType)
         self.to(self.device)
@@ -3501,7 +3501,7 @@ class Flocking(_data):
             #   Compute the clock offset and skew correction
             deltaTheta[:,t-1,:,:] = -np.sum(ijDiffOffset, axis = 3)                                
             deltaGamma[:,t-1,:,:] = -np.sum(ijDiffSkew, axis = 3)                  
-                        
+
             ### Update the values ###
             #   Update velocity
             vel[:,t,:,:] = vel[:,t-1,:,:] + accel[:,t-1,:,:] * samplingTime
