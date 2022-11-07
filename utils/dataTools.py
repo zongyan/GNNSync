@@ -2482,6 +2482,10 @@ class Flocking(_data):
                                           self.nAgents, nSamples, self.commRadius,
                                           minDist = self.initMinDist,
                                           geometry = self.initGeometry,
+                                          initOffsetVal=100., # us
+                                          initSkewVal=25., # ppm
+                                          maxOffset=50., # us
+                                          maxSkew=25., # ppm                                                                                           
                                           xMaxInitVel = self.initVelValue,
                                           yMaxInitVel = self.initVelValue
                                                               )
@@ -2611,7 +2615,7 @@ class Flocking(_data):
         # Just avoid the 'expandDims' method in the parent class
         pass
         
-    def computeStates(self, offset, skew, graphMatrix, **kwargs):
+    def computeStates(self, theta, gamma, graphMatrix, **kwargs):
 
         # We get the following inputs.
         # offsets: nSamples x tSamples x 1 x nAgents
@@ -2630,15 +2634,15 @@ class Flocking(_data):
             doPrint = self.doPrint
                  
         # Check correct dimensions
-        assert len(offset.shape) == len(skew.shape) == len(graphMatrix.shape) == 4
-        nSamples = offset.shape[0]
-        tSamples = offset.shape[1]
-        assert offset.shape[2] == 1
-        nAgents = offset.shape[3]
-        assert skew.shape[0] == graphMatrix.shape[0] == nSamples
-        assert skew.shape[1] == graphMatrix.shape[1] == tSamples
-        assert skew.shape[2] == 1
-        assert skew.shape[3] == graphMatrix.shape[2] == graphMatrix.shape[3] == nAgents
+        assert len(theta.shape) == len(gamma.shape) == len(graphMatrix.shape) == 4
+        nSamples = theta.shape[0]
+        tSamples = theta.shape[1]
+        assert theta.shape[2] == 1
+        nAgents = theta.shape[3]
+        assert gamma.shape[0] == graphMatrix.shape[0] == nSamples
+        assert gamma.shape[1] == graphMatrix.shape[1] == tSamples
+        assert gamma.shape[2] == 1
+        assert gamma.shape[3] == graphMatrix.shape[2] == graphMatrix.shape[3] == nAgents
                 
         # If we have a lot of batches and a particularly long sequence, this
         # is bound to fail, memory-wise, so let's do it time instant by time
@@ -2676,8 +2680,8 @@ class Flocking(_data):
         for b in range(nBatches):
             
             # Pick the batch elements
-            offsetBatch = offset[batchIndex[b]:batchIndex[b+1]]
-            skewBatch = skew[batchIndex[b]:batchIndex[b+1]]            
+            thetaBatch = theta[batchIndex[b]:batchIndex[b+1]]
+            gammaBatch = gamma[batchIndex[b]:batchIndex[b+1]]            
             graphMatrixBatch = graphMatrix[batchIndex[b]:batchIndex[b+1]]
         
             if tSamples > maxTimeSamples:
@@ -2687,15 +2691,15 @@ class Flocking(_data):
                     
                     # Now, we need to compute the differences, in offsets and in 
                     # skews, for each agent, for each time instant
-                    offsetDiff, _ = self.computeDifferences(offsetBatch[:,t,:,:])
+                    offsetDiff, _ = self.computeDifferences(thetaBatch[:,t,:,:])
                     #   offsetDiff: batchSize[b] x 1 x nAgents x nAgents
-                    skewDiff, _ = self.computeDifferences(skewBatch[:,t,:,:])
+                    skewDiff, _ = self.computeDifferences(gammaBatch[:,t,:,:])
                     #   skewDiff: batchSize[b] x 1 x nAgents x nAgents
                     
                     # Next, we need to get ride of all those places where there are
                     # no neighborhoods. That is given by the nonzero elements of the 
                     # graph matrix.
-                    graphMatrixTime = (np.abs(graphMatrixBatch[:,t,:,:])>zeroTolerance).astype(offset.dtype)
+                    graphMatrixTime = (np.abs(graphMatrixBatch[:,t,:,:])>zeroTolerance).astype(theta.dtype)
                     #   graphMatrix: batchSize[b] x nAgents x nAgents
                     
                     # Now we add the extra dimensions so that all the 
@@ -2733,15 +2737,15 @@ class Flocking(_data):
             else:
                 # Now, we need to compute the differences, in offsets and in 
                 # skews, for each agent, for each time instante
-                offsetDiff, _ = self.computeDifferences(offsetBatch)
+                offsetDiff, _ = self.computeDifferences(thetaBatch)
                 #   posDiff: batchSize[b] x tSamples x 1 x nAgents x nAgents
-                skewDiff, _ = self.computeDifferences(skewBatch)
+                skewDiff, _ = self.computeDifferences(gammaBatch)
                 #   velDiff: batchSize[b] x tSamples x 1 x nAgents x nAgents
                 
                 # Next, we need to get ride of all those places where there are
                 # no neighborhoods. That is given by the nonzero elements of the 
                 # graph matrix.
-                graphMatrixBatch = (np.abs(graphMatrixBatch) > zeroTolerance).astype(offset.dtype)
+                graphMatrixBatch = (np.abs(graphMatrixBatch) > zeroTolerance).astype(theta.dtype)
                 #   graphMatrix: batchSize[b] x tSamples x nAgents x nAgents
                 
                 # Now we add the extra dimensions so that all the multiplications
@@ -3133,19 +3137,19 @@ class Flocking(_data):
         
         return cost
     
-    def computeTrajectory(self, initOffset, initSkew, graph, duration, **kwargs):
+    def computeTrajectory(self, initTheta, initGamma, graph, duration, **kwargs):
         
         # Check initOffset is of shape batchSize x 1 x nAgents
-        assert len(initOffset.shape) == 3
-        batchSize = initOffset.shape[0]
-        assert initOffset.shape[1] == 1
-        nAgents = initOffset.shape[2]
+        assert len(initTheta.shape) == 3
+        batchSize = initTheta.shape[0]
+        assert initTheta.shape[1] == 1
+        nAgents = initTheta.shape[2]
         
         # Check initSkew is of shape batchSize x 1 x nAgents
-        assert len(initSkew.shape) == 3
-        assert initSkew.shape[0] == batchSize
-        assert initSkew.shape[1] == 1
-        assert initSkew.shape[2] == nAgents
+        assert len(initGamma.shape) == 3
+        assert initGamma.shape[0] == batchSize
+        assert initGamma.shape[1] == 1
+        assert initGamma.shape[2] == nAgents
         
         # Check graph is of shape batchSize x time x nNodes x nNodes
         assert len(graph.shape) == 4
@@ -3157,11 +3161,11 @@ class Flocking(_data):
         # Check what kind of data it is
         #   This is because all the functions are numpy, but if this was
         #   torch, we need to return torch, to make it consistent
-        if 'torch' in repr(initOffset.dtype):
-            assert 'torch' in repr(initSkew.dtype)
+        if 'torch' in repr(initTheta.dtype):
+            assert 'torch' in repr(initGamma.dtype)
             useTorch = True
-            device = initOffset.device
-            assert initSkew.device == device
+            device = initTheta.device
+            assert initGamma.device == device
         else:
             useTorch = False
         
@@ -3199,21 +3203,21 @@ class Flocking(_data):
             doPrint = self.doPrint # Use default      
             
         # Now create the outputs that will be filled afterwards
-        offset = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float)
-        skew = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float)
+        theta = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float)
+        gamma = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float)
         if useArchit:
             adjust = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float)
             state = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float)
             
         # Assign the initial positions and velocities
         if useTorch:
-            offset[:,0,:,:] = initOffset.cpu().numpy()
-            skew[:,0,:,:] = initSkew.cpu().numpy()
+            theta[:,0,:,:] = initTheta.cpu().numpy()
+            gamma[:,0,:,:] = initGamma.cpu().numpy()
             if useAdjust:
                 adjust = adjust.cpu().numpy()
         else:
-            offset[:,0,:,:] = initOffset.copy()
-            skew[:,0,:,:] = initSkew.copy()
+            theta[:,0,:,:] = initTheta.copy()
+            gamma[:,0,:,:] = initGamma.copy()
             
         if doPrint:
             # Sample percentage count
@@ -3227,11 +3231,11 @@ class Flocking(_data):
             # If it is architecture-based, we need to compute the state
             if useArchit:
                 # Adjust offset value
-                thisOffset = np.expand_dims(offset[:,t-1,:,:], 1)
+                thisOffset = np.expand_dims(theta[:,t-1,:,:], 1)
                 # Obtain graph
                 thisGraph = np.expand_dims(graph[:,t-1,:,:], 1)
                 # Adjust skew value for state computation
-                thisSkew = np.expand_dims(skew[:,t-1,:,:], 1)
+                thisSkew = np.expand_dims(gamma[:,t-1,:,:], 1)
                 # Compute state
                 thisState = self.computeStates(thisOffset, thisSkew, thisGraph,
                                                doPrint = False)
@@ -3254,8 +3258,8 @@ class Flocking(_data):
                 
             # Now that we have the acceleration, we can update position and
             # velocity
-            skew[:,t,:,:] = skew[:,t-1,:,:] + np.expand_dims(adjust[:,t-1,0,:], 1)
-            offset[:,t,:,:] = offset[:,t-1,:,:] + np.expand_dims(adjust[:,t-1,1,:], 1) + skew[:,t,:,:] * self.samplingTime                       
+            gamma[:,t,:,:] = gamma[:,t-1,:,:] + np.expand_dims(adjust[:,t-1,0,:], 1)
+            theta[:,t,:,:] = theta[:,t-1,:,:] + np.expand_dims(adjust[:,t-1,1,:], 1) + gamma[:,t,:,:] * self.samplingTime                       
             
             if doPrint:
                 # Sample percentage count
@@ -3267,10 +3271,10 @@ class Flocking(_data):
         # And we're missing the last values of state and adjust, so
         # let's compute them for completeness
         #   Graph
-        thisOffset = np.expand_dims(offset[:,-1,:,:], 1)
+        thisOffset = np.expand_dims(theta[:,-1,:,:], 1)
         thisGraph = np.expand_dims(graph[:,-1,:,:], 1)
         #   State
-        thisSkew = np.expand_dims(skew[:,-1,:,:], 1)
+        thisSkew = np.expand_dims(gamma[:,-1,:,:], 1)
         thisState = self.computeStates(thisOffset, thisSkew, thisGraph,
                                        doPrint = False)
         state[:,-1,:,:] = thisState.squeeze(1)
@@ -3290,15 +3294,15 @@ class Flocking(_data):
             
         # After we have finished, turn it back into tensor, if required
         if useTorch:
-            offset = torch.tensor(offset).to(device)
-            skew = torch.tensor(skew).to(device)
+            theta = torch.tensor(theta).to(device)
+            gamma = torch.tensor(gamma).to(device)
             adjust = torch.tensor(adjust).to(device)
             
         # And return it
         if useArchit:
-            return offset, skew, adjust, state, graph
+            return theta, gamma, adjust, state, graph
         elif useAdjust:
-            return offset, skew
+            return theta, gamma
     
     def computeDifferences(self, u):
         
@@ -3428,16 +3432,16 @@ class Flocking(_data):
         pos = np.zeros((nSamples, tSamples, 2, nAgents))
         vel = np.zeros((nSamples, tSamples, 2, nAgents))
         accel = np.zeros((nSamples, tSamples, 2, nAgents))        
-        offset = np.zeros((nSamples, tSamples, 1, nAgents))
-        skew = np.zeros((nSamples, tSamples, 1, nAgents))
-        deltaOffset = np.zeros((nSamples, tSamples, 1, nAgents))        
-        deltaSkew = np.zeros((nSamples, tSamples, 1, nAgents))                
+        theta = np.zeros((nSamples, tSamples, 1, nAgents)) # offset 
+        gamma = np.zeros((nSamples, tSamples, 1, nAgents)) # skew 
+        deltaTheta = np.zeros((nSamples, tSamples, 1, nAgents)) # offset adjustment        
+        deltaGamma = np.zeros((nSamples, tSamples, 1, nAgents)) # skew adjustment               
         
         # Initial settings
         pos[:,0,:,:] = initPos
         vel[:,0,:,:] = initVel        
-        offset[:,0,:,:] = initOffset
-        skew[:,0,:,:] = initSkew        
+        theta[:,0,:,:] = initOffset
+        gamma[:,0,:,:] = initSkew        
         
         if self.doPrint:
             # Sample percentage count
@@ -3489,14 +3493,14 @@ class Flocking(_data):
             
             ### Compute the optimal clock offset and skew correction values ###
             #   Compute the distance between all elements (offsets)
-            ijDiffOffset, _ = self.computeDifferences(offset[:,t-1,:,:])
+            ijDiffOffset, _ = self.computeDifferences(theta[:,t-1,:,:])
             #       ijDiffOffset: nSamples x 1 x nAgents x nAgents
             #   And also the difference in skews
-            ijDiffSkew, _ = self.computeDifferences(skew[:,t-1,:,:])
+            ijDiffSkew, _ = self.computeDifferences(gamma[:,t-1,:,:])
             #       ijDiffVel: nSamples x 1 x nAgents x nAgents
             #   Compute the clock offset and skew correction
-            deltaOffset[:,t-1,:,:] = -np.sum(ijDiffOffset, axis = 3)                                
-            deltaSkew[:,t-1,:,:] = -np.sum(ijDiffSkew, axis = 3)                  
+            deltaTheta[:,t-1,:,:] = -np.sum(ijDiffOffset, axis = 3)                                
+            deltaGamma[:,t-1,:,:] = -np.sum(ijDiffSkew, axis = 3)                  
                         
             ### Update the values ###
             #   Update velocity
@@ -3505,9 +3509,9 @@ class Flocking(_data):
             pos[:,t,:,:] = pos[:,t-1,:,:] + vel[:,t-1,:,:] * samplingTime + accel[:,t-1,:,:] * (samplingTime ** 2)/2 
             
             #   Update the clock skew
-            skew[:,t,:,:] = skew[:,t-1,:,:] + (1/(nAgents*25)) * deltaSkew[:,t-1,:,:]
+            gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/(nAgents*25)) * deltaGamma[:,t-1,:,:]
             #   Update the clock offset
-            offset[:,t,:,:] = offset[:,t-1,:,:] + skew[:,t,:,:] * self.samplingTime + (1/(nAgents*25)) * deltaOffset[:,t-1,:,:]                        
+            theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t,:,:] * self.samplingTime + (1/(nAgents*25)) * deltaTheta[:,t-1,:,:]                        
             
             if self.doPrint:
                 # Sample percentage count
@@ -3516,19 +3520,19 @@ class Flocking(_data):
                 print('\b \b' * 4 + "%3d%%" % percentageCount,
                       end = '', flush = True)
         
-        adjust = np.concatenate((deltaOffset,deltaSkew),axis=2)
+        adjust = np.concatenate((deltaTheta,deltaGamma),axis=2)
                 
         # Print
         if self.doPrint:
             # Erase the percentage
             print('\b \b' * 4, end = '', flush = True)
 
-        return pos, vel, accel, offset, skew, adjust
+        return pos, vel, accel, theta, gamma, adjust
     
     # def computeInitialConditions
     def computeInitialPositions(self, nAgents, nSamples, commRadius,
                                 minDist=0.1, geometry='circular',
-                                initOffsetVal=100, initSkewVal=25,
+                                initOffsetVal=100., initSkewVal=25.,
                                 maxOffset=50., maxSkew=25.,                                
                                 **kwargs):        
                 

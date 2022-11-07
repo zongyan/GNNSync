@@ -1108,17 +1108,17 @@ class TrainerFlocking(Trainer):
                     # Create trajectories
                     
                     # Initial data
-                    initPosValid = self.data.getData('initOffset','valid')
-                    initVelValid = self.data.getData('initSkew','valid')
+                    initThetaValid = self.data.getData('initOffset','valid')
+                    initGammaValid = self.data.getData('initSkew','valid')
                     graphValid = self.data.getData('commGraph','valid')                    
                     
                     # Compute trajectories
-                    _, velTestValid, _, _, _ = self.data.computeTrajectory(
-                            initPosValid, initVelValid, graphValid, self.data.duration,
+                    offsetTestValid, skewTestValid, _, _, _ = self.data.computeTrajectory(
+                            initThetaValid, initGammaValid, graphValid, self.data.duration,
                             archit = thisArchit, doPrint = False)
                     
                     # Compute evaluation
-                    accValid = self.data.evaluate(vel = velTestValid)
+                    accValid = self.data.evaluate(vel = skewTestValid)
 
                     # Finish measuring time
                     endTime = datetime.datetime.now()
@@ -1187,8 +1187,8 @@ class TrainerFlocking(Trainer):
                             lagCount += 1
 
                     # Delete variables to free space in CUDA memory
-                    del initVelValid
-                    del initPosValid
+                    del initThetaValid
+                    del initGammaValid
 
                 #\\\\\\\
                 #\\\ END OF BATCH:

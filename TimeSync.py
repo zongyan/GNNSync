@@ -287,9 +287,7 @@ if doLocalGNN:
     hParamsLocalGNN['name'] = 'LocalGNN'
     # Chosen architecture
     hParamsLocalGNN['archit'] = architTime.LocalGNN_DB
-    hParamsLocalGNN['device'] = 'cuda:0' \
-                                    if (useGPU and torch.cuda.is_available()) \
-                                    else 'cpu'
+    hParamsLocalGNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
 
     # Graph convolutional parameters
     hParamsLocalGNN['dimNodeSignals'] = [2, 32] # Features per layer
@@ -852,9 +850,9 @@ for realization in range(nRealizations):
         # Save videos for the optimal trajectories of the test set (before it
         # was for the otpimal trajectories of the training set)
         
-        posTest = dataTest.getData('offset', 'test')
-        velTest = dataTest.getData('skew', 'test')
-        commGraphTest = dataTest.getData('commGraph', 'test')
+        posTest = dataTest.getData('offset', 'train')
+        velTest = dataTest.getData('skew', 'train')
+        commGraphTest = dataTest.getData('commGraph', 'train')
     
         if doPrint:
             print("[%3d Agents] Preview data"  % nAgentsTest[n], end = '')
@@ -1253,9 +1251,9 @@ gnn_test = np.load('./gnn_test.npz') # the data file loaded from the example fol
 
 matplotlib.rc('figure', max_open_warning = 0)
 
-posTest = gnn_test['posTestBest']
-velTest = gnn_test['velTestBest']
-accelTest = gnn_test['accelTestBest']
+offsetTest = gnn_test['posTestBest']
+skewTest = gnn_test['velTestBest']
+adjlTest = gnn_test['accelTestBest']
 stateTest = gnn_test['stateTestBest']
 commGraphTest = gnn_test['commGraphTestBest']
 
@@ -1273,12 +1271,12 @@ for i in range(0, 1, 1):
     for j in range(0, 50, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), velTest[i, :, 0, j]) 
+        plt.plot(np.arange(0, 200, 1), offsetTest[i, :, 0, j]) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf v}_{gnn}\|_2$')
-    plt.title(r'$\bf v_{gnn}$ for ' + str(50)+ ' agents (gnn controller)')
+    plt.ylabel(r'${\bf \theta}_{gnn}$')
+    plt.title(r'${\bf \theta}_{gnn}$ for ' + str(50)+ ' agents (gnn controller)')
     plt.grid()
     plt.show()    
 # end for
@@ -1290,12 +1288,12 @@ for i in range(0, 1, 1):
     for j in range(0, 50, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), posTest[i, :, 0, j]) 
+        plt.plot(np.arange(0, 200, 1), skewTest[i, :, 0, j]) 
         # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
     # end for 
     plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'$\|{\bf x}_{gnn}\|_2$')
-    plt.title(r'$\bf x_{gnn}$ for ' + str(50)+ ' agents (centralised controller)')
+    plt.ylabel(r'${\bf \gamma}_{gnn}$')
+    plt.title(r'$\bf \gamma_{gnn}$ for ' + str(50)+ ' agents (centralised controller)')
     plt.grid()
     plt.show()    
 # end for
