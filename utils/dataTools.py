@@ -3258,8 +3258,8 @@ class Flocking(_data):
                 
             # Now that we have the acceleration, we can update position and
             # velocity
-            gamma[:,t,:,:] = gamma[:,t-1,:,:] + np.expand_dims(adjust[:,t-1,0,:], 1)
-            theta[:,t,:,:] = theta[:,t-1,:,:] + np.expand_dims(adjust[:,t-1,1,:], 1) + gamma[:,t,:,:] * self.samplingTime                       
+            gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/(nAgents*5)) * np.expand_dims(adjust[:,t-1,0,:], 1)
+            theta[:,t,:,:] = theta[:,t-1,:,:] + (1/(nAgents*5)) * np.expand_dims(adjust[:,t-1,1,:], 1) + gamma[:,t,:,:] * self.samplingTime                       
             
             if doPrint:
                 # Sample percentage count
@@ -3499,8 +3499,8 @@ class Flocking(_data):
             ijDiffSkew, _ = self.computeDifferences(gamma[:,t-1,:,:])
             #       ijDiffVel: nSamples x 1 x nAgents x nAgents
             #   Compute the clock offset and skew correction
-            deltaTheta[:,t-1,:,:] = -np.sum(ijDiffOffset, axis = 3)                                
-            deltaGamma[:,t-1,:,:] = -np.sum(ijDiffSkew, axis = 3)                  
+            deltaTheta[:,t-1,:,:] = -(1/5) * np.sum(ijDiffOffset, axis = 3)                                
+            deltaGamma[:,t-1,:,:] = -(1/5) * np.sum(ijDiffSkew, axis = 3)                  
 
             ### Update the values ###
             #   Update velocity
@@ -3509,9 +3509,9 @@ class Flocking(_data):
             pos[:,t,:,:] = pos[:,t-1,:,:] + vel[:,t-1,:,:] * samplingTime + accel[:,t-1,:,:] * (samplingTime ** 2)/2 
             
             #   Update the clock skew
-            gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/(nAgents*25)) * deltaGamma[:,t-1,:,:]
+            gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/(nAgents*5)) * deltaGamma[:,t-1,:,:]
             #   Update the clock offset
-            theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t,:,:] * self.samplingTime + (1/(nAgents*25)) * deltaTheta[:,t-1,:,:]                        
+            theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t,:,:] * self.samplingTime + (1/(nAgents*5)) * deltaTheta[:,t-1,:,:]                        
             
             if self.doPrint:
                 # Sample percentage count
