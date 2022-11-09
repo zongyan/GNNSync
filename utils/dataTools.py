@@ -3259,7 +3259,7 @@ class Flocking(_data):
             # Now that we have the acceleration, we can update position and
             # velocity
             gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/(nAgents*5)) * np.expand_dims(adjust[:,t-1,0,:], 1)
-            theta[:,t,:,:] = theta[:,t-1,:,:] + (1/(nAgents*5)) * np.expand_dims(adjust[:,t-1,1,:], 1) + gamma[:,t,:,:] * self.samplingTime                       
+            theta[:,t,:,:] = theta[:,t-1,:,:] + (1/(nAgents*5)) * np.expand_dims(adjust[:,t-1,1,:], 1) + gamma[:,t-1,:,:] * self.samplingTime                       
             
             if doPrint:
                 # Sample percentage count
@@ -3511,7 +3511,7 @@ class Flocking(_data):
             #   Update the clock skew
             gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/(nAgents*5)) * deltaGamma[:,t-1,:,:]
             #   Update the clock offset
-            theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t,:,:] * self.samplingTime + (1/(nAgents*5)) * deltaTheta[:,t-1,:,:]                        
+            theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.samplingTime + (1/(nAgents*5)) * deltaTheta[:,t-1,:,:]                        
             
             if self.doPrint:
                 # Sample percentage count
@@ -3520,14 +3520,14 @@ class Flocking(_data):
                 print('\b \b' * 4 + "%3d%%" % percentageCount,
                       end = '', flush = True)
         
-        adjust = np.concatenate((deltaTheta,deltaGamma),axis=2)
+        clockCorrection = np.concatenate((deltaTheta,deltaGamma),axis=2)
                 
         # Print
         if self.doPrint:
             # Erase the percentage
             print('\b \b' * 4, end = '', flush = True)
 
-        return pos, vel, accel, theta, gamma, adjust
+        return pos, vel, accel, theta, gamma, clockCorrection
     
     # def computeInitialConditions
     def computeInitialPositions(self, nAgents, nSamples, commRadius,
