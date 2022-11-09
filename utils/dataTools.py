@@ -2483,9 +2483,9 @@ class Flocking(_data):
                                           minDist = self.initMinDist,
                                           geometry = self.initGeometry,
                                           initOffsetVal=1, # x100 us
-                                          initSkewVal=1, # x10 ppm
-                                          maxOffset=0.5, # x100 us
-                                          maxSkew=0.5, # x10 ppm                                                                                           
+                                          initSkewVal=2.5, # x10 ppm
+                                          maxOffset=1, # x100 us
+                                          maxSkew=2.5, # x10 ppm                                                                                           
                                           xMaxInitVel = self.initVelValue,
                                           yMaxInitVel = self.initVelValue
                                                               )
