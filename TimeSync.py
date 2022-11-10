@@ -69,7 +69,7 @@ startRunTime = datetime.datetime.now()
 
 thisFilename = 'flockingGNN' # This is the general name of all related files
 
-nAgents = 50 # Number of agents at training time
+nAgents = 20 # Number of agents at training time
 
 saveDirRoot = 'experiments' # In this case, relative location
 saveDir = os.path.join(saveDirRoot, thisFilename) # Dir where to save all
@@ -1268,7 +1268,7 @@ commGraphTest = gnn_test['commGraphTestBest']
 for i in range(0, 1, 1):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, 50, 1):
+    for j in range(0, nAgents, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
         plt.plot(np.arange(0, 200, 1), offsetTest[i, :, 0, j]) 
@@ -1285,7 +1285,7 @@ for i in range(0, 1, 1):
 for i in range(0, 1, 1):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, 50, 1):
+    for j in range(0, nAgents, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
         plt.plot(np.arange(0, 200, 1), skewTest[i, :, 0, j]) 
@@ -1297,4 +1297,4 @@ for i in range(0, 1, 1):
     plt.grid()
     plt.show()    
 # end for
-   
+
