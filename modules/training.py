@@ -1,23 +1,26 @@
-# 2020/02/25~
-# Fernando Gama, fgama@seas.upenn.edu
-# Luana Ruiz, rubruiz@seas.upenn.edu
-"""
-training.py Training Module
-
-Trainer classes
-
-Trainer: general trainer that just computes a loss over a training set and
-    runs an evaluation on a validation test
-TrainerSingleNode: trainer class that computes a loss over the training set and
-    runs an evaluation on a validation set, but assuming that the architectures
-    involved have a single node forward structure and that the data involved
-    has a method for identifying the target nodes
-TrainerFlocking: traininer class that computes a loss over the training set,
-    suited for the problem of flocking (i.e. it involves specific uses of
-    the data, like computing trajectories or using DAGger)
-
-"""
-
+"""****************************************************************************
+// * File:        This file is a part of GNNSync.
+// * Created on:  11/11/2022
+// * Author:      Yan Zong (y.zong@nuaa.edu.cn)
+// *
+// * Copyright:   (C) 2022 Nanjing University of Aeronautics and Astronautics
+// *
+// *              GNNSync is free software; you can redistribute it and/or 
+// *              modify it under the terms of the GNU General Public License 
+// *              as published by the Free Software Foundation; either version 
+// *              3 of the License, or (at your option) any later version.
+// *
+// *              GNNSync is distributed in the hope that it will be useful, 
+// *              but WITHOUT ANY WARRANTY; without even the implied warranty 
+// *              of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See 
+// *              the GNU General Public License for more details.
+// *
+// * Funding:     This work was financed by the xx 
+// *              xx, China
+// * 
+// * Description: Training module: computing a loss over the training set
+// *              
+// *************************************************************************"""
 import torch
 import numpy as np
 import os
@@ -576,143 +579,7 @@ class Trainer:
                     bestEpoch + 1, bestBatch + 1, bestScore))
             
         return trainVars
-    
-class TrainerSingleNode(Trainer):
-    """
-    TrainerSingleNode: trainer class that computes a loss over the training set
-        and runs an evaluation on a validation set, but assuming that the
-        architectures involved have a single node forward structure and that the
-        data involved has a method for identifying the target nodes
-        
-    Initialization:
-        
-        model (Modules.model class): model to train
-        data (Utils.data class): needs to have a getSamples and an evaluate
-            method
-        nEpochs (int): number of epochs (passes over the dataset)
-        batchSize (int): size of each minibatch
-
-        Optional (keyword) arguments:
             
-        validationInterval (int): interval of training (number of training
-            steps) without running a validation stage.
-
-        learningRateDecayRate (float): float that multiplies the latest learning
-            rate used.
-        learningRateDecayPeriod (int): how many training steps before 
-            multiplying the learning rate decay rate by the actual learning
-            rate.
-        > Obs.: Both of these have to be defined for the learningRateDecay
-              scheduler to be activated.
-        logger (Visualizer): save tensorboard logs.
-        saveDir (string): path to the directory where to save relevant training
-            variables.
-        printInterval (int): how many training steps after which to print
-            partial results (0 means do not print)
-        graphNo (int): keep track of what graph realization this is
-        realitizationNo (int): keep track of what data realization this is
-        >> Alternatively, these last two keyword arguments can be used to keep
-            track of different trainings of the same model
-            
-    Training:
-        
-        .train(): trains the model and returns trainVars dict with the keys
-            'nEpochs': number of epochs (int)
-            'nBatches': number of batches (int)
-            'validationInterval': number of training steps in between 
-                validation steps (int)
-            'batchSize': batch size of each training step (np.array)
-            'batchIndex': indices for the start sample and end sample of each
-                batch (np.array)
-            'lossTrain': loss function on the training samples for each training
-                step (np.array)
-            'evalTrain': evaluation function on the training samples for each
-                training step (np.array)
-            'lossValid': loss function on the validation samples for each
-                validation step (np.array)
-            'evalValid': evaluation function on the validation samples for each
-                validation step (np.array)
-    """
-    
-    def __init__(self, model, data, nEpochs, batchSize, **kwargs):
-        
-        assert 'singleNodeForward' in dir(model.archit)
-        assert 'getLabelID' in dir(data)
-        
-        # Initialize supraclass
-        super().__init__(model, data, nEpochs, batchSize, **kwargs)
-        
-    def trainBatch(self, thisBatchIndices):
-        
-        # Get the samples
-        xTrain, yTrain = self.data.getSamples('train', thisBatchIndices)
-        xTrain = xTrain.to(self.model.device)
-        yTrain = yTrain.to(self.model.device)
-        targetIDs = self.data.getLabelID('train', thisBatchIndices)
-
-        # Start measuring time
-        startTime = datetime.datetime.now()
-
-        # Reset gradients
-        self.model.archit.zero_grad()
-
-        # Obtain the output of the GNN
-        yHatTrain = self.model.archit.singleNodeForward(xTrain, targetIDs)
-
-        # Compute loss
-        lossValueTrain = self.model.loss(yHatTrain, yTrain)
-
-        # Compute gradients
-        lossValueTrain.backward()
-
-        # Optimize
-        self.model.optim.step()
-
-        # Finish measuring time
-        endTime = datetime.datetime.now()
-
-        timeElapsed = abs(endTime - startTime).total_seconds()
-
-        # Compute the accuracy
-        #   Note: Using yHatTrain.data creates a new tensor with the
-        #   same value, but detaches it from the gradient, so that no
-        #   gradient operation is taken into account here.
-        #   (Alternatively, we could use a with torch.no_grad():)
-        costTrain = self.data.evaluate(yHatTrain.data, yTrain)
-        
-        return lossValueTrain.item(), costTrain.item(), timeElapsed
-    
-    def validationStep(self):
-        
-        # Validation:
-        xValid, yValid = self.data.getSamples('valid')
-        xValid = xValid.to(self.model.device)
-        yValid = yValid.to(self.model.device)
-        targetIDs = self.data.getLabelID('valid')
-
-        # Start measuring time
-        startTime = datetime.datetime.now()
-
-        # Under torch.no_grad() so that the computations carried out
-        # to obtain the validation accuracy are not taken into
-        # account to update the learnable parameters.
-        with torch.no_grad():
-            # Obtain the output of the GNN
-            yHatValid = self.model.archit.singleNodeForward(xValid, targetIDs)
-
-            # Compute loss
-            lossValueValid = self.model.loss(yHatValid, yValid)
-
-            # Finish measuring time
-            endTime = datetime.datetime.now()
-
-            timeElapsed = abs(endTime - startTime).total_seconds()
-
-            # Compute accuracy:
-            costValid = self.data.evaluate(yHatValid, yValid)
-        
-        return lossValueValid.item(), costValid.item(), timeElapsed
-        
 class TrainerFlocking(Trainer):
     """
     Trainer: trains flocking models, following the appropriate evaluation of

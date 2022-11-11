@@ -1,30 +1,44 @@
-# 2020/01/01~
-# Fernando Gama, fgama@seas.upenn.edu
-# Luana Ruiz, rubruiz@seas.upenn.edu
-# Kate Tolstaya, eig@seas.upenn.edu
-
-# Learn decentralized controllers for flocking. There is a team of robots that
-# start flying at random velocities and we want them to coordinate so that they
-# can fly together while avoiding collisions. We learn a decentralized 
-# controller by using imitation learning.
-
-# In this simulation, the number of agents is fixed for training, but can be
-# set to a different number for testing.
-
-# Outputs:
-# - Text file with all the hyperparameters selected for the run and the 
-#   corresponding results (hyperparameters.txt)
-# - Pickle file with the random seeds of both torch and numpy for accurate
-#   reproduction of results (randomSeedUsed.pkl)
-# - The parameters of the trained models, for both the Best and the Last
-#   instance of each model (savedModels/)
-# - The figures of loss and evaluation through the training iterations for
-#   each model (figs/ and trainVars/)
-# - Videos for some of the trajectories in the dataset, following the optimal
-#   centralized controller (datasetTrajectories/)
-# - Videos for some of the learned trajectories following the controles 
-#   learned by each model (learnedTrajectories/)
-
+"""****************************************************************************
+// * File:        This file is a part of GNNSync.
+// * Created on:  11/11/2022
+// * Author:      Yan Zong (y.zong@nuaa.edu.cn)
+// *
+// * Copyright:   (C) 2022 Nanjing University of Aeronautics and Astronautics
+// *
+// *              GNNSync is free software; you can redistribute it and/or 
+// *              modify it under the terms of the GNU General Public License 
+// *              as published by the Free Software Foundation; either version 
+// *              3 of the License, or (at your option) any later version.
+// *
+// *              GNNSync is distributed in the hope that it will be useful, 
+// *              but WITHOUT ANY WARRANTY; without even the implied warranty 
+// *              of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See 
+// *              the GNU General Public License for more details.
+// *
+// * Funding:     This work was financed by the xx 
+// *              xx, China
+// * 
+// * Description: Learn decentralized controllers for time synchronisation.  
+// *              There is a team of UAVs that start flying at random velocities, 
+// *              and all the UAVs coordinate so that they can fly together 
+// *              while avoiding collisions by using the centralised expert 
+// *              controller. We learn a decentralized controller by using 
+// *              imitation learning, in order to realise clock synchronsiation 
+// *              in a UAVs swarm system.
+// * Outputs:     - Text file with all the hyperparameters selected for the run 
+// *                and the corresponding results (hyperparameters.txt)
+// *              - Pickle file with the random seeds of both torch and numpy 
+// *                for accurate reproduction of results (randomSeedUsed.pkl)
+// *              - The parameters of the trained models, for both the Best and 
+// *                the Last instance of each model (savedModels/)
+// *              - The figures of loss and evaluation through the training 
+// *                iterations for each model (figs/ and trainVars/)
+// *              - Videos for some of the trajectories in the dataset, 
+// *                following the optimal centralized controller 
+// *                (datasetTrajectories/)
+// *              - Videos for some of the learned trajectories following the 
+// *                controles learned by each model (learnedTrajectories/)
+// *************************************************************************"""
 #%%##################################################################
 #                                                                   #
 #                    IMPORTING                                      #
@@ -69,7 +83,7 @@ startRunTime = datetime.datetime.now()
 
 thisFilename = 'flockingGNN' # This is the general name of all related files
 
-nAgents = 20 # Number of agents at training time
+nAgents = 50 # Number of agents at training time
 
 saveDirRoot = 'experiments' # In this case, relative location
 saveDir = os.path.join(saveDirRoot, thisFilename) # Dir where to save all
@@ -290,8 +304,8 @@ if doLocalGNN:
     hParamsLocalGNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
 
     # Graph convolutional parameters
-    hParamsLocalGNN['dimNodeSignals'] = [2, 32] # Features per layer
-    hParamsLocalGNN['nFilterTaps'] = [3] # Number of filter taps
+    hParamsLocalGNN['dimNodeSignals'] = [2, 16] # Features per layer
+    hParamsLocalGNN['nFilterTaps'] = [2] # Number of filter taps
     hParamsLocalGNN['bias'] = True # Decide whether to include a bias term
     # Nonlinearity
     hParamsLocalGNN['nonlinearity'] = nonlinearity # Selected nonlinearity
@@ -1248,6 +1262,64 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 gnn_test = np.load('./gnn_test.npz') # the data file loaded from the example folder
+
+matplotlib.rc('figure', max_open_warning = 0)
+
+offsetTest = gnn_test['posTestBest']
+skewTest = gnn_test['velTestBest']
+adjlTest = gnn_test['accelTestBest']
+stateTest = gnn_test['stateTestBest']
+commGraphTest = gnn_test['commGraphTestBest']
+
+# posOptim, velOptim, accelOptim = data.computeOptimalTrajectory(posTest[:,0,:,:], \
+#                                                                posTest[:,0,:,:], \
+#                                                                    duration=data.duration, \
+#                                                                        samplingTime=data.samplingTime, \
+#                                                                            repelDist=data.repelDist, \
+#                                                                                accelMax=data.accelMax)
+
+# plot the velocity of all agents via the GNN method
+for i in range(0, 1, 1):
+    plt.figure()
+    plt.rcParams["figure.figsize"] = (6.4,4.8)
+    for j in range(0, nAgents, 1):
+        # the input and output features are two dimensions, which means that one 
+        # dimension is for x-axis velocity, the other one is for y-axis velocity 
+        plt.plot(np.arange(0, 200, 1), offsetTest[i, :, 0, j]) 
+        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+    # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'${\bf \theta}_{gnn}$')
+    plt.title(r'${\bf \theta}_{gnn}$ for ' + str(50)+ ' agents (gnn controller)')
+    plt.grid()
+    plt.show()    
+# end for
+
+# plot the velocity of all agents via the centralised optimal controller
+for i in range(0, 1, 1):
+    plt.figure()
+    plt.rcParams["figure.figsize"] = (6.4,4.8)
+    for j in range(0, nAgents, 1):
+        # the input and output features are two dimensions, which means that one 
+        # dimension is for x-axis velocity, the other one is for y-axis velocity 
+        plt.plot(np.arange(0, 200, 1), skewTest[i, :, 0, j]) 
+        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+    # end for 
+    plt.xlabel(r'$time (s)$')
+    plt.ylabel(r'${\bf \gamma}_{gnn}$')
+    plt.title(r'$\bf \gamma_{gnn}$ for ' + str(50)+ ' agents (centralised controller)')
+    plt.grid()
+    plt.show()    
+# end for
+
+del gnn_test
+del offsetTest 
+del skewTest 
+del adjlTest 
+del stateTest 
+del commGraphTest
+
+gnn_test = np.load('./gnn_test2.npz') # the data file loaded from the example folder
 
 matplotlib.rc('figure', max_open_warning = 0)
 

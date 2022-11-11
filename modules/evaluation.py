@@ -1,172 +1,30 @@
-# 2020/02/25~
-# Fernando Gama, fgama@seas.upenn.edu
-# Luana Ruiz, rubruiz@seas.upenn.edu
-"""
-evaluation.py Evaluation Module
-
-Methods for evaluating the models.
-
-evaluate: evaluate a model
-evaluateSingleNode: evaluate a model that has a single node forward
-evaluateFlocking: evaluate a model using the flocking cost
-"""
-
+"""****************************************************************************
+// * File:        This file is a part of GNNSync.
+// * Created on:  11/11/2022
+// * Author:      Yan Zong (y.zong@nuaa.edu.cn)
+// *
+// * Copyright:   (C) 2022 Nanjing University of Aeronautics and Astronautics
+// *
+// *              GNNSync is free software; you can redistribute it and/or 
+// *              modify it under the terms of the GNU General Public License 
+// *              as published by the Free Software Foundation; either version 
+// *              3 of the License, or (at your option) any later version.
+// *
+// *              GNNSync is distributed in the hope that it will be useful, 
+// *              but WITHOUT ANY WARRANTY; without even the implied warranty 
+// *              of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See 
+// *              the GNU General Public License for more details.
+// *
+// * Funding:     This work was financed by the xx 
+// *              xx, China
+// * 
+// * Description: Evaluation module: evaluating a model.
+// *              
+// *************************************************************************"""
 import os
 import torch
 import pickle
 import numpy as np
-
-def evaluate(model, data, **kwargs):
-    """
-    evaluate: evaluate a model using classification error
-    
-    Input:
-        model (model class): class from Modules.model
-        data (data class): a data class from the Utils.dataTools; it needs to
-            have a getSamples method and an evaluate method.
-        doPrint (optional, bool): if True prints results
-    
-    Output:
-        evalVars (dict): 'errorBest' contains the error rate for the best
-            model, and 'errorLast' contains the error rate for the last model
-    """
-
-    # Get the device we're working on
-    device = model.device
-    
-    if 'doSaveVars' in kwargs.keys():
-        doSaveVars = kwargs['doSaveVars']
-    else:
-        doSaveVars = True
-
-    ########
-    # DATA #
-    ########
-
-    xTest, yTest = data.getSamples('test')
-    xTest = xTest.to(device)
-    yTest = yTest.to(device)
-
-    ##############
-    # BEST MODEL #
-    ##############
-
-    model.load(label = 'Best')
-
-    with torch.no_grad():
-        # Process the samples
-        yHatTest = model.archit(xTest)
-        # yHatTest is of shape
-        #   testSize x numberOfClasses
-        # We compute the error
-        costBest = data.evaluate(yHatTest, yTest)
-
-    ##############
-    # LAST MODEL #
-    ##############
-
-    model.load(label = 'Last')
-
-    with torch.no_grad():
-        # Process the samples
-        yHatTest = model.archit(xTest)
-        # yHatTest is of shape
-        #   testSize x numberOfClasses
-        # We compute the error
-        costLast = data.evaluate(yHatTest, yTest)
-
-    evalVars = {}
-    evalVars['costBest'] = costBest.item()
-    evalVars['costLast'] = costLast.item()
-    
-    if doSaveVars:
-        saveDirVars = os.path.join(model.saveDir, 'evalVars')
-        if not os.path.exists(saveDirVars):
-            os.makedirs(saveDirVars)
-        pathToFile = os.path.join(saveDirVars, model.name + 'evalVars.pkl')
-        with open(pathToFile, 'wb') as evalVarsFile:
-            pickle.dump(evalVars, evalVarsFile)
-
-    return evalVars
-
-def evaluateSingleNode(model, data, **kwargs):
-    """
-    evaluateSingleNode: evaluate a model that has a single node forward
-    
-    Input:
-        model (model class): class from Modules.model, needs to have a 
-            'singleNodeForward' method
-        data (data class): a data class from the Utils.dataTools; it needs to
-            have a getSamples method and an evaluate method and it also needs to
-            have a 'getLabelID' method
-        doPrint (optional, bool): if True prints results
-    
-    Output:
-        evalVars (dict): 'errorBest' contains the error rate for the best
-            model, and 'errorLast' contains the error rate for the last model
-    """
-    
-    assert 'singleNodeForward' in dir(model.archit)
-    assert 'getLabelID' in dir(data)
-
-    # Get the device we're working on
-    device = model.device
-    
-    if 'doSaveVars' in kwargs.keys():
-        doSaveVars = kwargs['doSaveVars']
-    else:
-        doSaveVars = True
-
-    ########
-    # DATA #
-    ########
-
-    xTest, yTest = data.getSamples('test')
-    xTest = xTest.to(device)
-    yTest = yTest.to(device)
-    targetIDs = data.getLabelID('test')
-
-    ##############
-    # BEST MODEL #
-    ##############
-
-    model.load(label = 'Best')
-
-    with torch.no_grad():
-        # Process the samples
-        yHatTest = model.archit.singleNodeForward(xTest, targetIDs)
-        # yHatTest is of shape
-        #   testSize x numberOfClasses
-        # We compute the error
-        costBest = data.evaluate(yHatTest, yTest)
-
-    ##############
-    # LAST MODEL #
-    ##############
-
-    model.load(label = 'Last')
-
-    with torch.no_grad():
-        # Process the samples
-        yHatTest = model.archit.singleNodeForward(xTest, targetIDs)
-        # yHatTest is of shape
-        #   testSize x numberOfClasses
-        # We compute the error
-        costLast = data.evaluate(yHatTest, yTest)
-
-    evalVars = {}
-    evalVars['costBest'] = costBest.item()
-    evalVars['costLast'] = costLast.item()
-    
-    if doSaveVars:
-        saveDirVars = os.path.join(model.saveDir, 'evalVars')
-        if not os.path.exists(saveDirVars):
-            os.makedirs(saveDirVars)
-        pathToFile = os.path.join(saveDirVars, model.name + 'evalVars.pkl')
-        with open(pathToFile, 'wb') as evalVarsFile:
-            pickle.dump(evalVars, evalVarsFile)
-
-    return evalVars
 
 def evaluateFlocking(model, data, **kwargs):
     """
@@ -222,9 +80,9 @@ def evaluateFlocking(model, data, **kwargs):
     ########
 
     # Initial data
-    initPosTest = data.getData('initOffset', 'train')
-    initVelTest = data.getData('initSkew', 'train')
-    graphTest = data.getData('commGraph','train')                    
+    initPosTest = data.getData('initOffset', 'test')
+    initVelTest = data.getData('initSkew', 'test')
+    graphTest = data.getData('commGraph','test')                    
                     
     ##############
     # BEST MODEL #
@@ -250,6 +108,21 @@ def evaluateFlocking(model, data, **kwargs):
                  commGraphTestBest=commGraphTestBest)
     print("\tSaved the test data to the following path: ./gnn_test.npz...", end = ' ')
     print("OK", flush = True)        
+    
+    posTestBest2, \
+    velTestBest2, \
+    accelTestBest2, \
+    stateTestBest2, \
+    commGraphTestBest2 = \
+        data.computeTrajectory2(initPosTest, initVelTest, graphTest, data.duration,
+                               archit = model.archit)
+        
+    SavedPath ='./gnn_test2.npz'
+    np.savez(SavedPath, posTestBest=posTestBest2, velTestBest=velTestBest2, \
+             accelTestBest=accelTestBest2, stateTestBest=stateTestBest2, \
+                 commGraphTestBest=commGraphTestBest2)
+    print("\tSaved the test data to the following path: ./gnn_test2.npz...", end = ' ')
+    print("OK", flush = True)                
 
     if doPrint:
         print("OK")
