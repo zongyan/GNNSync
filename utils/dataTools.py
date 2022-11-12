@@ -1507,8 +1507,8 @@ class Flocking(_data):
                 
             # Now that we have the acceleration, we can update position and
             # velocity
-            gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/(nAgents*5)) * np.expand_dims(adjust[:,t-1,0,:], 1)
-            theta[:,t,:,:] = theta[:,t-1,:,:] + (1/(nAgents*5)) * np.expand_dims(adjust[:,t-1,1,:], 1) + gamma[:,t,:,:] * self.samplingTime                       
+            theta[:,t,:,:] = theta[:,t-1,:,:] + (1/nAgents) * np.expand_dims(adjust[:,t-1,0,:], 1) + gamma[:,t-1,:,:] * self.samplingTime                       
+            gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/nAgents) * np.expand_dims(adjust[:,t-1,1,:], 1)
             
             if doPrint:
                 # Sample percentage count
@@ -1756,11 +1756,11 @@ class Flocking(_data):
             vel[:,t,:,:] = vel[:,t-1,:,:] + accel[:,t-1,:,:] * samplingTime
             #   Update the position
             pos[:,t,:,:] = pos[:,t-1,:,:] + vel[:,t-1,:,:] * samplingTime + accel[:,t-1,:,:] * (samplingTime ** 2)/2 
-            
-            #   Update the clock skew
-            gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:]
+
             #   Update the clock offset
-            theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.samplingTime + (1/self.nAgents) * deltaTheta[:,t-1,:,:]                        
+            theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.samplingTime + (1/self.nAgents) * deltaTheta[:,t-1,:,:]               
+            #   Update the clock skew
+            gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:]                     
             
             if self.doPrint:
                 # Sample percentage count

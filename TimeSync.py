@@ -834,25 +834,23 @@ for realization in range(nRealizations):
             print("...", flush = True)
 
         #   Load the data, which will give a specific split
-        # dataTest = dataTools.Flocking(
-        #                 # Structure
-        #                 nAgentsTest[n],
-        #                 commRadius,
-        #                 repelDist,
-        #                 # Samples
-        #                 1, # We don't care about training
-        #                 1, # nor validation
-        #                 nTest,
-        #                 # Time
-        #                 duration,
-        #                 samplingTime,
-        #                 # Initial conditions
-        #                 initGeometry = initGeometry,
-        #                 initVelValue = initVelValue,
-        #                 initMinDist = initMinDist,
-        #                 accelMax = accelMax)
-        
-        dataTest=data
+        dataTest = dataTools.Flocking(
+                        # Structure
+                        nAgentsTest[n],
+                        commRadius,
+                        repelDist,
+                        # Samples
+                        1, # We don't care about training
+                        1, # nor validation
+                        nTest,
+                        # Time
+                        duration,
+                        samplingTime,
+                        # Initial conditions
+                        initGeometry = initGeometry,
+                        initVelValue = initVelValue,
+                        initMinDist = initMinDist,
+                        accelMax = accelMax)
     
         ###########
         # OPTIMAL #
