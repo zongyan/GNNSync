@@ -564,6 +564,8 @@ class Flocking(_data):
         self.adj = None
         self.commGraph = None
         self.state = None
+        self.packetExchangeDelay = None
+        self.processingDelay = None
         
         if self.doPrint:
             print("\tComputing initial conditions...", end = ' ', flush = True)
@@ -579,12 +581,26 @@ class Flocking(_data):
                                           maxOffset=0.5, # x100 us
                                           maxSkew=2.5, # x10 ppm                                                                                           
                                           xMaxInitVel = self.initVelValue,
-                                          yMaxInitVel = self.initVelValue
-                                                              )
+                                          yMaxInitVel = self.initVelValue)
+            
         #   Once we have all positions and velocities, we will need to split 
         #   them in the corresponding datasets (train, valid and test)
         self.initOffset = {}
         self.initSkew = {}
+
+        if self.doPrint:
+            print("OK", flush = True)
+            # Erase the label first, then print it            
+            print("\tComputing delays...", end = ' ', flush = True)
+            
+       # Compute the packet exchange and processing delays
+        packetExchangeDelayAll, processingDelayAll = self.computeDelays(
+                                                        self.nAgents, nSamples, 
+                                                        sigmaOffsetVal=4 # us
+                                                        )
+              
+        self.packetExchangeDelay = {}
+        self.processingDelay = {}        
         
         if self.doPrint:
             print("OK", flush = True)
@@ -1777,6 +1793,27 @@ class Flocking(_data):
             print('\b \b' * 4, end = '', flush = True)
 
         return pos, vel, accel, theta, gamma, clockCorrection
+
+    def computeDelays(self, nAgents, nSamples, sigmaOffsetVal=4):
+                
+        sigmaOffsetSq = sigmaOffsetVal**2
+        # covariance matrix Q for the packet exchange delay
+        covQ = np.array([[sigmaOffsetSq, sigmaOffsetSq], \
+                         [sigmaOffsetSq, 2*sigmaOffsetSq]], self.dataType)
+            
+        # covariance matrix R for the processing delay
+        covR = np.array([[sigmaOffsetSq, 0], \
+                         [0, sigmaOffsetSq]], self.dataType)         
+        
+        # zero mean value for both packet exchange and processing delays
+        meanVal = np.array([0, 0], self.dataType)
+            
+        from numpy.random import default_rng
+        rng = default_rng()
+        measurementNoise = rng.multivariate_normal(meanVal, covQ, nSamples)
+        processingNoise = rng.multivariate_normal(meanVal, covR, nSamples)        
+                
+        return measurementNoise, processingNoise
     
     # def computeInitialConditions
     def computeInitialPositions(self, nAgents, nSamples, commRadius,
