@@ -596,11 +596,12 @@ class Flocking(_data):
        # Compute the packet exchange and processing delays
         packetExchangeDelayAll, processingDelayAll = self.computeDelays(
                                                         self.nAgents, nSamples, 
-                                                        sigmaOffsetVal=4 # us
-                                                        )
-              
+                                                        self.duration, self.samplingTime,
+                                                        sigmaMeasureOffsetVal=0.003, # x100 us 
+                                                        sigmaProcessOffsetVal=0.04)
+                      
         self.packetExchangeDelay = {}
-        self.processingDelay = {}        
+        self.processingDelay = {}                      
         
         if self.doPrint:
             print("OK", flush = True)
@@ -612,6 +613,7 @@ class Flocking(_data):
         posAll, velAll, accelAll, \
             offsetAll, skewAll, adjAll = self.computeOptimalTrajectory(
                                         initPosAll, initVelAll, initOffsetAll, initSkewAll, 
+                                        packetExchangeDelayAll, processingDelayAll, 
                                         self.duration, self.samplingTime, self.repelDist,
                                         accelMax = self.accelMax)
         
@@ -652,6 +654,8 @@ class Flocking(_data):
         self.samples['train']['targets'] = adjAll[0:self.nTrain].copy()
         self.initOffset['train'] = initOffsetAll[0:self.nTrain]
         self.initSkew['train'] = initSkewAll[0:self.nTrain]
+        self.packetExchangeDelay['train'] = packetExchangeDelayAll[0:self.nTrain]
+        self.processingDelay['train'] = processingDelayAll[0:self.nTrain]
         self.offset['train'] = offsetAll[0:self.nTrain]
         self.skew['train'] = skewAll[0:self.nTrain]
         self.adj['train'] = adjAll[0:self.nTrain]
@@ -664,6 +668,8 @@ class Flocking(_data):
         self.samples['valid']['targets']=adjAll[startSample:endSample].copy()
         self.initOffset['valid'] = initOffsetAll[startSample:endSample]
         self.initSkew['valid'] = initSkewAll[startSample:endSample]
+        self.packetExchangeDelay['valid'] = packetExchangeDelayAll[startSample:endSample]
+        self.processingDelay['valid'] = processingDelayAll[startSample:endSample]
         self.offset['valid'] = offsetAll[startSample:endSample]
         self.skew['valid'] = skewAll[startSample:endSample]
         self.adj['valid'] = adjAll[startSample:endSample]
@@ -676,11 +682,13 @@ class Flocking(_data):
         self.samples['test']['targets']=adjAll[startSample:endSample].copy()
         self.initOffset['test'] = initOffsetAll[startSample:endSample]
         self.initSkew['test'] = initSkewAll[startSample:endSample]
+        self.packetExchangeDelay['test'] = packetExchangeDelayAll[startSample:endSample]
+        self.processingDelay['test'] = processingDelayAll[startSample:endSample]
         self.offset['test'] = offsetAll[startSample:endSample]
         self.skew['test'] = skewAll[startSample:endSample]
         self.adj['test'] = adjAll[startSample:endSample]
         self.commGraph['test'] = commGraphAll[startSample:endSample]
-        self.state['test'] = stateAll[startSample:endSample]
+        self.state['test'] = stateAll[startSample:endSample]        
                         
         # Change data to specified type and device
         self.astype(self.dataType)
@@ -1245,7 +1253,7 @@ class Flocking(_data):
         
         return cost
     
-    def computeTrajectory(self, initTheta, initGamma, graph, duration, **kwargs):
+    def computeTrajectory(self, initTheta, initGamma, measureNoise, processNoise, graph, duration, **kwargs):
         
         # Check initOffset is of shape batchSize x 1 x nAgents
         assert len(initTheta.shape) == 3
@@ -1330,11 +1338,11 @@ class Flocking(_data):
             # If it is architecture-based, we need to compute the state
             if useArchit:                
                 # Adjust offset value
-                thisOffset = np.expand_dims(clock[:,t-1,0,:], axis=(1, 2))
+                thisOffset = np.expand_dims((clock[:,t-1,0,:]+measureNoise[:,t-1,0,:]), axis=(1, 2))                                                 
                 # Obtain graph
                 thisGraph = np.expand_dims(graph[:,t-1,:,:], 1)
                 # Adjust skew value for state computation
-                thisSkew = np.expand_dims(clock[:,t-1,1,:], axis=(1, 2))                
+                thisSkew = np.expand_dims((clock[:,t-1,1,:]+measureNoise[:,t-1,1,:]), axis=(1, 2))                
                 # Compute state
                 thisState = self.computeStates(thisOffset, thisSkew, thisGraph,
                                                doPrint = False)
@@ -1357,7 +1365,7 @@ class Flocking(_data):
                 
             # Now that we have the acceleration, we can update position and
             # velocity
-            clock[:,t,:,:] = np.matmul(aMatrix, clock[:,t-1,:,:]) + (1/self.nAgents) * adjust[:,t-1,:,:]
+            clock[:,t,:,:] = np.matmul(aMatrix, clock[:,t-1,:,:]) + (1/self.nAgents) * adjust[:,t-1,:,:] - processNoise[:,t-1,:,:]
             
             if doPrint:
                 # Sample percentage count
@@ -1661,9 +1669,9 @@ class Flocking(_data):
 
         return uDiff, uDistSq
         
-    def computeOptimalTrajectory(self, initPos, initVel, initOffset, initSkew, duration, 
-                                 samplingTime, repelDist,
-                                 accelMax = 100.):
+    def computeOptimalTrajectory(self, initPos, initVel, initOffset, initSkew, 
+                                 measureNoise, processNoise, duration, samplingTime, 
+                                 repelDist, accelMax = 100.):
         
         # The optimal trajectory is given by
         # u_{i} = - \sum_{j=1}^{N} (v_{i} - v_{j})
@@ -1758,10 +1766,10 @@ class Flocking(_data):
             
             ### Compute the optimal clock offset and skew correction values ###
             #   Compute the distance between all elements (offsets)
-            ijDiffOffset, _ = self.computeDifferences(theta[:,t-1,:,:])
+            ijDiffOffset, _ = self.computeDifferences(theta[:,t-1,:,:] + np.expand_dims(measureNoise[:,t-1,0,:], 1))
             #       ijDiffOffset: nSamples x 1 x nAgents x nAgents
             #   And also the difference in skews
-            ijDiffSkew, _ = self.computeDifferences(gamma[:,t-1,:,:])
+            ijDiffSkew, _ = self.computeDifferences(gamma[:,t-1,:,:] + np.expand_dims(measureNoise[:,t-1,1,:], 1))
             #       ijDiffVel: nSamples x 1 x nAgents x nAgents
             #   Compute the clock offset and skew correction
             deltaTheta[:,t-1,:,:] = -0.5*np.sum(ijDiffOffset, axis = 3)                                
@@ -1774,7 +1782,7 @@ class Flocking(_data):
             pos[:,t,:,:] = pos[:,t-1,:,:] + vel[:,t-1,:,:] * samplingTime + accel[:,t-1,:,:] * (samplingTime ** 2)/2 
 
             #   Update the clock offset
-            theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.samplingTime + (1/self.nAgents) * deltaTheta[:,t-1,:,:]               
+            theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.samplingTime + (1/self.nAgents) * deltaTheta[:,t-1,:,:] - np.expand_dims(processNoise[:,t-1,0,:], 1)               
             #   Update the clock skew
             gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:]                     
             
@@ -1794,24 +1802,45 @@ class Flocking(_data):
 
         return pos, vel, accel, theta, gamma, clockCorrection
 
-    def computeDelays(self, nAgents, nSamples, sigmaOffsetVal=4):
+    def computeDelays(self, nAgents, nSamples, duration, samplingTime, sigmaMeasureOffsetVal=0.003, sigmaProcessOffsetVal=0.04):
+
+        time = np.int64(duration/samplingTime)
                 
-        sigmaOffsetSq = sigmaOffsetVal**2
-        # covariance matrix Q for the packet exchange delay
-        covQ = np.array([[sigmaOffsetSq, sigmaOffsetSq], \
-                         [sigmaOffsetSq, 2*sigmaOffsetSq]], self.dataType)
+        sigmaMeasureOffsetSq = sigmaMeasureOffsetVal**2 # 10000 us^2
+        sigmaMeasureSkewSq = ((sigmaMeasureOffsetVal)**2)*100 # 100 ppm^2   
+        sigmaProcessOffsetSq = sigmaProcessOffsetVal**2 # 10000 us^2        
+        
+        # covariance matrix R for the packet exchange delay
+        covR = np.array([[sigmaMeasureOffsetSq, sigmaMeasureOffsetSq*10], \
+                         [sigmaMeasureOffsetSq*10, 2*sigmaMeasureSkewSq]], self.dataType)
             
-        # covariance matrix R for the processing delay
-        covR = np.array([[sigmaOffsetSq, 0], \
-                         [0, sigmaOffsetSq]], self.dataType)         
+        # covariance matrix Q for the processing delay, occuring on the offset
+        covQ = np.array([[sigmaMeasureOffsetSq, 0], \
+                         [0, 0]], self.dataType)         
         
         # zero mean value for both packet exchange and processing delays
-        meanVal = np.array([0, 0], self.dataType)
+        measureMeanVal = np.array([0, 0], self.dataType)
+        processingMeanVal = np.array([3.11, 0], self.dataType) 
+        
+        # for the above configurations of packet exchange and processing delay,
+        # see the following paper:
+        # Yan Zong, Xuewu Dai, Zhiwei Gao, "Proportional-Integral Synchronisation 
+        #  for Non-identical Wireless Packet-Coupled Oscillators with Delays"
+        # In Table 1, the mean value and standard deviation of processing delay 
+        # are 311us and 4us respectively, for the standard deviation of packet 
+        # exchange delay is 0.3us, we assume the effects of the mean value of 
+        # packe exchange delay can be removed.
             
         from numpy.random import default_rng
         rng = default_rng()
-        measurementNoise = rng.multivariate_normal(meanVal, covQ, nSamples)
-        processingNoise = rng.multivariate_normal(meanVal, covR, nSamples)        
+        measurementNoise = rng.multivariate_normal(measureMeanVal, covR, nSamples*time*nAgents)
+        processingNoise = rng.multivariate_normal(processingMeanVal, covQ, nSamples*time*nAgents)        
+        
+        measurementNoise = measurementNoise.reshape((nSamples, time, nAgents, 2))     
+        measurementNoise = measurementNoise.transpose(0,1,3,2)        
+        
+        processingNoise = processingNoise.reshape((nSamples, time, nAgents, 2))     
+        processingNoise = processingNoise.transpose(0,1,3,2)
                 
         return measurementNoise, processingNoise
     

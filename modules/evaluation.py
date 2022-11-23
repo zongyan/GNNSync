@@ -82,7 +82,9 @@ def evaluateFlocking(model, data, **kwargs):
     # Initial data
     initPosTest = data.getData('initOffset', 'test')
     initVelTest = data.getData('initSkew', 'test')
-    graphTest = data.getData('commGraph','test')                    
+    graphTest = data.getData('commGraph','test')   
+    measurementNoiseTest = data.getData('packetExchangeDelay','test')   
+    processingNoiseTest = data.getData('processingDelay','test')   
                     
     ##############
     # BEST MODEL #
@@ -99,9 +101,9 @@ def evaluateFlocking(model, data, **kwargs):
     accelTestBest, \
     stateTestBest, \
     commGraphTestBest = \
-        data.computeTrajectory(initPosTest, initVelTest, graphTest, data.duration,
+        data.computeTrajectory(initPosTest, initVelTest, measurementNoiseTest, processingNoiseTest, graphTest, data.duration,
                                archit = model.archit)
-        
+                
     SavedPath ='./gnn_test.npz'
     np.savez(SavedPath, posTestBest=posTestBest, velTestBest=velTestBest, \
              accelTestBest=accelTestBest, stateTestBest=stateTestBest, \
@@ -109,20 +111,20 @@ def evaluateFlocking(model, data, **kwargs):
     print("\tSaved the test data to the following path: ./gnn_test.npz...", end = ' ')
     print("OK", flush = True)        
     
-    posTestBest2, \
-    velTestBest2, \
-    accelTestBest2, \
-    stateTestBest2, \
-    commGraphTestBest2 = \
-        data.computeTrajectory2(initPosTest, initVelTest, graphTest, data.duration,
-                               archit = model.archit)
+    # posTestBest2, \
+    # velTestBest2, \
+    # accelTestBest2, \
+    # stateTestBest2, \
+    # commGraphTestBest2 = \
+    #     data.computeTrajectory2(initPosTest, initVelTest, measurementNoiseTest, processingNoiseTest, graphTest, data.duration,
+    #                            archit = model.archit)
         
-    SavedPath ='./gnn_test2.npz'
-    np.savez(SavedPath, posTestBest=posTestBest2, velTestBest=velTestBest2, \
-             accelTestBest=accelTestBest2, stateTestBest=stateTestBest2, \
-                 commGraphTestBest=commGraphTestBest2)
-    print("\tSaved the test data to the following path: ./gnn_test2.npz...", end = ' ')
-    print("OK", flush = True)                
+    # SavedPath ='./gnn_test2.npz'
+    # np.savez(SavedPath, posTestBest=posTestBest2, velTestBest=velTestBest2, \
+    #          accelTestBest=accelTestBest2, stateTestBest=stateTestBest2, \
+    #              commGraphTestBest=commGraphTestBest2)
+    # print("\tSaved the test data to the following path: ./gnn_test2.npz...", end = ' ')
+    # print("OK", flush = True)                
 
     if doPrint:
         print("OK")
@@ -142,7 +144,7 @@ def evaluateFlocking(model, data, **kwargs):
     accelTestLast, \
     stateTestLast, \
     commGraphTestLast = \
-        data.computeTrajectory(initPosTest, initVelTest, graphTest, data.duration,
+        data.computeTrajectory(initPosTest, initVelTest, measurementNoiseTest, processingNoiseTest, graphTest, data.duration,
                                archit = model.archit)
 
     if doPrint:

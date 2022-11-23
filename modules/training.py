@@ -977,11 +977,14 @@ class TrainerFlocking(Trainer):
                     # Initial data
                     initThetaValid = self.data.getData('initOffset','valid')
                     initGammaValid = self.data.getData('initSkew','valid')
-                    graphValid = self.data.getData('commGraph','valid')                    
+                    graphValid = self.data.getData('commGraph','valid')                       
+                    measurementNoiseValid = self.data.getData('packetExchangeDelay','valid')    
+                    processingNoiseValid = self.data.getData('processingDelay','valid')    
                     
                     # Compute trajectories
                     offsetTestValid, skewTestValid, _, _, _ = self.data.computeTrajectory(
-                            initThetaValid, initGammaValid, graphValid, self.data.duration,
+                            initThetaValid, initGammaValid, measurementNoiseValid, 
+                            processingNoiseValid, graphValid, self.data.duration,
                             archit = thisArchit, doPrint = False)
                     
                     # Compute evaluation
