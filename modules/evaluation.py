@@ -83,6 +83,7 @@ def evaluateFlocking(model, data, **kwargs):
     initPosTest = data.getData('initOffset', 'test')
     initVelTest = data.getData('initSkew', 'test')
     graphTest = data.getData('commGraph','test')   
+    clockNoiseTest = data.getData('clockNoise','test')   
     measurementNoiseTest = data.getData('packetExchangeDelay','test')   
     processingNoiseTest = data.getData('processingDelay','test')   
                     
@@ -101,7 +102,7 @@ def evaluateFlocking(model, data, **kwargs):
     accelTestBest, \
     stateTestBest, \
     commGraphTestBest = \
-        data.computeTrajectory(initPosTest, initVelTest, measurementNoiseTest, processingNoiseTest, graphTest, data.duration,
+        data.computeTrajectory(initPosTest, initVelTest, measurementNoiseTest, processingNoiseTest, clockNoiseTest, graphTest, data.duration,
                                archit = model.archit)
                 
     SavedPath ='./gnn_test.npz'
@@ -144,7 +145,7 @@ def evaluateFlocking(model, data, **kwargs):
     accelTestLast, \
     stateTestLast, \
     commGraphTestLast = \
-        data.computeTrajectory(initPosTest, initVelTest, measurementNoiseTest, processingNoiseTest, graphTest, data.duration,
+        data.computeTrajectory(initPosTest, initVelTest, measurementNoiseTest, processingNoiseTest, clockNoiseTest, graphTest, data.duration,
                                archit = model.archit)
 
     if doPrint:
