@@ -878,10 +878,10 @@ for realization in range(nRealizations):
         # Get the cost for the optimal trajectories
         
         # Full trajectory
-        costOptFull[n][realization] = dataTest.evaluate(vel = velTest)
+        costOptFull[n][realization] = dataTest.evaluate(thetaOffset = posTest, gammaSkew = velTest)
         
         # Last time instant
-        costOptEnd[n][realization] = dataTest.evaluate(vel = velTest[:,-1:,:,:])
+        costOptEnd[n][realization] = dataTest.evaluate(thetaOffset = posTest[:,-1:,:,:], gammaSkew = velTest[:,-1:,:,:])
         
         writeVarValues(varsFile,
                    {'costOptFull%03dR%02d' % (nAgentsTest[n],realization):
@@ -1277,7 +1277,7 @@ commGraphTest = gnn_test['commGraphTestBest']
 #                                                                                accelMax=data.accelMax)
 
 # plot the velocity of all agents via the GNN method
-for i in range(0, 1, 1):
+for i in range(0, 5, 1):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
     for j in range(0, nAgents, 1):
@@ -1294,7 +1294,7 @@ for i in range(0, 1, 1):
 # end for
 
 # plot the velocity of all agents via the centralised optimal controller
-for i in range(0, 1, 1):
+for i in range(0, 5, 1):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
     for j in range(0, nAgents, 1):

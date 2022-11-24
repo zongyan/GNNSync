@@ -599,8 +599,10 @@ class Flocking(_data):
         clockNoiseAll, packetExchangeDelayAll, processingDelayAll = self.computeNoises(
                                                         self.nAgents, nSamples, 
                                                         self.duration, self.samplingTime,
-                                                        sigmaMeasureOffsetVal=0.003, # x100us 
-                                                        sigmaProcessOffsetVal=0.04, # x100us
+                                                        sigmaMeasureOffsetVal=0, # x100us 
+                                                        sigmaProcessOffsetVal=0, # x100us
+                                                        # sigmaMeasureOffsetVal=0.003, # x100us 
+                                                        # sigmaProcessOffsetVal=0.04, # x100us
                                                         sigmaOffsetVal=0, 
                                                         sigmaSkewVal=0)
                       
@@ -1177,8 +1179,7 @@ class Flocking(_data):
 
         return thisData
         
-    def evaluate(self, vel = None, accel = None, initVel = None,
-                 samplingTime = None):
+    def evaluate(self, thetaOffset=None, gammaSkew=None, samplingTime=None):
         
         # It is optional to add a different sampling time, if not, it uses
         # the internal one
@@ -1186,78 +1187,53 @@ class Flocking(_data):
             # If there's no argument use the internal sampling time
             samplingTime = self.samplingTime
         
-        # Check whether we have vel, or accel and initVel (i.e. we are either
-        # given the velocities, or we are given the elements to compute them)
-        if vel is not None:
-            assert len(vel.shape) == 4
-            nSamples = vel.shape[0]
-            tSamples = vel.shape[1]
-            assert vel.shape[2] == 1
-            nAgents = vel.shape[3]
-        elif accel is not None and initVel is not None:
-            assert len(accel.shape) == 4 and len(initVel.shape) == 3
-            nSamples = accel.shape[0]
-            tSamples = accel.shape[1]
-            assert accel.shape[2] == 2
-            nAgents = accel.shape[3]
-            assert initVel.shape[0] == nSamples
-            assert initVel.shape[1] == 1
-            assert initVel.shape[2] == nAgents
-            
-            # Now that we know we have a accel and init velocity, compute the
-            # velocity trajectory
-            # Compute the velocity trajectory
-            if 'torch' in repr(accel.dtype):
-                # Check that initVel is also torch
-                assert 'torch' in repr(initVel.dtype)
-                # Create the tensor to save the velocity trajectory
-                vel = torch.zeros(nSamples,tSamples,2,nAgents,
-                                  dtype = accel.dtype, device = accel.device)
-                # Add the initial velocity
-                vel[:,0,:,:] = initVel.clone().detach()
-            else:
-                # Create the space
-                vel = np.zeros((nSamples, tSamples, 2, nAgents),
-                               dtype=accel.dtype)
-                # Add the initial velocity
-                vel[:,0,:,:] = initVel.copy()
-                
-            # Go over time
-            for t in range(1,tSamples):
-                # Compute velocity
-                vel[:,t,:,:] = accel[:,t-1,:,:] * samplingTime + vel[:,t-1,:,:]
-            
-        # Check that I did enter one of the if clauses
-        assert vel is not None
+        # Check whether we have thetaOffset and gammaSkew 
+
+        assert thetaOffset is not None
+        assert gammaSkew is not None        
+
+        assert len(thetaOffset.shape) == len(gammaSkew.shape) == 4
+        nSamples = thetaOffset.shape[0]
+        tSamples = thetaOffset.shape[1]
+        assert thetaOffset.shape[2] == 1
+        nAgents = thetaOffset.shape[3]
+       
+        assert nSamples == gammaSkew.shape[0]
+        assert tSamples == gammaSkew.shape[1]
+        assert gammaSkew.shape[2] == 1
+        assert nAgents == gammaSkew.shape[3]        
             
         # And now that we have the velocities, we can compute the cost
-        if 'torch' in repr(vel.dtype):
-            # Average velocity for time t, averaged across agents
-            avgVel = torch.mean(vel, dim = 3) # nSamples x tSamples x 2
-            # Compute the difference in velocity between each agent and the
-            # mean velocity
-            diffVel = vel - avgVel.unsqueeze(3) 
-            #   nSamples x tSamples x 2 x nAgents
-            # Compute the MSE velocity
-            diffVelNorm = torch.sum(diffVel ** 2, dim = 2) 
+        if 'torch' in repr(thetaOffset.dtype):            
+            # Average clock offset and skew for time t, averaged across nodes
+            avgOffset = torch.mean(thetaOffset, dim = 3) # nSamples x tSamples x 1
+            avgSkew = torch.mean(gammaSkew*0.1, dim = 3) # nSamples x tSamples x 1            
+            # Compute the difference in offset(skew) between each node and the
+            # mean offset(skew)
+            diffOffset = torch.squeeze((thetaOffset - avgOffset.unsqueeze(3)), 2) 
+            diffSkew = torch.squeeze((gammaSkew - avgSkew.unsqueeze(3)), 2)             
             #   nSamples x tSamples x nAgents
             # Average over agents
-            diffVelAvg = torch.mean(diffVelNorm, dim = 2) # nSamples x tSamples
+            diffOffsetAvg = torch.mean(diffOffset, dim = 2) # nSamples x tSamples
+            diffSkewAvg = torch.mean(diffSkew, dim = 2) # nSamples x tSamples            
             # Sum over time
-            costPerSample = torch.sum(diffVelAvg, dim = 1) # nSamples
+            costPerSample = torch.sum(diffOffsetAvg, dim = 1) + torch.sum(diffSkewAvg, dim = 1)*samplingTime # nSamples            
             # Final average cost
-            cost = torch.mean(costPerSample)
-        else:
+            cost = torch.mean(costPerSample)            
+        else:            
             # Repeat for numpy
-            avgVel = np.mean(vel, axis = 3) # nSamples x tSamples x 1
-            diffVel = vel - np.tile(np.expand_dims(avgVel, 3),
-                                    (1, 1, 1, nAgents))
+            avgOffset = np.mean(thetaOffset, axis = 3) # nSamples x tSamples x 1
+            avgSkew = np.mean(gammaSkew*0.1, axis= 3) # nSamples x tSamples x 1               
+            diffOffset = thetaOffset - np.tile(np.expand_dims(avgOffset, 3), (1, 1, 1, nAgents))
+            diffSkew = gammaSkew*0.1 - np.tile(np.expand_dims(avgSkew, 3), (1, 1, 1, nAgents))
             #   nSamples x tSamples x 1 x nAgents
-            diffVelNorm = np.sum(diffVel ** 2, axis = 2)
-            #   nSamples x tSamples x nAgents
-            diffVelAvg = np.mean(diffVelNorm, axis = 2) # nSamples x tSamples
-            costPerSample = np.sum(diffVelAvg, axis = 1) # nSamples
-            cost = np.mean(costPerSample) # scalar
+            diffOffset = np.squeeze(diffOffset, 2)
+            diffSkew = np.squeeze(diffSkew, 2)
+            #   nSamples x tSamples x nAgents                        
+            diffOffsetAvg = np.mean(diffOffset, axis = 2) # nSamples x tSamples
+            diffSkewAvg = np.mean(diffSkew, axis = 2) # nSamples x tSamples
+            costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*samplingTime # nSamples
+            cost = np.mean(costPerSample) # scalar            
         
         return cost
     
@@ -1373,7 +1349,7 @@ class Flocking(_data):
                 
             # Now that we have the acceleration, we can update position and
             # velocity
-            clock[:,t,:,:] = np.matmul(aMatrix, clock[:,t-1,:,:]) + (1/self.nAgents) * adjust[:,t-1,:,:] + clkNoise[:,t-1,:,:] - processNoise[:,t-1,:,:] 
+            clock[:,t,:,:] = np.matmul(aMatrix, clock[:,t-1,:,:]) + (1/self.nAgents) * adjust[:,t-1,:,:] #+ clkNoise[:,t-1,:,:] - processNoise[:,t-1,:,:] 
             
             if doPrint:
                 # Sample percentage count
@@ -1791,12 +1767,12 @@ class Flocking(_data):
 
             #   Update the clock offset
             theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.samplingTime \
-                                              + (1/self.nAgents) * deltaTheta[:,t-1,:,:] \
-                                              + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
-                                              - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                                              + (1/self.nAgents) * deltaTheta[:,t-1,:,:] #\
+                                              #+ np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                              #- np.expand_dims(processNoise[:,t-1,0,:], 1)
             #   Update the clock skew
-            gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:] \
-                                              + np.expand_dims(clkNoise[:,t-1,1,:], 1)
+            gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:] #\
+                                              #+ np.expand_dims(clkNoise[:,t-1,1,:], 1)
             
             if self.doPrint:
                 # Sample percentage count

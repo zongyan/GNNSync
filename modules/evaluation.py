@@ -189,9 +189,9 @@ def evaluateFlocking(model, data, **kwargs):
     #\\\\\\\\\\\\\\\\\\
         
     evalVars = {}
-    evalVars['costBestFull'] = data.evaluate(vel = velTestBest)
-    evalVars['costBestEnd'] = data.evaluate(vel = velTestBest[:,-1:,:,:])
-    evalVars['costLastFull'] = data.evaluate(vel = velTestLast)
-    evalVars['costLastEnd'] = data.evaluate(vel = velTestLast[:,-1:,:,:])
+    evalVars['costBestFull'] = data.evaluate(thetaOffset = posTestBest, gammaSkew = velTestBest)
+    evalVars['costBestEnd'] = data.evaluate(thetaOffset = posTestBest[:,-1:,:,:], gammaSkew = velTestBest[:,-1:,:,:])
+    evalVars['costLastFull'] = data.evaluate(thetaOffset = posTestLast, gammaSkew = velTestLast)
+    evalVars['costLastEnd'] = data.evaluate(thetaOffset = posTestLast[:,-1:,:,:], gammaSkew = velTestLast[:,-1:,:,:])
 
     return evalVars

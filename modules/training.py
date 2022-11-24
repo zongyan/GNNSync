@@ -989,7 +989,7 @@ class TrainerFlocking(Trainer):
                             archit = thisArchit, doPrint = False)
                     
                     # Compute evaluation
-                    accValid = self.data.evaluate(vel = skewTestValid)
+                    accValid = self.data.evaluate(thetaOffset=offsetTestValid, gammaSkew=skewTestValid)
 
                     # Finish measuring time
                     endTime = datetime.datetime.now()
