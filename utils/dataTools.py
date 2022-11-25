@@ -1185,9 +1185,7 @@ class Flocking(_data):
         # the internal one
         if samplingTime is None:
             # If there's no argument use the internal sampling time
-            samplingTime = self.samplingTime
-        
-        samplingTime=1
+            samplingTime = self.samplingTime    
         
         # Check whether we have thetaOffset and gammaSkew 
 
