@@ -1187,6 +1187,8 @@ class Flocking(_data):
             # If there's no argument use the internal sampling time
             samplingTime = self.samplingTime
         
+        samplingTime=1
+        
         # Check whether we have thetaOffset and gammaSkew 
 
         assert thetaOffset is not None
@@ -1210,9 +1212,13 @@ class Flocking(_data):
             avgSkew = torch.mean(gammaSkew*0.1, dim = 3) # nSamples x tSamples x 1            
             # Compute the difference in offset(skew) between each node and the
             # mean offset(skew)
-            diffOffset = torch.squeeze((thetaOffset - avgOffset.unsqueeze(3)), 2) 
-            diffSkew = torch.squeeze((gammaSkew - avgSkew.unsqueeze(3)), 2)             
-            #   nSamples x tSamples x nAgents
+            diffOffset = thetaOffset - avgOffset.unsqueeze(3) 
+            diffSkew = gammaSkew*0.1 - avgSkew.unsqueeze(3)             
+            #   nSamples x tSamples x 1 x nAgents
+            # Compute the summation of clock offset and skew
+            diffOffset = torch.sum(diffOffset**2, dim = 2) 
+            diffSkew = torch.sum(diffSkew**2, dim = 2)             
+            #   nSamples x tSamples x nAgents                        
             # Average over agents
             diffOffsetAvg = torch.mean(diffOffset, dim = 2) # nSamples x tSamples
             diffSkewAvg = torch.mean(diffSkew, dim = 2) # nSamples x tSamples            
@@ -1227,8 +1233,8 @@ class Flocking(_data):
             diffOffset = thetaOffset - np.tile(np.expand_dims(avgOffset, 3), (1, 1, 1, nAgents))
             diffSkew = gammaSkew*0.1 - np.tile(np.expand_dims(avgSkew, 3), (1, 1, 1, nAgents))
             #   nSamples x tSamples x 1 x nAgents
-            diffOffset = np.squeeze(diffOffset, 2)
-            diffSkew = np.squeeze(diffSkew, 2)
+            diffOffset = np.sum(diffOffset**2, 2)
+            diffSkew = np.sum(diffSkew**2, 2)
             #   nSamples x tSamples x nAgents                        
             diffOffsetAvg = np.mean(diffOffset, axis = 2) # nSamples x tSamples
             diffSkewAvg = np.mean(diffSkew, axis = 2) # nSamples x tSamples
