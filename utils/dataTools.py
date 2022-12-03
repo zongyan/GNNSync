@@ -458,7 +458,7 @@ class Flocking(_data):
     def __init__(self, nAgents, commRadius, repelDist,
                  nTrain, nValid, nTest,
                  duration, samplingTime,
-                 initGeometry = 'circular',initVelValue = 3.,initMinDist = 0.1,
+                 initVelValue = 3.,initMinDist = 0.1,
                  accelMax = 10.,
                  normalizeGraph = True, doPrint = True,
                  dataType = np.float64, device = 'cpu'):
@@ -479,7 +479,6 @@ class Flocking(_data):
         self.mapWidth = None
         self.mapHeight = None
         #   Agents
-        self.initGeometry = initGeometry
         self.initVelValue = initVelValue
         self.initMinDist = initMinDist
         self.accelMax = accelMax
@@ -514,7 +513,6 @@ class Flocking(_data):
             initOffsetAll, initSkewAll = self.computeInitialPositions(
                                           self.nAgents, nSamples, self.commRadius,
                                           minDist = self.initMinDist,
-                                          geometry = self.initGeometry,
                                           initOffsetVal=1, # x100 us
                                           initSkewVal=0, # x10 ppm
                                           maxOffset=0.5, # x100 us
@@ -1787,12 +1785,11 @@ class Flocking(_data):
     
     # def computeInitialConditions
     def computeInitialPositions(self, nAgents, nSamples, commRadius,
-                                minDist=0.1, geometry='circular',
+                                minDist=0.1,
                                 initOffsetVal=1., initSkewVal=2.5,
                                 maxOffset=0.5, maxSkew=2.5,                                
                                 **kwargs):        
                 
-        assert geometry == 'circular'
         assert minDist * (1.+zeroTolerance) <= commRadius * (1.-zeroTolerance)
         # We use a zeroTolerance buffer zone, just in case
         minDist = minDist * (1. + zeroTolerance)

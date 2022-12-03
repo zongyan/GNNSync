@@ -19,123 +19,47 @@ import modules.evaluation as evaluation
 
 #%%
 
-thisFilename = 'flockingGNN' # This is the general name of all related files
+thisFilename = 'TimeSync'
+nAgents = 50 # number of UAVs during training 
+saveDirRoot = 'experiments' 
+saveDir = os.path.join(saveDirRoot, thisFilename) 
 
-nAgents = 50 # Number of agents at training time
-
-saveDirRoot = 'experiments' # In this case, relative location
-saveDir = os.path.join(saveDirRoot, thisFilename) # Dir where to save all
-    # the results from each run
-
-#\\\ Create .txt to store the values of the setting parameters for easier
-# reference when running multiple experiments
 today = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-# Append date and time of the run to the directory, to avoid several runs of
-# overwritting each other.
 saveDir = saveDir + '-%03d-' % nAgents + today
-# Create directory
 if not os.path.exists(saveDir):
     os.makedirs(saveDir)
 
-# Create the file where all the (hyper)parameters and results will be saved.
-varsFile = os.path.join(saveDir,'hyperparameters.txt')
-with open(varsFile, 'w+') as file:
-    file.write('%s\n\n' % datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
+useGPU = True
+commRadius = 2. # communication radius
+repelDist = 1. # minimum distance before activating repelling potential
+nTrain = 400 # number of training samples
+nValid = 20 # number of valid samples
+nTest = 50 # number of testing samples
+duration = 2. # trajectory duration 
+samplingTime = 0.01 # sampling time
+initVelValue = 3. # initial velocities: [-initVelValue, initVelValue]
+initMinDist = 0.1 # minimum distance between any two UAVs
+accelMax = 10. # maximum acceleration value
 
-########
-# DATA #
-########
-
-useGPU = True # If true, and GPU is available, use it.
-
-nAgentsMax = nAgents # Maximum number of agents to test the solution
-nSimPoints = 1 # Number of simulations between nAgents and nAgentsMax
-    # At test time, the architectures trained on nAgents will be tested on a
-    # varying number of agents, starting at nAgents all the way to nAgentsMax;
-    # the number of simulations for different number of agents is given by
-    # nSimPoints, i.e. if nAgents = 50, nAgentsMax = 100 and nSimPoints = 3, 
-    # then the architectures are trained on 50, 75 and 100 agents.
-commRadius = 2. # Communication radius
-repelDist = 1. # Minimum distance before activating repelling potential
-nTrain = 400 # Number of training samples
-nValid = 20 # Number of valid samples
-nTest = 50 # Number of testing samples
-duration = 2. # Duration of the trajectory
-samplingTime = 0.01 # Sampling time
-initGeometry = 'circular' # Geometry of initial positions
-initVelValue = 3. # Initial velocities are samples from an interval
-    # [-initVelValue, initVelValue]
-initMinDist = 0.1 # No two agents are located at a distance less than this
-accelMax = 10. # This is the maximum value of acceleration allowed
-
-############
-# TRAINING #
-############
-
-#\\\ Individual model training options
-optimAlg = 'ADAM' # Options: 'SGD', 'ADAM', 'RMSprop'
-learningRate = 0.0005 # In all options
-beta1 = 0.9 # beta1 if 'ADAM', alpha if 'RMSprop'
-beta2 = 0.999 # ADAM option only
-
-#\\\ Loss function choice
+optimAlg = 'ADAM' 
+learningRate = 0.0005 
+beta1 = 0.9  
+beta2 = 0.999 
 lossFunction = nn.MSELoss
-
-#\\\ Training algorithm
 trainer = training.TrainerFlocking
-
-#\\\ Evaluation algorithm
 evaluator = evaluation.evaluateFlocking
 
-#\\\ Overall training options
-probExpert = 0.993 # Probability of choosing the expert in DAGger
-#DAGgerType = 'fixedBatch' # 'replaceTimeBatch', 'randomEpoch'
-nEpochs = 30 # Number of epochs
-batchSize = 20 # Batch size
-doLearningRateDecay = False # Learning rate decay
-learningRateDecayRate = 0.9 # Rate
-learningRateDecayPeriod = 1 # How many epochs after which update the lr
-validationInterval = 5 # How many training steps to do the validation
+nEpochs = 30 # number of epochs
+batchSize = 20 # batch size
+validationInterval = 5 # how many training steps to do the validation
 
-#################
-# ARCHITECTURES #
-#################
-
-# In this section, we determine the (hyper)parameters of models that we are
-# going to train. This only sets the parameters. The architectures need to be
-# created later below. Do not forget to add the name of the architecture
-# to modelList.
-
-# If the hyperparameter dictionary is called 'hParams' + name, then it can be
-# picked up immediately later on, and there's no need to recode anything after
-# the section 'Setup' (except for setting the number of nodes in the 'N'
-# variable after it has been coded).
-
-# The name of the keys in the hyperparameter dictionary have to be the same
-# as the names of the variables in the architecture call, because they will
-# be called by unpacking the dictionary.
-
-#nFeatures = 32 # Number of features in all architectures
-#nFilterTaps = 4 # Number of filter taps in all architectures
-# [[The hyperparameters are for each architecture, and they were chosen 
-#   following the results of the hyperparameter search]]
 nonlinearityHidden = torch.tanh
 nonlinearityOutput = torch.tanh
-nonlinearity = nn.Tanh # Chosen nonlinearity for nonlinear architectures
-
-# Select desired architectures
-doLocalFlt = False # Local filter (no nonlinearity)
-doLocalGNN = True # Local GNN (include nonlinearity)
-doDlAggGNN = False
-doGraphRNN = False
+nonlinearity = nn.Tanh
 
 modelList = []
-   
-#\\\\\\\\\\\\\\\\\
-#\\\ LOCAL GNN \\\
-#\\\\\\\\\\\\\\\\\
 
-if doLocalGNN:
+# if doLocalGNN:
 
     #\\\ Basic parameters for the Local GNN architecture
 
@@ -163,155 +87,28 @@ if doLocalGNN:
     hParamsLocalGNN['dimEdgeFeatures'] = 1 # Scalar edge weights
 
     modelList += [hParamsLocalGNN['name']]
-    
 
-    
+doPrint = True # print while running
+printInterval = 1 # after how many training steps, print the partial results
+                  #   0 means to never print partial results while training
 
-
-###########
-# LOGGING #
-###########
-
-# Options:
-doPrint = True # Decide whether to print stuff while running
-
-
-
-# Parameters:
-printInterval = 1 # After how many training steps, print the partial results
-#   0 means to never print partial results while training
-xAxisMultiplierTrain = 10 # How many training steps in between those shown in
-    # the plot, i.e., one training step every xAxisMultiplierTrain is shown.
-xAxisMultiplierValid = 2 # How many validation steps in between those shown,
-    # same as above.
-figSize = 5 # Overall size of the figure that contains the plot
-lineWidth = 2 # Width of the plot lines
-markerShape = 'o' # Shape of the markers
-markerSize = 3 # Size of the markers
-videoSpeed = 0.5 # Slow down by half to show transitions
-nVideos = 3 # Number of videos to save
-
-#%%##################################################################
-#                                                                   #
-#                    SETUP                                          #
-#                                                                   #
-#####################################################################
-
-#\\\ If CUDA is selected, empty cache:
+#%%
 if useGPU and torch.cuda.is_available():
     torch.cuda.empty_cache()
 
-#\\\ Notify of processing units
 if doPrint:
     print("Selected devices:")
     for thisModel in modelList:
         hParamsDict = eval('hParams' + thisModel)
         print("\t%s: %s" % (thisModel, hParamsDict['device']))
     
-#\\\ Number of agents at test time
-nAgentsTest = np.linspace(nAgents, nAgentsMax, num = nSimPoints,dtype = np.int64)
-nAgentsTest = np.unique(nAgentsTest).tolist()
-nSimPoints = len(nAgentsTest)
-
-#\\\ Save variables during evaluation.
-# We will save all the evaluations obtained for each of the trained models.
-# The first list is one for each value of nAgents that we want to simulate 
-# (i.e. these are test results, so if we test for different number of agents,
-# we need to save the results for each of them). Each element in the list will
-# be a dictionary (i.e. for each testing case, we have a dictionary).
-# It basically is a dictionary, containing a list. The key of the
-# dictionary determines the model, then the first list index determines
-# which split realization. Then, this will be converted to numpy to compute
-# mean and standard deviation (across the split dimension).
-# We're saving the cost of the full trajectory, as well as the cost at the end
-# instant.
-costBestFull = [None] * nSimPoints
-costBestEnd = [None] * nSimPoints
-costLastFull = [None] * nSimPoints
-costLastEnd = [None] * nSimPoints
-costOptFull = [None] * nSimPoints
-costOptEnd = [None] * nSimPoints
-for n in range(nSimPoints):
-    costBestFull[n] = {} # Accuracy for the best model (full trajectory)
-    costBestEnd[n] = {} # Accuracy for the best model (end time)
-    costLastFull[n] = {} # Accuracy for the last model
-    costLastEnd[n] = {} # Accuracy for the last model
-    for thisModel in modelList: # Create an element for each split realization,
-        costBestFull[n][thisModel] = [None] 
-        costBestEnd[n][thisModel] = [None] 
-        costLastFull[n][thisModel] = [None] 
-        costLastEnd[n][thisModel] = [None] 
-
-####################
-# TRAINING OPTIONS #
-####################
-
-# Training phase. It has a lot of options that are input through a
-# dictionary of arguments.
-# The value of these options was decided above with the rest of the parameters.
-# This just creates a dictionary necessary to pass to the train function.
-
 trainingOptions = {}
 
 if doPrint:
     trainingOptions['printInterval'] = printInterval
-if doLearningRateDecay:
-    trainingOptions['learningRateDecayRate'] = learningRateDecayRate
-    trainingOptions['learningRateDecayPeriod'] = learningRateDecayPeriod
 trainingOptions['validationInterval'] = validationInterval
 
-# And in case each model has specific training options (aka 'DAGger'), then
-# we create a separate dictionary per model.
-
-trainingOptsPerModel= {}
-
-# Create relevant dirs: we need directories to save the videos of the dataset
-# that involve the optimal centralized controllers, and we also need videos
-# for the learned trajectory of each model. Note that all of these depend on
-# each realization, so we will be saving videos for each realization.
-# Here, we create all those directories.
-datasetTrajectoryDir = os.path.join(saveDir,'datasetTrajectories')
-if not os.path.exists(datasetTrajectoryDir):
-    os.makedirs(datasetTrajectoryDir)
-    
-datasetTrainTrajectoryDir = os.path.join(datasetTrajectoryDir,'train')
-if not os.path.exists(datasetTrainTrajectoryDir):
-    os.makedirs(datasetTrainTrajectoryDir)
-    
-datasetTestTrajectoryDir = os.path.join(datasetTrajectoryDir,'test')
-if not os.path.exists(datasetTestTrajectoryDir):
-    os.makedirs(datasetTestTrajectoryDir)
-
-datasetTestAgentTrajectoryDir = [None] * nSimPoints
-for n in range(nSimPoints):    
-    datasetTestAgentTrajectoryDir[n] = os.path.join(datasetTestTrajectoryDir,
-                                                    '%03d' % nAgentsTest[n])
-
-#%%##################################################################
-#                                                                   #
-#                    DATA SPLIT REALIZATION                         #
-#                                                                   #
-#####################################################################
-
-# Start generating a new data realization for each number of total realizations
-
-
-
-# On top of the rest of the training options, we pass the identification
-# of this specific data split realization.
-
-if doPrint:
-    print("", flush = True)
-
-#%%##################################################################
-#                                                                   #
-#                    DATA HANDLING                                  #
-#                                                                   #
-#####################################################################
-
-############
-# DATASETS #
-############
+#%%
 
 if doPrint:
     print("Generating data", end = '')
@@ -332,24 +129,15 @@ data = dataTools.Flocking(
             duration,
             samplingTime,
             # Initial conditions
-            initGeometry = initGeometry,
             initVelValue = initVelValue,
             initMinDist = initMinDist,
             accelMax = accelMax)
-
-###########
-# PREVIEW #
-###########
 
 if doPrint:
     print("Preview data", end = '')
     print("...", flush = True)
 
-#%%##################################################################
-#                                                                   #
-#                    MODELS INITIALIZATION                          #
-#                                                                   #
-#####################################################################
+#%%
 
 # This is the dictionary where we store the models (in a model.Model
 # class).
@@ -364,8 +152,6 @@ for thisModel in modelList:
 
     # Get the corresponding parameter dictionary
     hParamsDict = deepcopy(eval('hParams' + thisModel))
-    # and training options
-    trainingOptsPerModel[thisModel] = deepcopy(trainingOptions)
 
     # Now, this dictionary has all the hyperparameters that we need to pass
     # to the architecture, but it also has the 'name' and 'archit' that
@@ -374,13 +160,6 @@ for thisModel in modelList:
     thisName = hParamsDict.pop('name')
     callArchit = hParamsDict.pop('archit')
     thisDevice = hParamsDict.pop('device')
-    # If there's a specific DAGger type, pop it out now
-    if 'DAGgerType' in hParamsDict.keys() \
-                                    and 'probExpert' in hParamsDict.keys():
-        trainingOptsPerModel[thisModel]['probExpert'] = \
-                                              hParamsDict.pop('probExpert')
-        trainingOptsPerModel[thisModel]['DAGgerType'] = \
-                                              hParamsDict.pop('DAGgerType')
 
     # If more than one graph or data realization is going to be carried out,
     # we are going to store all of thos models separately, so that any of
@@ -423,28 +202,9 @@ for thisModel in modelList:
         thisOptim = optim.RMSprop(thisArchit.parameters(),
                                   lr = learningRate, alpha = beta1)
 
-    ########
-    # LOSS #
-    ########
-
     thisLossFunction = lossFunction()
-    
-    ###########
-    # TRAINER #
-    ###########
-
     thisTrainer = trainer
-    
-    #############
-    # EVALUATOR #
-    #############
-
     thisEvaluator = evaluator
-
-    #########
-    # MODEL #
-    #########
-
     modelCreated = model.Model(thisArchit,
                                thisLossFunction,
                                thisOptim,
@@ -459,16 +219,7 @@ for thisModel in modelList:
     if doPrint:
         print("OK")
 
-#%%##################################################################
-#                                                                   #
-#                    TRAINING                                       #
-#                                                                   #
-#####################################################################
-
-
-############
-# TRAINING #
-############
+#%%
 
 print("")
 
@@ -483,14 +234,9 @@ for thisModel in modelsGNN.keys():
 
     thisTrainVars = modelsGNN[thisModel].train(data,
                                                nEpochs,
-                                               batchSize,
-                                               **trainingOptsPerModel[m])
+                                               batchSize)
 
-#%%##################################################################
-#                                                                   #
-#                    EVALUATION                                     #
-#                                                                   #
-#####################################################################
+#%%
 
 # Now that the model has been trained, we evaluate them on the test
 # samples.
@@ -498,18 +244,12 @@ for thisModel in modelsGNN.keys():
 # We have two versions of each model to evaluate: the one obtained
 # at the best result of the validation step, and the last trained model.
     
-for n in range(nSimPoints):
+# for n in range(nSimPoints):
     
-    if doPrint:
-        print("")
-        print("[%3d Agents] Generating test set" % nAgentsTest[n],
-              end = '')
-        print("...", flush = True)
-
     #   Load the data, which will give a specific split
     dataTest = dataTools.Flocking(
                     # Structure
-                    nAgentsTest[n],
+                    nAgents,
                     commRadius,
                     repelDist,
                     # Samples
@@ -520,63 +260,17 @@ for n in range(nSimPoints):
                     duration,
                     samplingTime,
                     # Initial conditions
-                    initGeometry = initGeometry,
                     initVelValue = initVelValue,
                     initMinDist = initMinDist,
                     accelMax = accelMax)
-
-    ###########
-    # OPTIMAL #
-    ###########
-    
-    #\\\ PREVIEW
-    #\\\\\\\\\\\
-    
-    # Save videos for the optimal trajectories of the test set (before it
-    # was for the otpimal trajectories of the training set)
     
     posTest = dataTest.getData('offset', 'train')
     velTest = dataTest.getData('skew', 'train')
     commGraphTest = dataTest.getData('commGraph', 'train')
-
-    if doPrint:
-        print("[%3d Agents] Preview data"  % nAgentsTest[n], end = '')
-        print("...", flush = True)
     
-    #\\\ EVAL
-    #\\\\\\\\
+    dataTest.evaluate(thetaOffset = posTest, gammaSkew = velTest)
     
-    # Get the cost for the optimal trajectories
-    
-    # Full trajectory
-    costOptFull[n] = dataTest.evaluate(thetaOffset = posTest, gammaSkew = velTest)
-    
-    # Last time instant
-    costOptEnd[n] = dataTest.evaluate(thetaOffset = posTest[:,-1:,:,:], gammaSkew = velTest[:,-1:,:,:])
-            
-    del posTest, velTest, commGraphTest
-    
-    ##########
-    # MODELS #
-    ##########
-
-    for thisModel in modelsGNN.keys():
-
-        if doPrint:
-            print("[%3d Agents] Evaluating model %s" % \
-                                     (nAgentsTest[n], thisModel), end = '')
-            print("...", flush = True)
-            
-        addKW = {}
-        addKW['nVideos'] = nVideos
-        addKW['graphNo'] = nAgentsTest[n]
-            
-        thisEvalVars = modelsGNN[thisModel].evaluate(dataTest, **addKW)
-
-        thisCostBestFull = thisEvalVars['costBestFull']
-        thisCostBestEnd = thisEvalVars['costBestEnd']
-        thisCostLastFull = thisEvalVars['costLastFull']
-        thisCostLastEnd = thisEvalVars['costLastEnd']            
+    dataTest.evaluate(thetaOffset = posTest[:,-1:,:,:], gammaSkew = velTest[:,-1:,:,:])              
 
 #%%
 
