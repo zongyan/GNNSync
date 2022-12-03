@@ -20,7 +20,7 @@ import modules.evaluation as evaluation
 #%%
 
 thisFilename = 'TimeSync'
-nAgents = 25 # number of UAVs during training 
+nAgents = 50 # number of UAVs during training 
 saveDirRoot = 'experiments' 
 saveDir = os.path.join(saveDirRoot, thisFilename) 
 
@@ -49,7 +49,7 @@ lossFunction = nn.MSELoss
 trainer = training.Trainer
 evaluator = evaluation.evaluate
 
-nEpochs = 3 # number of epochs
+nEpochs = 30 # number of epochs
 batchSize = 20 # batch size
 validationInterval = 5 # how many training steps to do the validation
 
@@ -105,7 +105,7 @@ trainingOptions['validationInterval'] = validationInterval
 print("Generating data", end = '')
 print("...", flush = True)
 
-data = dataTools.Flocking(
+data = dataTools.AerialSwarm(
             # Structure
             nAgents,
             commRadius,
@@ -182,7 +182,7 @@ for thisModel in modelsGNN.keys():
                                                batchSize)
 
 #%%
-dataTest = dataTools.Flocking(
+dataTest = dataTools.AerialSwarm(
                 # Structure
                 nAgents,
                 commRadius,

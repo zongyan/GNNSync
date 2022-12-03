@@ -233,7 +233,7 @@ class _data:
             if device is not self.device:
                 self.device = device
             
-class Flocking(_data):    
+class AerialSwarm(_data):    
     def __init__(self, nAgents, commRadius, repelDist,
                  nTrain, nValid, nTest,
                  duration, samplingTime,
@@ -289,7 +289,7 @@ class Flocking(_data):
         
         # Compute the initial conditions        
         initPosAll, initVelAll, \
-            initOffsetAll, initSkewAll = self.computeInitialPositions(
+            initOffsetAll, initSkewAll = self.computeInitialConditions(
                                           self.nAgents, nSamples, self.commRadius,
                                           minDist = self.initMinDist,
                                           initOffsetVal=1, # x100 us
@@ -1562,8 +1562,7 @@ class Flocking(_data):
                 
         return clkNoise, measurementNoise, processingNoise
     
-    # def computeInitialConditions
-    def computeInitialPositions(self, nAgents, nSamples, commRadius,
+    def computeInitialConditions(self, nAgents, nSamples, commRadius,
                                 minDist=0.1,
                                 initOffsetVal=1., initSkewVal=2.5,
                                 maxOffset=0.5, maxSkew=2.5,                                
