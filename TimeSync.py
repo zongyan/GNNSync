@@ -79,7 +79,7 @@ startRunTime = datetime.datetime.now()
 
 thisFilename = 'flockingGNN' # This is the general name of all related files
 
-nAgents = 50 # Number of agents at training time
+nAgents = 25 # Number of agents at training time
 
 saveDirRoot = 'experiments' # In this case, relative location
 saveDir = os.path.join(saveDirRoot, thisFilename) # Dir where to save all
@@ -148,7 +148,7 @@ evaluator = evaluation.evaluateFlocking
 #\\\ Overall training options
 probExpert = 0.993 # Probability of choosing the expert in DAGger
 #DAGgerType = 'fixedBatch' # 'replaceTimeBatch', 'randomEpoch'
-nEpochs = 30 # Number of epochs
+nEpochs = 2 # Number of epochs
 batchSize = 20 # Batch size
 doLearningRateDecay = False # Learning rate decay
 learningRateDecayRate = 0.9 # Rate
@@ -353,7 +353,7 @@ for n in range(nSimPoints):
 
 # Start generating a new data realization for each number of total realizations
 
-for realization in range(nRealizations):
+
 
 # On top of the rest of the training options, we pass the identification
 # of this specific data split realization.
@@ -607,10 +607,10 @@ for n in range(nSimPoints):
     # Get the cost for the optimal trajectories
     
     # Full trajectory
-    costOptFull[n][realization] = dataTest.evaluate(thetaOffset = posTest, gammaSkew = velTest)
+    costOptFull[n] = dataTest.evaluate(thetaOffset = posTest, gammaSkew = velTest)
     
     # Last time instant
-    costOptEnd[n][realization] = dataTest.evaluate(thetaOffset = posTest[:,-1:,:,:], gammaSkew = velTest[:,-1:,:,:])
+    costOptEnd[n] = dataTest.evaluate(thetaOffset = posTest[:,-1:,:,:], gammaSkew = velTest[:,-1:,:,:])
             
     del posTest, velTest, commGraphTest
     
@@ -635,15 +635,6 @@ for n in range(nSimPoints):
         thisCostBestEnd = thisEvalVars['costBestEnd']
         thisCostLastFull = thisEvalVars['costLastFull']
         thisCostLastEnd = thisEvalVars['costLastEnd']            
-
-        # Find which model to save the results (when having multiple
-        # realizations)
-        for m in modelList:
-            if m in thisModel:
-                costBestFull[n][m][realization] = thisCostBestFull
-                costBestEnd[n][m][realization] = thisCostBestEnd
-                costLastFull[n][m][realization] = thisCostLastFull
-                costLastEnd[n][m][realization] = thisCostLastEnd
 
 #%%
 
