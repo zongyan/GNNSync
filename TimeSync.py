@@ -68,10 +68,6 @@ import modules.model as model
 import modules.training as training
 import modules.evaluation as evaluation
 
-#\\\ Separate functions:
-from utils.miscTools import writeVarValues
-from utils.miscTools import saveSeed
-
 # Start measuring time
 startRunTime = datetime.datetime.now()
 
@@ -104,25 +100,6 @@ varsFile = os.path.join(saveDir,'hyperparameters.txt')
 with open(varsFile, 'w+') as file:
     file.write('%s\n\n' % datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
 
-#\\\ Save seeds for reproducibility
-#   PyTorch seeds
-torchState = torch.get_rng_state()
-torchSeed = torch.initial_seed()
-#   Numpy seeds
-numpyState = np.random.RandomState().get_state()
-#   Collect all random states
-randomStates = []
-randomStates.append({})
-randomStates[0]['module'] = 'numpy'
-randomStates[0]['state'] = numpyState
-randomStates.append({})
-randomStates[1]['module'] = 'torch'
-randomStates[1]['state'] = torchState
-randomStates[1]['seed'] = torchSeed
-#   This list and dictionary follows the format to then be loaded, if needed,
-#   by calling the loadSeed function in Utils.miscTools
-saveSeed(randomStates, saveDir)
-
 ########
 # DATA #
 ########
@@ -152,25 +129,6 @@ accelMax = 10. # This is the maximum value of acceleration allowed
 nRealizations = 1 # Number of data realizations
     # How many times we repeat the experiment
 
-#\\\ Save values:
-writeVarValues(varsFile,
-               {'nAgents': nAgents,
-                'nAgentsMax': nAgentsMax,
-                'nSimPoints': nSimPoints,
-                'commRadius': commRadius,
-                'repelDist': repelDist,
-                'nTrain': nTrain,
-                'nValid': nValid,
-                'nTest': nTest,
-                'duration': duration,
-                'samplingTime': samplingTime,
-                'initGeometry': initGeometry,
-                'initVelValue': initVelValue,
-                'initMinDist': initMinDist,
-                'accelMax': accelMax,
-                'nRealizations': nRealizations,
-                'useGPU': useGPU})
-
 ############
 # TRAINING #
 ############
@@ -199,23 +157,6 @@ doLearningRateDecay = False # Learning rate decay
 learningRateDecayRate = 0.9 # Rate
 learningRateDecayPeriod = 1 # How many epochs after which update the lr
 validationInterval = 5 # How many training steps to do the validation
-
-#\\\ Save values
-writeVarValues(varsFile,
-               {'optimizationAlgorithm': optimAlg,
-                'learningRate': learningRate,
-                'beta1': beta1,
-                'beta2': beta2,
-                'lossFunction': lossFunction,
-                'trainer': trainer,
-                'evaluator': evaluator,
-                'probExpert': probExpert,
-                'nEpochs': nEpochs,
-                'batchSize': batchSize,
-                'doLearningRateDecay': doLearningRateDecay,
-                'learningRateDecayRate': learningRateDecayRate,
-                'learningRateDecayPeriod': learningRateDecayPeriod,
-                'validationInterval': validationInterval})
 
 #################
 # ARCHITECTURES #
@@ -250,44 +191,7 @@ doDlAggGNN = False
 doGraphRNN = False
 
 modelList = []
-
-#\\\\\\\\\\\\\\\\\\
-#\\\ FIR FILTER \\\
-#\\\\\\\\\\\\\\\\\\
-
-if doLocalFlt:
-
-    #\\\ Basic parameters for the Local Filter architecture
-
-    hParamsLocalFlt = {} # Hyperparameters (hParams) for the Local Filter
-
-    hParamsLocalFlt['name'] = 'LocalFlt'
-    # Chosen architecture
-    hParamsLocalFlt['archit'] = architTime.LocalGNN_DB
-    hParamsLocalFlt['device'] = 'cuda:0' \
-                                    if (useGPU and torch.cuda.is_available()) \
-                                    else 'cpu'
-
-    # Graph convolutional parameters
-    hParamsLocalFlt['dimNodeSignals'] = [2, 32] # Features per layer
-    hParamsLocalFlt['nFilterTaps'] = [4] # Number of filter taps
-    hParamsLocalFlt['bias'] = True # Decide whether to include a bias term
-    # Nonlinearity
-    hParamsLocalFlt['nonlinearity'] = gml.NoActivation # Selected nonlinearity
-        # is affected by the summary
-    # Readout layer: local linear combination of features
-    hParamsLocalFlt['dimReadout'] = [2] # Dimension of the fully connected
-        # layers after the FIR filter layers (map); this fully connected layer
-        # is applied only at each node, without any further exchanges nor 
-        # considering all nodes at once, making the architecture entirely
-        # local.
-    # Graph structure
-    hParamsLocalFlt['dimEdgeFeatures'] = 1 # Scalar edge weights
-
-    #\\\ Save Values:
-    writeVarValues(varsFile, hParamsLocalFlt)
-    modelList += [hParamsLocalFlt['name']]
-    
+   
 #\\\\\\\\\\\\\\\\\
 #\\\ LOCAL GNN \\\
 #\\\\\\\\\\\\\\\\\
@@ -319,89 +223,11 @@ if doLocalGNN:
     # Graph structure
     hParamsLocalGNN['dimEdgeFeatures'] = 1 # Scalar edge weights
 
-    #\\\ Save Values:
-    writeVarValues(varsFile, hParamsLocalGNN)
     modelList += [hParamsLocalGNN['name']]
     
-#\\\\\\\\\\\\\\\\\\\\\\\
-#\\\ AGGREGATION GNN \\\
-#\\\\\\\\\\\\\\\\\\\\\\\
 
-if doDlAggGNN:
-
-    #\\\ Basic parameters for the Aggregation GNN architecture
-
-    hParamsDAGNN1Ly = {} # Hyperparameters (hParams) for the Local GNN (LclGNN)
-
-    hParamsDAGNN1Ly['name'] = 'DAGNN1Ly'
-    # Chosen architecture
-    hParamsDAGNN1Ly['archit'] = architTime.AggregationGNN_DB
-    hParamsDAGNN1Ly['device'] = 'cuda:0' \
-                                    if (useGPU and torch.cuda.is_available()) \
-                                    else 'cpu'
-
-    # Graph convolutional parameters
-    hParamsDAGNN1Ly['dimFeatures'] = [6] # Features per layer
-    hParamsDAGNN1Ly['nFilterTaps'] = [] # Number of filter taps
-    hParamsDAGNN1Ly['bias'] = True # Decide whether to include a bias term
-    # Nonlinearity
-    hParamsDAGNN1Ly['nonlinearity'] = nonlinearity # Selected nonlinearity
-        # is affected by the summary
-    hParamsDAGNN1Ly['poolingFunction'] = gml.NoPool
-    hParamsDAGNN1Ly['poolingSize'] = []
-    # Readout layer: local linear combination of features
-    hParamsDAGNN1Ly['dimReadout'] = [64, 2] # Dimension of the fully connected
-        # layers after the GCN layers (map); this fully connected layer
-        # is applied only at each node, without any further exchanges nor 
-        # considering all nodes at once, making the architecture entirely
-        # local.
-    # Graph structure
-    hParamsDAGNN1Ly['dimEdgeFeatures'] = 1 # Scalar edge weights
-    hParamsDAGNN1Ly['nExchanges'] = 2 - 1
-
-    #\\\ Save Values:
-    writeVarValues(varsFile, hParamsDAGNN1Ly)
-    modelList += [hParamsDAGNN1Ly['name']]
     
-#\\\\\\\\\\\\\\\\\
-#\\\ GRAPH RNN \\\
-#\\\\\\\\\\\\\\\\\
 
-if doGraphRNN:
-
-    #\\\ Basic parameters for the Graph RNN architecture
-
-    hParamsGraphRNN = {} # Hyperparameters (hParams) for the Local GNN (LclGNN)
-
-    hParamsGraphRNN['name'] = 'GraphRNN'
-    # Chosen architecture
-    hParamsGraphRNN['archit'] = architTime.GraphRecurrentNN_DB
-    hParamsGraphRNN['device'] = 'cuda:0' \
-                                    if (useGPU and torch.cuda.is_available()) \
-                                    else 'cpu'
-
-    # Graph convolutional parameters
-    hParamsGraphRNN['dimInputSignals'] = 6 # Features per layer
-    hParamsGraphRNN['dimOutputSignals'] = 64
-    hParamsGraphRNN['dimHiddenSignals'] = 64
-    hParamsGraphRNN['nFilterTaps'] = [3] * 2 # Number of filter taps
-    hParamsGraphRNN['bias'] = True # Decide whether to include a bias term
-    # Nonlinearity
-    hParamsGraphRNN['nonlinearityHidden'] = nonlinearityHidden
-    hParamsGraphRNN['nonlinearityOutput'] = nonlinearityOutput
-    hParamsGraphRNN['nonlinearityReadout'] = nonlinearity
-    # Readout layer: local linear combination of features
-    hParamsGraphRNN['dimReadout'] = [2] # Dimension of the fully connected
-        # layers after the GCN layers (map); this fully connected layer
-        # is applied only at each node, without any further exchanges nor 
-        # considering all nodes at once, making the architecture entirely
-        # local.
-    # Graph structure
-    hParamsGraphRNN['dimEdgeFeatures'] = 1 # Scalar edge weights
-
-    #\\\ Save Values:
-    writeVarValues(varsFile, hParamsGraphRNN)
-    modelList += [hParamsGraphRNN['name']]
 
 ###########
 # LOGGING #
@@ -409,9 +235,9 @@ if doGraphRNN:
 
 # Options:
 doPrint = True # Decide whether to print stuff while running
-doLogging = False # Log into tensorboard
-doSaveVars = True # Save (pickle) useful variables
-doFigs = True # Plot some figures (this only works if doSaveVars is True)
+
+
+
 # Parameters:
 printInterval = 1 # After how many training steps, print the partial results
 #   0 means to never print partial results while training
@@ -425,21 +251,6 @@ markerShape = 'o' # Shape of the markers
 markerSize = 3 # Size of the markers
 videoSpeed = 0.5 # Slow down by half to show transitions
 nVideos = 3 # Number of videos to save
-
-#\\\ Save values:
-writeVarValues(varsFile,
-               {'doPrint': doPrint,
-                'doLogging': doLogging,
-                'doSaveVars': doSaveVars,
-                'doFigs': doFigs,
-                'saveDir': saveDir,
-                'printInterval': printInterval,
-                'figSize': figSize,
-                'lineWidth': lineWidth,
-                'markerShape': markerShape,
-                'markerSize': markerSize,
-                'videoSpeed': videoSpeed,
-                'nVideos': nVideos})
 
 #%%##################################################################
 #                                                                   #
@@ -457,19 +268,11 @@ if doPrint:
     for thisModel in modelList:
         hParamsDict = eval('hParams' + thisModel)
         print("\t%s: %s" % (thisModel, hParamsDict['device']))
-
-#\\\ Logging options
-if doLogging:
-    # If logging is on, load the tensorboard visualizer and initialize it
-    from alegnn.utils.visualTools import Visualizer
-    logsTB = os.path.join(saveDir, 'logsTB')
-    logger = Visualizer(logsTB, name='visualResults')
     
 #\\\ Number of agents at test time
 nAgentsTest = np.linspace(nAgents, nAgentsMax, num = nSimPoints,dtype = np.int64)
 nAgentsTest = np.unique(nAgentsTest).tolist()
 nSimPoints = len(nAgentsTest)
-writeVarValues(varsFile, {'nAgentsTest': nAgentsTest}) # Save list
 
 #\\\ Save variables during evaluation.
 # We will save all the evaluations obtained for each of the trained models.
@@ -502,21 +305,6 @@ for n in range(nSimPoints):
     costOptFull[n] = [None] * nRealizations # Accuracy for optimal controller
     costOptEnd[n] = [None] * nRealizations # Accuracy for optimal controller
 
-if doFigs:
-    #\\\ SAVE SPACE:
-    # Create the variables to save all the realizations. This is, again, a
-    # dictionary, where each key represents a model, and each model is a list
-    # for each data split.
-    # Each data split, in this case, is not a scalar, but a vector of
-    # length the number of training steps (or of validation steps)
-    lossTrain = {}
-    evalValid = {}
-    # Initialize the splits dimension
-    for thisModel in modelList:
-        lossTrain[thisModel] = [None] * nRealizations
-        evalValid[thisModel] = [None] * nRealizations
-
-
 ####################
 # TRAINING OPTIONS #
 ####################
@@ -528,10 +316,6 @@ if doFigs:
 
 trainingOptions = {}
 
-if doLogging:
-    trainingOptions['logger'] = logger
-if doSaveVars:
-    trainingOptions['saveDir'] = saveDir
 if doPrint:
     trainingOptions['printInterval'] = printInterval
 if doLearningRateDecay:
@@ -761,15 +545,6 @@ for realization in range(nRealizations):
 
         modelsGNN[thisName] = modelCreated
 
-        writeVarValues(varsFile,
-                       {'name': thisName,
-                        'thisOptimizationAlgorithm': thisOptimAlg,
-                        'thisTrainer': thisTrainer,
-                        'thisEvaluator': thisEvaluator,
-                        'thisLearningRate': thisLearningRate,
-                        'thisBeta1': thisBeta1,
-                        'thisBeta2': thisBeta2})
-
         if doPrint:
             print("OK")
 
@@ -799,17 +574,6 @@ for realization in range(nRealizations):
                                                    nEpochs,
                                                    batchSize,
                                                    **trainingOptsPerModel[m])
-
-        if doFigs:
-        # Find which model to save the results (when having multiple
-        # realizations)
-            for m in modelList:
-                if m in thisModel:
-                    lossTrain[m][realization] = thisTrainVars['lossTrain']
-                    evalValid[m][realization] = thisTrainVars['evalValid']
-    # And we also need to save 'nBatch' but is the same for all models, so
-    if doFigs:
-        nBatches = thisTrainVars['nBatches']
 
     #%%##################################################################
     #                                                                   #
@@ -882,13 +646,7 @@ for realization in range(nRealizations):
         
         # Last time instant
         costOptEnd[n][realization] = dataTest.evaluate(thetaOffset = posTest[:,-1:,:,:], gammaSkew = velTest[:,-1:,:,:])
-        
-        writeVarValues(varsFile,
-                   {'costOptFull%03dR%02d' % (nAgentsTest[n],realization):
-                                                     costOptFull[n][realization],
-                    'costOptEnd%04dR%02d' % (nAgentsTest[n],realization):
-                                                     costOptEnd[n][realization]})
-        
+                
         del posTest, velTest, commGraphTest
         
         ##########
@@ -915,22 +673,7 @@ for realization in range(nRealizations):
             thisCostBestFull = thisEvalVars['costBestFull']
             thisCostBestEnd = thisEvalVars['costBestEnd']
             thisCostLastFull = thisEvalVars['costLastFull']
-            thisCostLastEnd = thisEvalVars['costLastEnd']
-            
-            # Save values
-            writeVarValues(varsFile,
-                   {'costBestFull%s%03dR%02d' % \
-                                       (thisModel, nAgentsTest[n], realization):
-                                                                thisCostBestFull,
-                    'costBestEnd%s%04dR%02d' % \
-                                       (thisModel, nAgentsTest[n], realization):
-                                                                 thisCostBestEnd,
-                    'costLastFull%s%03dR%02d' % \
-                                       (thisModel, nAgentsTest[n], realization):
-                                                                thisCostLastFull,
-                    'costLastEnd%s%04dR%02d' % \
-                                       (thisModel, nAgentsTest[n], realization):
-                                                                thisCostLastEnd})
+            thisCostLastEnd = thisEvalVars['costLastEnd']            
     
             # Find which model to save the results (when having multiple
             # realizations)
@@ -993,14 +736,7 @@ for n in range(nSimPoints):
                 '',
                 meanCostOptEnd[n],
                 stdDevCostOptEnd[n]))
-        
-    # Save values
-    writeVarValues(varsFile,
-               {'meanCostOptFull%03d' % nAgentsTest[n]: meanCostOptFull[n],
-                'stdDevCostOptFull%03d' % nAgentsTest[n]: stdDevCostOptFull[n],
-                'meanCostOptEnd%04d' % nAgentsTest[n]: meanCostOptEnd[n],
-                'stdDevCostOptEnd%04d' % nAgentsTest[n]: stdDevCostOptEnd[n]})
-    
+            
     for thisModel in modelList:
         # Convert the lists into a nDataSplits vector
         costBestFull[n][thisModel] = np.array(costBestFull[n][thisModel])
@@ -1033,26 +769,7 @@ for n in range(nSimPoints):
                     meanCostBestEnd[n][thisModel],
                     stdDevCostBestEnd[n][thisModel],
                     meanCostLastEnd[n][thisModel],
-                    stdDevCostLastEnd[n][thisModel]))
-    
-        # Save values
-        writeVarValues(varsFile,
-                   {'meanAccBestFull%s%03d' % (thisModel, nAgentsTest[n]): 
-                                               meanCostBestFull[n][thisModel],
-                    'stdDevAccBestFull%s%03d' % (thisModel, nAgentsTest[n]): 
-                                               stdDevCostBestFull[n][thisModel],
-                    'meanAccBestEnd%s%04d' % (thisModel, nAgentsTest[n]): 
-                                               meanCostBestEnd[n][thisModel],
-                    'stdDevAccBestEnd%s%04d' % (thisModel, nAgentsTest[n]): 
-                                               stdDevCostBestEnd[n][thisModel],
-                    'meanAccLastFull%s%03d' % (thisModel, nAgentsTest[n]): 
-                                               meanCostLastFull[n][thisModel],
-                    'stdDevAccLastFull%s%03d' % (thisModel, nAgentsTest[n]): 
-                                               stdDevCostLastFull[n][thisModel],
-                    'meanAccLastEnd%s%04d' % (thisModel, nAgentsTest[n]): 
-                                               meanCostLastEnd[n][thisModel],
-                    'stdDevAccLastEnd%s%04d' % (thisModel, nAgentsTest[n]): 
-                                               stdDevCostLastEnd[n][thisModel]})
+                    stdDevCostLastEnd[n][thisModel]))    
             
     # Save the printed info into the .txt file as well
     with open(varsFile, 'a+') as file:
@@ -1088,143 +805,6 @@ for n in range(nSimPoints):
 #                    PLOT                                           #
 #                                                                   #
 #####################################################################
-
-# Finally, we might want to plot several quantities of interest
-
-if doFigs:
-
-    ###################
-    # DATA PROCESSING #
-    ###################
-
-    #\\\ FIGURES DIRECTORY:
-    saveDirFigs = os.path.join(saveDir,'figs')
-    # If it doesn't exist, create it.
-    if not os.path.exists(saveDirFigs):
-        os.makedirs(saveDirFigs)
-
-    #\\\ COMPUTE STATISTICS:
-    # The first thing to do is to transform those into a matrix with all the
-    # realizations, so create the variables to save that.
-    meanLossTrain = {}
-    meanEvalValid = {}
-    stdDevLossTrain = {}
-    stdDevEvalValid = {}
-    # Initialize the variables
-    for thisModel in modelList:
-        # Transform into np.array
-        lossTrain[thisModel] = np.array(lossTrain[thisModel])
-        evalValid[thisModel] = np.array(evalValid[thisModel])
-        # Each of one of these variables should be of shape
-        # nDataSplits x numberOfTrainingSteps
-        # And compute the statistics
-        meanLossTrain[thisModel] = np.mean(lossTrain[thisModel], axis = 0)
-        meanEvalValid[thisModel] = np.mean(evalValid[thisModel], axis = 0)
-        stdDevLossTrain[thisModel] = np.std(lossTrain[thisModel], axis = 0)
-        stdDevEvalValid[thisModel] = np.std(evalValid[thisModel], axis = 0)
-
-    ####################
-    # SAVE FIGURE DATA #
-    ####################
-
-    # And finally, we can plot. But before, let's save the variables mean and
-    # stdDev so, if we don't like the plot, we can re-open them, and re-plot
-    # them, a piacere.
-    #   Pickle, first:
-    varsPickle = {}
-    varsPickle['nEpochs'] = nEpochs
-    varsPickle['nBatches'] = nBatches
-    varsPickle['meanLossTrain'] = meanLossTrain
-    varsPickle['stdDevLossTrain'] = stdDevLossTrain
-    varsPickle['meanEvalValid'] = meanEvalValid
-    varsPickle['stdDevEvalValid'] = stdDevEvalValid
-    with open(os.path.join(saveDirFigs,'figVars.pkl'), 'wb') as figVarsFile:
-        pickle.dump(varsPickle, figVarsFile)
-
-    ########
-    # PLOT #
-    ########
-
-    # Compute the x-axis
-    xTrain = np.arange(0, nEpochs * nBatches, xAxisMultiplierTrain)
-    xValid = np.arange(0, nEpochs * nBatches, \
-                          validationInterval*xAxisMultiplierValid)
-
-    # If we do not want to plot all the elements (to avoid overcrowded plots)
-    # we need to recompute the x axis and take those elements corresponding
-    # to the training steps we want to plot
-    if xAxisMultiplierTrain > 1:
-        # Actual selected samples
-        selectSamplesTrain = xTrain
-        # Go and fetch tem
-        for thisModel in modelList:
-            meanLossTrain[thisModel] = meanLossTrain[thisModel]\
-                                                    [selectSamplesTrain]
-            stdDevLossTrain[thisModel] = stdDevLossTrain[thisModel]\
-                                                        [selectSamplesTrain]
-    # And same for the validation, if necessary.
-    if xAxisMultiplierValid > 1:
-        selectSamplesValid = np.arange(0, len(meanEvalValid[thisModel]), \
-                                       xAxisMultiplierValid)
-        for thisModel in modelList:
-            meanEvalValid[thisModel] = meanEvalValid[thisModel]\
-                                                    [selectSamplesValid]
-            stdDevEvalValid[thisModel] = stdDevEvalValid[thisModel]\
-                                                        [selectSamplesValid]
-
-    #\\\ LOSS (Training and validation) for EACH MODEL
-    for key in meanLossTrain.keys():
-        lossFig = plt.figure(figsize=(1.61*figSize, 1*figSize))
-        plt.errorbar(xTrain, meanLossTrain[key], yerr = stdDevLossTrain[key],
-                     color = '#01256E', linewidth = lineWidth,
-                     marker = markerShape, markersize = markerSize)
-        plt.ylabel(r'Loss')
-        plt.xlabel(r'Training steps')
-        plt.legend([r'Training'])
-        plt.title(r'%s' % key)
-        lossFig.savefig(os.path.join(saveDirFigs,'loss%s.pdf' % key),
-                        bbox_inches = 'tight')
-        plt.close(fig = lossFig)
-
-    #\\\ Cost (Training and validation) for EACH MODEL
-    for key in meanEvalValid.keys():
-        accFig = plt.figure(figsize=(1.61*figSize, 1*figSize))
-        plt.errorbar(xValid, meanEvalValid[key], yerr = stdDevEvalValid[key],
-                     color = '#01256E', linewidth = lineWidth,
-                     marker = markerShape, markersize = markerSize)
-        plt.ylabel(r'Cost')
-        plt.xlabel(r'Training steps')
-        plt.legend([r'Training', r'Validation'])
-        plt.title(r'%s' % key)
-        accFig.savefig(os.path.join(saveDirFigs,'eval%s.pdf' % key),
-                        bbox_inches = 'tight')
-        plt.close(fig = accFig)
-
-    # LOSS (training) for ALL MODELS
-    allLossTrain = plt.figure(figsize=(1.61*figSize, 1*figSize))
-    for key in meanLossTrain.keys():
-        plt.errorbar(xTrain, meanLossTrain[key], yerr = stdDevLossTrain[key],
-                     linewidth = lineWidth,
-                     marker = markerShape, markersize = markerSize)
-    plt.ylabel(r'Loss')
-    plt.xlabel(r'Training steps')
-    plt.legend(list(meanLossTrain.keys()))
-    allLossTrain.savefig(os.path.join(saveDirFigs,'allLossTrain.pdf'),
-                    bbox_inches = 'tight')
-    plt.close(fig = allLossTrain)
-
-    # Cost (validation) for ALL MODELS
-    allEvalValid = plt.figure(figsize=(1.61*figSize, 1*figSize))
-    for key in meanEvalValid.keys():
-        plt.errorbar(xValid, meanEvalValid[key], yerr = stdDevEvalValid[key],
-                     linewidth = lineWidth,
-                     marker = markerShape, markersize = markerSize)
-    plt.ylabel(r'Cost')
-    plt.xlabel(r'Training steps')
-    plt.legend(list(meanEvalValid.keys()))
-    allEvalValid.savefig(os.path.join(saveDirFigs,'allEvalValid.pdf'),
-                    bbox_inches = 'tight')
-    plt.close(fig = allEvalValid)
 
 # Finish measuring time
 endRunTime = datetime.datetime.now()
