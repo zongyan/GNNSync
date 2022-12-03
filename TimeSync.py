@@ -1277,7 +1277,7 @@ commGraphTest = gnn_test['commGraphTestBest']
 #                                                                                accelMax=data.accelMax)
 
 # plot the velocity of all agents via the GNN method
-for i in range(0, 5, 1):
+for i in range(0, 20, 3):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
     for j in range(0, nAgents, 1):
@@ -1294,65 +1294,7 @@ for i in range(0, 5, 1):
 # end for
 
 # plot the velocity of all agents via the centralised optimal controller
-for i in range(0, 5, 1):
-    plt.figure()
-    plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, nAgents, 1):
-        # the input and output features are two dimensions, which means that one 
-        # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), skewTest[i, :, 0, j]) 
-        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-    # end for 
-    plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'${\bf \gamma}_{gnn}$')
-    plt.title(r'$\bf \gamma_{gnn}$ for ' + str(50)+ ' agents (centralised controller)')
-    plt.grid()
-    plt.show()    
-# end for
-
-del gnn_test
-del offsetTest 
-del skewTest 
-del adjlTest 
-del stateTest 
-del commGraphTest
-
-gnn_test = np.load('./gnn_test2.npz') # the data file loaded from the example folder
-
-matplotlib.rc('figure', max_open_warning = 0)
-
-offsetTest = gnn_test['posTestBest']
-skewTest = gnn_test['velTestBest']
-adjlTest = gnn_test['accelTestBest']
-stateTest = gnn_test['stateTestBest']
-commGraphTest = gnn_test['commGraphTestBest']
-
-# posOptim, velOptim, accelOptim = data.computeOptimalTrajectory(posTest[:,0,:,:], \
-#                                                                posTest[:,0,:,:], \
-#                                                                    duration=data.duration, \
-#                                                                        samplingTime=data.samplingTime, \
-#                                                                            repelDist=data.repelDist, \
-#                                                                                accelMax=data.accelMax)
-
-# plot the velocity of all agents via the GNN method
-for i in range(0, 1, 1):
-    plt.figure()
-    plt.rcParams["figure.figsize"] = (6.4,4.8)
-    for j in range(0, nAgents, 1):
-        # the input and output features are two dimensions, which means that one 
-        # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), offsetTest[i, :, 0, j]) 
-        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
-    # end for 
-    plt.xlabel(r'$time (s)$')
-    plt.ylabel(r'${\bf \theta}_{gnn}$')
-    plt.title(r'${\bf \theta}_{gnn}$ for ' + str(50)+ ' agents (gnn controller)')
-    plt.grid()
-    plt.show()    
-# end for
-
-# plot the velocity of all agents via the centralised optimal controller
-for i in range(0, 1, 1):
+for i in range(0, 20, 3):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
     for j in range(0, nAgents, 1):
