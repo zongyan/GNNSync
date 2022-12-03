@@ -1,59 +1,9 @@
-"""****************************************************************************
-// * File:        This file is a part of GNNSync.
-// * Created on:  11/11/2022
-// * Author:      Yan Zong (y.zong@nuaa.edu.cn)
-// *
-// * Copyright:   (C) 2022 Nanjing University of Aeronautics and Astronautics
-// *
-// *              GNNSync is free software; you can redistribute it and/or 
-// *              modify it under the terms of the GNU General Public License 
-// *              as published by the Free Software Foundation; either version 
-// *              3 of the License, or (at your option) any later version.
-// *
-// *              GNNSync is distributed in the hope that it will be useful, 
-// *              but WITHOUT ANY WARRANTY; without even the implied warranty 
-// *              of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See 
-// *              the GNU General Public License for more details.
-// *
-// * Funding:     This work was financed by the xx 
-// *              xx, China
-// * 
-// * Description: Learn decentralized controllers for time synchronisation.  
-// *              There is a team of UAVs that start flying at random velocities, 
-// *              and all the UAVs coordinate so that they can fly together 
-// *              while avoiding collisions by using the centralised expert 
-// *              controller. We learn a decentralized controller by using 
-// *              imitation learning, in order to realise clock synchronsiation 
-// *              in a UAVs swarm system.
-// * Outputs:     - Text file with all the hyperparameters selected for the run 
-// *                and the corresponding results (hyperparameters.txt)
-// *              - Pickle file with the random seeds of both torch and numpy 
-// *                for accurate reproduction of results (randomSeedUsed.pkl)
-// *              - The parameters of the trained models, for both the Best and 
-// *                the Last instance of each model (savedModels/)
-// *              - The figures of loss and evaluation through the training 
-// *                iterations for each model (figs/ and trainVars/)
-// *              - Videos for some of the trajectories in the dataset, 
-// *                following the optimal centralized controller 
-// *                (datasetTrajectories/)
-// *              - Videos for some of the learned trajectories following the 
-// *                controles learned by each model (learnedTrajectories/)
-// *************************************************************************"""
-#%%##################################################################
-#                                                                   #
-#                    IMPORTING                                      #
-#                                                                   #
-#####################################################################
-
-#\\\ Standard libraries:
 import os
 import numpy as np
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 matplotlib.rcParams['font.family'] = 'serif'
-# matplotlib.rcParams['text.latex.preamble']=[r'\usepackage{amsmath}']
 import matplotlib.pyplot as plt
-import pickle
 import datetime
 from copy import deepcopy
 
@@ -62,24 +12,16 @@ import torch.nn as nn
 import torch.optim as optim
 
 import utils.dataTools as dataTools
-import utils.graphML as gml
 import modules.architecturesTime as architTime
 import modules.model as model
 import modules.training as training
 import modules.evaluation as evaluation
 
-# Start measuring time
-startRunTime = datetime.datetime.now()
-
-#%%##################################################################
-#                                                                   #
-#                    SETTING PARAMETERS                             #
-#                                                                   #
-#####################################################################
+#%%
 
 thisFilename = 'flockingGNN' # This is the general name of all related files
 
-nAgents = 25 # Number of agents at training time
+nAgents = 50 # Number of agents at training time
 
 saveDirRoot = 'experiments' # In this case, relative location
 saveDir = os.path.join(saveDirRoot, thisFilename) # Dir where to save all
@@ -148,7 +90,7 @@ evaluator = evaluation.evaluateFlocking
 #\\\ Overall training options
 probExpert = 0.993 # Probability of choosing the expert in DAGger
 #DAGgerType = 'fixedBatch' # 'replaceTimeBatch', 'randomEpoch'
-nEpochs = 2 # Number of epochs
+nEpochs = 30 # Number of epochs
 batchSize = 20 # Batch size
 doLearningRateDecay = False # Learning rate decay
 learningRateDecayRate = 0.9 # Rate

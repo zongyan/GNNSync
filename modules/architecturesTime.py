@@ -1,27 +1,3 @@
-# 2019/12/31~
-# Fernando Gama, fgama@seas.upenn.edu
-# Luana Ruiz, rubruiz@seas.upenn.edu
-# Kate Tolstaya, eig@seas.upenn.edu
-"""
-architecturesTime.py Architectures module
-
-Definition of GNN architectures. The basic idea of these architectures is that
-the data comes in the form {(S_t, x_t)} where the shift operator as well as the
-signal change with time, and where each training point consists of a trajectory.
-Unlike architectures.py where the shift operator S is fixed (although it can
-be changed after the architectures has been initialized) and the training set
-consist of a set of {x_b} with b=1,...,B for a total of B samples, here the
-training set is assumed to be a trajectory, and to include a different shift
-operator for each sample {(S_t, x_t)_{t=1}^{T}}_{b=1,...,B}. Also, all 
-implementations consider a unit delay exchange (i.e. the S_t and x_t values
-get delayed by one unit of time for each neighboring exchange).
-
-LocalGNN_DB: implements the selection GNN architecture by means of local
-    operations only
-GraphRecurrentNN_DB: implements the GRNN architecture
-AggregationGNN_DB: implements the aggregation GNN architecture
-"""
-
 import numpy as np
 import torch
 import torch.nn as nn

@@ -1,29 +1,4 @@
-"""****************************************************************************
-// * File:        This file is a part of GNNSync.
-// * Created on:  11/11/2022
-// * Author:      Yan Zong (y.zong@nuaa.edu.cn)
-// *
-// * Copyright:   (C) 2022 Nanjing University of Aeronautics and Astronautics
-// *
-// *              GNNSync is free software; you can redistribute it and/or 
-// *              modify it under the terms of the GNU General Public License 
-// *              as published by the Free Software Foundation; either version 
-// *              3 of the License, or (at your option) any later version.
-// *
-// *              GNNSync is distributed in the hope that it will be useful, 
-// *              but WITHOUT ANY WARRANTY; without even the implied warranty 
-// *              of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See 
-// *              the GNU General Public License for more details.
-// *
-// * Funding:     This work was financed by the xx 
-// *              xx, China
-// * 
-// * Description: Evaluation module: evaluating a model.
-// *              
-// *************************************************************************"""
 import os
-import torch
-import pickle
 import numpy as np
 
 def evaluateFlocking(model, data, **kwargs):

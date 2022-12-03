@@ -1,15 +1,3 @@
-# 2018/10/02~
-# Fernando Gama, fgama@seas.upenn.edu
-# Luana Ruiz, rubruiz@seas.upenn.edu
-"""
-model.py Model Module
-
-Utilities useful for working on the model
-
-Model: binds together the architecture, the loss function, the optimizer,
-       the trainer, and the evaluator.
-"""
-
 import os
 import torch
 
