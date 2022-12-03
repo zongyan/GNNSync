@@ -355,295 +355,295 @@ for n in range(nSimPoints):
 
 for realization in range(nRealizations):
 
-    # On top of the rest of the training options, we pass the identification
-    # of this specific data split realization.
+# On top of the rest of the training options, we pass the identification
+# of this specific data split realization.
+
+if doPrint:
+    print("", flush = True)
+
+#%%##################################################################
+#                                                                   #
+#                    DATA HANDLING                                  #
+#                                                                   #
+#####################################################################
+
+############
+# DATASETS #
+############
+
+if doPrint:
+    print("Generating data", end = '')
+    print("...", flush = True)
+
+#   Generate the dataset
+data = dataTools.Flocking(
+            # Structure
+            nAgents,
+            commRadius,
+            repelDist,
+            # Samples
+            nTrain,
+            nValid,
+            1, # We do not care about testing, we will re-generate the
+               # dataset for testing
+            # Time
+            duration,
+            samplingTime,
+            # Initial conditions
+            initGeometry = initGeometry,
+            initVelValue = initVelValue,
+            initMinDist = initMinDist,
+            accelMax = accelMax)
+
+###########
+# PREVIEW #
+###########
+
+if doPrint:
+    print("Preview data", end = '')
+    print("...", flush = True)
+
+#%%##################################################################
+#                                                                   #
+#                    MODELS INITIALIZATION                          #
+#                                                                   #
+#####################################################################
+
+# This is the dictionary where we store the models (in a model.Model
+# class).
+modelsGNN = {}
+
+# If a new model is to be created, it should be called for here.
+
+if doPrint:
+    print("Model initialization...", flush = True)
+
+for thisModel in modelList:
+
+    # Get the corresponding parameter dictionary
+    hParamsDict = deepcopy(eval('hParams' + thisModel))
+    # and training options
+    trainingOptsPerModel[thisModel] = deepcopy(trainingOptions)
+
+    # Now, this dictionary has all the hyperparameters that we need to pass
+    # to the architecture, but it also has the 'name' and 'archit' that
+    # we do not need to pass them. So we are going to get them out of
+    # the dictionary
+    thisName = hParamsDict.pop('name')
+    callArchit = hParamsDict.pop('archit')
+    thisDevice = hParamsDict.pop('device')
+    # If there's a specific DAGger type, pop it out now
+    if 'DAGgerType' in hParamsDict.keys() \
+                                    and 'probExpert' in hParamsDict.keys():
+        trainingOptsPerModel[thisModel]['probExpert'] = \
+                                              hParamsDict.pop('probExpert')
+        trainingOptsPerModel[thisModel]['DAGgerType'] = \
+                                              hParamsDict.pop('DAGgerType')
+
+    # If more than one graph or data realization is going to be carried out,
+    # we are going to store all of thos models separately, so that any of
+    # them can be brought back and studied in detail.
 
     if doPrint:
-        print("", flush = True)
+        print("\tInitializing %s..." % thisName,
+              end = ' ',flush = True)
 
-    #%%##################################################################
-    #                                                                   #
-    #                    DATA HANDLING                                  #
-    #                                                                   #
-    #####################################################################
+    ##############
+    # PARAMETERS #
+    ##############
 
-    ############
-    # DATASETS #
-    ############
+    #\\\ Optimizer options
+    #   (If different from the default ones, change here.)
+    thisOptimAlg = optimAlg
+    thisLearningRate = learningRate
+    thisBeta1 = beta1
+    thisBeta2 = beta2
+
+    ################
+    # ARCHITECTURE #
+    ################
+
+    thisArchit = callArchit(**hParamsDict)
+    thisArchit.to(thisDevice)
+
+    #############
+    # OPTIMIZER #
+    #############
+
+    if thisOptimAlg == 'ADAM':
+        thisOptim = optim.Adam(thisArchit.parameters(),
+                               lr = learningRate,
+                               betas = (beta1, beta2))
+    elif thisOptimAlg == 'SGD':
+        thisOptim = optim.SGD(thisArchit.parameters(),
+                              lr = learningRate)
+    elif thisOptimAlg == 'RMSprop':
+        thisOptim = optim.RMSprop(thisArchit.parameters(),
+                                  lr = learningRate, alpha = beta1)
+
+    ########
+    # LOSS #
+    ########
+
+    thisLossFunction = lossFunction()
+    
+    ###########
+    # TRAINER #
+    ###########
+
+    thisTrainer = trainer
+    
+    #############
+    # EVALUATOR #
+    #############
+
+    thisEvaluator = evaluator
+
+    #########
+    # MODEL #
+    #########
+
+    modelCreated = model.Model(thisArchit,
+                               thisLossFunction,
+                               thisOptim,
+                               thisTrainer,
+                               thisEvaluator,
+                               thisDevice,
+                               thisName,
+                               saveDir)
+
+    modelsGNN[thisName] = modelCreated
 
     if doPrint:
-        print("Generating data", end = '')
-        print("...", flush = True)
+        print("OK")
 
-    #   Generate the dataset
-    data = dataTools.Flocking(
-                # Structure
-                nAgents,
-                commRadius,
-                repelDist,
-                # Samples
-                nTrain,
-                nValid,
-                1, # We do not care about testing, we will re-generate the
-                   # dataset for testing
-                # Time
-                duration,
-                samplingTime,
-                # Initial conditions
-                initGeometry = initGeometry,
-                initVelValue = initVelValue,
-                initMinDist = initMinDist,
-                accelMax = accelMax)
+#%%##################################################################
+#                                                                   #
+#                    TRAINING                                       #
+#                                                                   #
+#####################################################################
 
-    ###########
-    # PREVIEW #
-    ###########
+
+############
+# TRAINING #
+############
+
+print("")
+
+for thisModel in modelsGNN.keys():
+
+    if doPrint:
+        print("Training model %s..." % thisModel)
+        
+    for m in modelList:
+        if m in thisModel:
+            modelName = m
+
+    thisTrainVars = modelsGNN[thisModel].train(data,
+                                               nEpochs,
+                                               batchSize,
+                                               **trainingOptsPerModel[m])
+
+#%%##################################################################
+#                                                                   #
+#                    EVALUATION                                     #
+#                                                                   #
+#####################################################################
+
+# Now that the model has been trained, we evaluate them on the test
+# samples.
+
+# We have two versions of each model to evaluate: the one obtained
+# at the best result of the validation step, and the last trained model.
+    
+for n in range(nSimPoints):
     
     if doPrint:
-        print("Preview data", end = '')
+        print("")
+        print("[%3d Agents] Generating test set" % nAgentsTest[n],
+              end = '')
         print("...", flush = True)
 
-    #%%##################################################################
-    #                                                                   #
-    #                    MODELS INITIALIZATION                          #
-    #                                                                   #
-    #####################################################################
+    #   Load the data, which will give a specific split
+    dataTest = dataTools.Flocking(
+                    # Structure
+                    nAgentsTest[n],
+                    commRadius,
+                    repelDist,
+                    # Samples
+                    1, # We don't care about training
+                    1, # nor validation
+                    nTest,
+                    # Time
+                    duration,
+                    samplingTime,
+                    # Initial conditions
+                    initGeometry = initGeometry,
+                    initVelValue = initVelValue,
+                    initMinDist = initMinDist,
+                    accelMax = accelMax)
 
-    # This is the dictionary where we store the models (in a model.Model
-    # class).
-    modelsGNN = {}
-
-    # If a new model is to be created, it should be called for here.
+    ###########
+    # OPTIMAL #
+    ###########
+    
+    #\\\ PREVIEW
+    #\\\\\\\\\\\
+    
+    # Save videos for the optimal trajectories of the test set (before it
+    # was for the otpimal trajectories of the training set)
+    
+    posTest = dataTest.getData('offset', 'train')
+    velTest = dataTest.getData('skew', 'train')
+    commGraphTest = dataTest.getData('commGraph', 'train')
 
     if doPrint:
-        print("Model initialization...", flush = True)
-
-    for thisModel in modelList:
-
-        # Get the corresponding parameter dictionary
-        hParamsDict = deepcopy(eval('hParams' + thisModel))
-        # and training options
-        trainingOptsPerModel[thisModel] = deepcopy(trainingOptions)
-
-        # Now, this dictionary has all the hyperparameters that we need to pass
-        # to the architecture, but it also has the 'name' and 'archit' that
-        # we do not need to pass them. So we are going to get them out of
-        # the dictionary
-        thisName = hParamsDict.pop('name')
-        callArchit = hParamsDict.pop('archit')
-        thisDevice = hParamsDict.pop('device')
-        # If there's a specific DAGger type, pop it out now
-        if 'DAGgerType' in hParamsDict.keys() \
-                                        and 'probExpert' in hParamsDict.keys():
-            trainingOptsPerModel[thisModel]['probExpert'] = \
-                                                  hParamsDict.pop('probExpert')
-            trainingOptsPerModel[thisModel]['DAGgerType'] = \
-                                                  hParamsDict.pop('DAGgerType')
-
-        # If more than one graph or data realization is going to be carried out,
-        # we are going to store all of thos models separately, so that any of
-        # them can be brought back and studied in detail.
-
-        if doPrint:
-            print("\tInitializing %s..." % thisName,
-                  end = ' ',flush = True)
-
-        ##############
-        # PARAMETERS #
-        ##############
-
-        #\\\ Optimizer options
-        #   (If different from the default ones, change here.)
-        thisOptimAlg = optimAlg
-        thisLearningRate = learningRate
-        thisBeta1 = beta1
-        thisBeta2 = beta2
-
-        ################
-        # ARCHITECTURE #
-        ################
-
-        thisArchit = callArchit(**hParamsDict)
-        thisArchit.to(thisDevice)
-
-        #############
-        # OPTIMIZER #
-        #############
-
-        if thisOptimAlg == 'ADAM':
-            thisOptim = optim.Adam(thisArchit.parameters(),
-                                   lr = learningRate,
-                                   betas = (beta1, beta2))
-        elif thisOptimAlg == 'SGD':
-            thisOptim = optim.SGD(thisArchit.parameters(),
-                                  lr = learningRate)
-        elif thisOptimAlg == 'RMSprop':
-            thisOptim = optim.RMSprop(thisArchit.parameters(),
-                                      lr = learningRate, alpha = beta1)
-
-        ########
-        # LOSS #
-        ########
-
-        thisLossFunction = lossFunction()
-        
-        ###########
-        # TRAINER #
-        ###########
-
-        thisTrainer = trainer
-        
-        #############
-        # EVALUATOR #
-        #############
-
-        thisEvaluator = evaluator
-
-        #########
-        # MODEL #
-        #########
-
-        modelCreated = model.Model(thisArchit,
-                                   thisLossFunction,
-                                   thisOptim,
-                                   thisTrainer,
-                                   thisEvaluator,
-                                   thisDevice,
-                                   thisName,
-                                   saveDir)
-
-        modelsGNN[thisName] = modelCreated
-
-        if doPrint:
-            print("OK")
-
-    #%%##################################################################
-    #                                                                   #
-    #                    TRAINING                                       #
-    #                                                                   #
-    #####################################################################
-
-
-    ############
-    # TRAINING #
-    ############
-
-    print("")
+        print("[%3d Agents] Preview data"  % nAgentsTest[n], end = '')
+        print("...", flush = True)
+    
+    #\\\ EVAL
+    #\\\\\\\\
+    
+    # Get the cost for the optimal trajectories
+    
+    # Full trajectory
+    costOptFull[n][realization] = dataTest.evaluate(thetaOffset = posTest, gammaSkew = velTest)
+    
+    # Last time instant
+    costOptEnd[n][realization] = dataTest.evaluate(thetaOffset = posTest[:,-1:,:,:], gammaSkew = velTest[:,-1:,:,:])
+            
+    del posTest, velTest, commGraphTest
+    
+    ##########
+    # MODELS #
+    ##########
 
     for thisModel in modelsGNN.keys():
 
         if doPrint:
-            print("Training model %s..." % thisModel)
+            print("[%3d Agents] Evaluating model %s" % \
+                                     (nAgentsTest[n], thisModel), end = '')
+            print("...", flush = True)
             
+        addKW = {}
+        addKW['nVideos'] = nVideos
+        addKW['graphNo'] = nAgentsTest[n]
+            
+        thisEvalVars = modelsGNN[thisModel].evaluate(dataTest, **addKW)
+
+        thisCostBestFull = thisEvalVars['costBestFull']
+        thisCostBestEnd = thisEvalVars['costBestEnd']
+        thisCostLastFull = thisEvalVars['costLastFull']
+        thisCostLastEnd = thisEvalVars['costLastEnd']            
+
+        # Find which model to save the results (when having multiple
+        # realizations)
         for m in modelList:
             if m in thisModel:
-                modelName = m
-
-        thisTrainVars = modelsGNN[thisModel].train(data,
-                                                   nEpochs,
-                                                   batchSize,
-                                                   **trainingOptsPerModel[m])
-
-    #%%##################################################################
-    #                                                                   #
-    #                    EVALUATION                                     #
-    #                                                                   #
-    #####################################################################
-
-    # Now that the model has been trained, we evaluate them on the test
-    # samples.
-
-    # We have two versions of each model to evaluate: the one obtained
-    # at the best result of the validation step, and the last trained model.
-        
-    for n in range(nSimPoints):
-        
-        if doPrint:
-            print("")
-            print("[%3d Agents] Generating test set" % nAgentsTest[n],
-                  end = '')
-            print("...", flush = True)
-
-        #   Load the data, which will give a specific split
-        dataTest = dataTools.Flocking(
-                        # Structure
-                        nAgentsTest[n],
-                        commRadius,
-                        repelDist,
-                        # Samples
-                        1, # We don't care about training
-                        1, # nor validation
-                        nTest,
-                        # Time
-                        duration,
-                        samplingTime,
-                        # Initial conditions
-                        initGeometry = initGeometry,
-                        initVelValue = initVelValue,
-                        initMinDist = initMinDist,
-                        accelMax = accelMax)
-    
-        ###########
-        # OPTIMAL #
-        ###########
-        
-        #\\\ PREVIEW
-        #\\\\\\\\\\\
-        
-        # Save videos for the optimal trajectories of the test set (before it
-        # was for the otpimal trajectories of the training set)
-        
-        posTest = dataTest.getData('offset', 'train')
-        velTest = dataTest.getData('skew', 'train')
-        commGraphTest = dataTest.getData('commGraph', 'train')
-    
-        if doPrint:
-            print("[%3d Agents] Preview data"  % nAgentsTest[n], end = '')
-            print("...", flush = True)
-        
-        #\\\ EVAL
-        #\\\\\\\\
-        
-        # Get the cost for the optimal trajectories
-        
-        # Full trajectory
-        costOptFull[n][realization] = dataTest.evaluate(thetaOffset = posTest, gammaSkew = velTest)
-        
-        # Last time instant
-        costOptEnd[n][realization] = dataTest.evaluate(thetaOffset = posTest[:,-1:,:,:], gammaSkew = velTest[:,-1:,:,:])
-                
-        del posTest, velTest, commGraphTest
-        
-        ##########
-        # MODELS #
-        ##########
-    
-        for thisModel in modelsGNN.keys():
-    
-            if doPrint:
-                print("[%3d Agents] Evaluating model %s" % \
-                                         (nAgentsTest[n], thisModel), end = '')
-                print("...", flush = True)
-                
-            addKW = {}
-            addKW['nVideos'] = nVideos
-            addKW['graphNo'] = nAgentsTest[n]
-                
-            thisEvalVars = modelsGNN[thisModel].evaluate(dataTest, **addKW)
-    
-            thisCostBestFull = thisEvalVars['costBestFull']
-            thisCostBestEnd = thisEvalVars['costBestEnd']
-            thisCostLastFull = thisEvalVars['costLastFull']
-            thisCostLastEnd = thisEvalVars['costLastEnd']            
-    
-            # Find which model to save the results (when having multiple
-            # realizations)
-            for m in modelList:
-                if m in thisModel:
-                    costBestFull[n][m][realization] = thisCostBestFull
-                    costBestEnd[n][m][realization] = thisCostBestEnd
-                    costLastFull[n][m][realization] = thisCostLastFull
-                    costLastEnd[n][m][realization] = thisCostLastEnd
+                costBestFull[n][m][realization] = thisCostBestFull
+                costBestEnd[n][m][realization] = thisCostBestEnd
+                costLastFull[n][m][realization] = thisCostLastFull
+                costLastEnd[n][m][realization] = thisCostLastEnd
 
 #%%
 
