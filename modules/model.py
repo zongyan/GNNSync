@@ -1,41 +1,7 @@
 import os
 import torch
 
-class Model:
-    """
-    Model: binds together the architecture, the loss function, the optimizer,
-        the trainer, and the evaluator.
-        
-    Initialization:
-        
-        architecture (nn.Module)
-        loss (nn.modules.loss._Loss)
-        optimizer (nn.optim)
-        trainer (Modules.training)
-        evaluator (Modules.evaluation)
-        device (string or device)
-        name (string)
-        saveDir (string or path)
-        
-    .train(data, nEpochs, batchSize, **kwargs): train the model for nEpochs 
-        epochs, using batches of size batchSize and running over data data 
-        class; see the specific selected trainer for extra options
-    
-    .evaluate(data): evaluate the model over data data class; see the specific
-        selected evaluator for extra options
-        
-    .save(label = '', [saveDir=dirPath]): save the model parameters under the
-        name given by label, if the saveDir is different from the one specified
-        in the initialization, it needs to be specified now
-        
-    .load(label = '', [loadFiles=(architLoadFile, optimLoadFile)]): loads the
-        model parameters under the specified name inside the specific saveDir,
-        unless they are provided externally through the keyword 'loadFiles'.
-        
-    .getTrainingOptions(): get a dict with the options used during training; it
-        returns None if it hasn't been trained yet.'
-    """
-    
+class Model:    
     def __init__(self,
                  # Architecture (nn.Module)
                  architecture,
@@ -115,37 +81,3 @@ class Model:
                                          self.name + 'Optim' + label + '.ckpt')
         self.archit.load_state_dict(torch.load(architLoadFile))
         self.optim.load_state_dict(torch.load(optimLoadFile))
-
-    def getTrainingOptions(self):
-        
-        return self.trainer.trainingOptions \
-                        if 'trainingOptions' in dir(self.trainer) \
-                    else None
-
-    def __repr__(self):
-        reprString  = "Name: %s\n" % (self.name)
-        reprString += "Number of learnable parameters: %d\n"%(self.nParameters)
-        reprString += "\n"
-        reprString += "Model architecture:\n"
-        reprString += "----- -------------\n"
-        reprString += "\n"
-        reprString += repr(self.archit) + "\n"
-        reprString += "\n"
-        reprString += "Loss function:\n"
-        reprString += "---- ---------\n"
-        reprString += "\n"
-        reprString += repr(self.loss) + "\n"
-        reprString += "\n"
-        reprString += "Optimizer:\n"
-        reprString += "----------\n"
-        reprString += "\n"
-        reprString += repr(self.optim) + "\n"
-        reprString += "Training algorithm:\n"
-        reprString += "-------- ----------\n"
-        reprString += "\n"
-        reprString += repr(self.trainer) + "\n"
-        reprString += "Evaluation algorithm:\n"
-        reprString += "---------- ----------\n"
-        reprString += "\n"
-        reprString += repr(self.evaluator) + "\n"
-        return reprString

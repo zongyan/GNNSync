@@ -7,49 +7,7 @@ infiniteNumber = 1e12 # infinity equals this number
 
 # WARNING: Only scalar bias.
 
-def LSIGF_DB(h, S, x, b=None):
-    """
-    LSIGF_DB(filter_taps, GSO, input, bias=None) Computes the output of a 
-        linear shift-invariant graph filter (graph convolution) on delayed 
-        input and then adds bias.
-
-    Denote as G the number of input features, F the number of output features,
-    E the number of edge features, K the number of filter taps, N the number of
-    nodes, S_{e}(t) in R^{N x N} the GSO for edge feature e at time t, 
-    x(t) in R^{G x N} the input data at time t where x_{g}(t) in R^{N} is the
-    graph signal representing feature g, and b in R^{F x N} the bias vector,
-    with b_{f} in R^{N} representing the bias for feature f.
-
-    Then, the LSI-GF is computed as
-        y_{f} = \sum_{e=1}^{E}
-                    \sum_{k=0}^{K-1}
-                    \sum_{g=1}^{G}
-                        [h_{f,g,e}]_{k} S_{e}(t)S_{e}(t-1)...S_{e}(t-(k-1))
-                                        x_{g}(t-k)
-                + b_{f}
-    for f = 1, ..., F.
-
-    Inputs:
-        filter_taps (torch.tensor): array of filter taps; shape:
-            output_features x edge_features x filter_taps x input_features
-        GSO (torch.tensor): graph shift operator; shape:
-            batch_size x time_samples x edge_features 
-                                                  x number_nodes x number_nodes
-        input (torch.tensor): input signal; shape:
-            batch_size x time_samples x input_features x number_nodes
-        bias (torch.tensor): shape: output_features x number_nodes
-            if the same bias is to be applied to all nodes, set number_nodes = 1
-            so that b_{f} vector becomes b_{f} \mathbf{1}_{N}
-
-    Outputs:
-        output: filtered signals; shape:
-            batch_size x time_samples x output_features x number_nodes
-    """
-    # This is the LSIGF with (B)atch and (D)elay capabilities (i.e. there is
-    # a different GSO for each element in the batch, and it handles time
-    # sequences, both in the GSO as in the input signal. The GSO should be
-    # transparent).
-    
+def LSIGF_DB(h, S, x, b=None):    
     # So, the input 
     #   h: F x E x K x G
     #   S: B x T x E x N x N
@@ -127,58 +85,6 @@ def LSIGF_DB(h, S, x, b=None):
     return y
     
 class GraphFilter_DB(nn.Module):
-    """
-    GraphFilter_DB Creates a (linear) layer that applies a graph filter (i.e. a
-        graph convolution) considering batches of GSO and the corresponding 
-        time delays
-
-    Initialization:
-
-        GraphFilter_DB(in_features, out_features, filter_taps,
-                       edge_features=1, bias=True)
-
-        Inputs:
-            in_features (int): number of input features (each feature is a 
-                graph signal)
-            out_features (int): number of output features (each feature is a
-                graph signal)
-            filter_taps (int): number of filter taps
-            edge_features (int): number of features over each edge
-            bias (bool): add bias vector (one bias per feature) after graph
-                filtering
-
-        Output:
-            torch.nn.Module for a graph filtering layer (also known as graph
-            convolutional layer).
-
-        Observation: Filter taps have shape
-            out_features x edge_features x filter_taps x in_features
-
-    Add graph shift operator:
-
-        GraphFilter_DB.addGSO(GSO) Before applying the filter, we need to define
-        the GSO that we are going to use. This allows to change the GSO while
-        using the same filtering coefficients (as long as the number of edge
-        features is the same; but the number of nodes can change).
-
-        Inputs:
-            GSO (torch.tensor): graph shift operator; shape:
-                batch_size x time_samples x edge_features 
-                                                  x number_nodes x number_nodes
-
-    Forward call:
-
-        y = GraphFilter_DB(x)
-
-        Inputs:
-            x (torch.tensor): input data; shape:
-                batch_size x time_samples x in_features x number_nodes
-
-        Outputs:
-            y (torch.tensor): output; shape:
-                batch_size x time_samples x out_features x number_nodes
-    """
-
     def __init__(self, G, F, K, E = 1, bias = True):
         # K: Number of filter taps
         # GSOs will be added later.
@@ -232,14 +138,4 @@ class GraphFilter_DB(nn.Module):
         # u is of shape batchSize x time x dimOutFeatures x numberNodes
         return u
 
-    def extra_repr(self):
-        reprString = "in_features=%d, out_features=%d, " % (
-                        self.G, self.F) + "filter_taps=%d, " % (
-                        self.K) + "edge_features=%d, " % (self.E) +\
-                        "bias=%s, " % (self.bias is not None)
-        if self.S is not None:
-            reprString += "GSO stored"
-        else:
-            reprString += "no GSO stored"
-        return reprString
-    
+

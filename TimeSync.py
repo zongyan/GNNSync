@@ -20,7 +20,7 @@ import modules.evaluation as evaluation
 #%%
 
 thisFilename = 'TimeSync'
-nAgents = 50 # number of UAVs during training 
+nAgents = 25 # number of UAVs during training 
 saveDirRoot = 'experiments' 
 saveDir = os.path.join(saveDirRoot, thisFilename) 
 
@@ -46,10 +46,10 @@ learningRate = 0.0005
 beta1 = 0.9  
 beta2 = 0.999 
 lossFunction = nn.MSELoss
-trainer = training.TrainerFlocking
-evaluator = evaluation.evaluateFlocking
+trainer = training.Trainer
+evaluator = evaluation.evaluate
 
-nEpochs = 30 # number of epochs
+nEpochs = 3 # number of epochs
 batchSize = 20 # batch size
 validationInterval = 5 # how many training steps to do the validation
 
@@ -59,36 +59,31 @@ nonlinearity = nn.Tanh
 
 modelList = []
 
-# if doLocalGNN:
+hParamsGCNN = {}
 
-    #\\\ Basic parameters for the Local GNN architecture
+hParamsGCNN['name'] = 'GCNN'
+# Chosen architecture
+hParamsGCNN['archit'] = architTime.LocalGNN_DB
+hParamsGCNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
 
-    hParamsLocalGNN = {} # Hyperparameters (hParams) for the Local GNN (LclGNN)
+# Graph convolutional parameters
+hParamsGCNN['dimNodeSignals'] = [2, 16] # Features per layer
+hParamsGCNN['nFilterTaps'] = [2] # Number of filter taps
+hParamsGCNN['bias'] = True # Decide whether to include a bias term
+# Nonlinearity
+hParamsGCNN['nonlinearity'] = nonlinearity # Selected nonlinearity
+    # is affected by the summary
+# Readout layer: local linear combination of features
+hParamsGCNN['dimReadout'] = [2] # Dimension of the fully connected
+    # layers after the GCN layers (map); this fully connected layer
+    # is applied only at each node, without any further exchanges nor 
+    # considering all nodes at once, making the architecture entirely
+    # local.
+# Graph structure
+hParamsGCNN['dimEdgeFeatures'] = 1 # Scalar edge weights
 
-    hParamsLocalGNN['name'] = 'LocalGNN'
-    # Chosen architecture
-    hParamsLocalGNN['archit'] = architTime.LocalGNN_DB
-    hParamsLocalGNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+modelList += [hParamsGCNN['name']]
 
-    # Graph convolutional parameters
-    hParamsLocalGNN['dimNodeSignals'] = [2, 16] # Features per layer
-    hParamsLocalGNN['nFilterTaps'] = [2] # Number of filter taps
-    hParamsLocalGNN['bias'] = True # Decide whether to include a bias term
-    # Nonlinearity
-    hParamsLocalGNN['nonlinearity'] = nonlinearity # Selected nonlinearity
-        # is affected by the summary
-    # Readout layer: local linear combination of features
-    hParamsLocalGNN['dimReadout'] = [2] # Dimension of the fully connected
-        # layers after the GCN layers (map); this fully connected layer
-        # is applied only at each node, without any further exchanges nor 
-        # considering all nodes at once, making the architecture entirely
-        # local.
-    # Graph structure
-    hParamsLocalGNN['dimEdgeFeatures'] = 1 # Scalar edge weights
-
-    modelList += [hParamsLocalGNN['name']]
-
-doPrint = True # print while running
 printInterval = 1 # after how many training steps, print the partial results
                   #   0 means to never print partial results while training
 
@@ -96,25 +91,20 @@ printInterval = 1 # after how many training steps, print the partial results
 if useGPU and torch.cuda.is_available():
     torch.cuda.empty_cache()
 
-if doPrint:
-    print("Selected devices:")
-    for thisModel in modelList:
-        hParamsDict = eval('hParams' + thisModel)
-        print("\t%s: %s" % (thisModel, hParamsDict['device']))
+print("Selected devices:")
+for thisModel in modelList:
+    hParamsDict = eval('hParams' + thisModel)
+    print("\t%s: %s" % (thisModel, hParamsDict['device']))
     
 trainingOptions = {}
 
-if doPrint:
-    trainingOptions['printInterval'] = printInterval
+trainingOptions['printInterval'] = printInterval
 trainingOptions['validationInterval'] = validationInterval
 
 #%%
+print("Generating data", end = '')
+print("...", flush = True)
 
-if doPrint:
-    print("Generating data", end = '')
-    print("...", flush = True)
-
-#   Generate the dataset
 data = dataTools.Flocking(
             # Structure
             nAgents,
@@ -123,8 +113,7 @@ data = dataTools.Flocking(
             # Samples
             nTrain,
             nValid,
-            1, # We do not care about testing, we will re-generate the
-               # dataset for testing
+            1, # We do not care about testing, we will re-generate the dataset for testing
             # Time
             duration,
             samplingTime,
@@ -133,74 +122,35 @@ data = dataTools.Flocking(
             initMinDist = initMinDist,
             accelMax = accelMax)
 
-if doPrint:
-    print("Preview data", end = '')
-    print("...", flush = True)
+print("Preview data", end = '')
+print("...", flush = True)
 
 #%%
-
-# This is the dictionary where we store the models (in a model.Model
-# class).
 modelsGNN = {}
 
-# If a new model is to be created, it should be called for here.
-
-if doPrint:
-    print("Model initialization...", flush = True)
+print("Model initialization...", flush = True)
 
 for thisModel in modelList:
 
-    # Get the corresponding parameter dictionary
     hParamsDict = deepcopy(eval('hParams' + thisModel))
 
-    # Now, this dictionary has all the hyperparameters that we need to pass
-    # to the architecture, but it also has the 'name' and 'archit' that
-    # we do not need to pass them. So we are going to get them out of
-    # the dictionary
     thisName = hParamsDict.pop('name')
     callArchit = hParamsDict.pop('archit')
     thisDevice = hParamsDict.pop('device')
 
-    # If more than one graph or data realization is going to be carried out,
-    # we are going to store all of thos models separately, so that any of
-    # them can be brought back and studied in detail.
+    print("\tInitializing %s..." % thisName, end = ' ',flush = True)
 
-    if doPrint:
-        print("\tInitializing %s..." % thisName,
-              end = ' ',flush = True)
-
-    ##############
-    # PARAMETERS #
-    ##############
-
-    #\\\ Optimizer options
-    #   (If different from the default ones, change here.)
     thisOptimAlg = optimAlg
     thisLearningRate = learningRate
     thisBeta1 = beta1
     thisBeta2 = beta2
 
-    ################
-    # ARCHITECTURE #
-    ################
-
     thisArchit = callArchit(**hParamsDict)
     thisArchit.to(thisDevice)
 
-    #############
-    # OPTIMIZER #
-    #############
-
-    if thisOptimAlg == 'ADAM':
-        thisOptim = optim.Adam(thisArchit.parameters(),
-                               lr = learningRate,
-                               betas = (beta1, beta2))
-    elif thisOptimAlg == 'SGD':
-        thisOptim = optim.SGD(thisArchit.parameters(),
-                              lr = learningRate)
-    elif thisOptimAlg == 'RMSprop':
-        thisOptim = optim.RMSprop(thisArchit.parameters(),
-                                  lr = learningRate, alpha = beta1)
+    thisOptim = optim.Adam(thisArchit.parameters(),
+                           lr = learningRate,
+                           betas = (beta1, beta2))
 
     thisLossFunction = lossFunction()
     thisTrainer = trainer
@@ -216,17 +166,12 @@ for thisModel in modelList:
 
     modelsGNN[thisName] = modelCreated
 
-    if doPrint:
-        print("OK")
+    print("OK")
 
 #%%
-
-print("")
-
 for thisModel in modelsGNN.keys():
 
-    if doPrint:
-        print("Training model %s..." % thisModel)
+    print("Training model %s..." % thisModel)
         
     for m in modelList:
         if m in thisModel:
@@ -237,46 +182,32 @@ for thisModel in modelsGNN.keys():
                                                batchSize)
 
 #%%
+dataTest = dataTools.Flocking(
+                # Structure
+                nAgents,
+                commRadius,
+                repelDist,
+                # Samples
+                1, # We don't care about training
+                1, # nor validation
+                nTest,
+                # Time
+                duration,
+                samplingTime,
+                # Initial conditions
+                initVelValue = initVelValue,
+                initMinDist = initMinDist,
+                accelMax = accelMax)
 
-# Now that the model has been trained, we evaluate them on the test
-# samples.
+posTest = dataTest.getData('offset', 'train')
+velTest = dataTest.getData('skew', 'train')
+commGraphTest = dataTest.getData('commGraph', 'train')
 
-# We have two versions of each model to evaluate: the one obtained
-# at the best result of the validation step, and the last trained model.
-    
-# for n in range(nSimPoints):
-    
-    #   Load the data, which will give a specific split
-    dataTest = dataTools.Flocking(
-                    # Structure
-                    nAgents,
-                    commRadius,
-                    repelDist,
-                    # Samples
-                    1, # We don't care about training
-                    1, # nor validation
-                    nTest,
-                    # Time
-                    duration,
-                    samplingTime,
-                    # Initial conditions
-                    initVelValue = initVelValue,
-                    initMinDist = initMinDist,
-                    accelMax = accelMax)
-    
-    posTest = dataTest.getData('offset', 'train')
-    velTest = dataTest.getData('skew', 'train')
-    commGraphTest = dataTest.getData('commGraph', 'train')
-    
-    dataTest.evaluate(thetaOffset = posTest, gammaSkew = velTest)
-    
-    dataTest.evaluate(thetaOffset = posTest[:,-1:,:,:], gammaSkew = velTest[:,-1:,:,:])              
+dataTest.evaluate(thetaOffset = posTest, gammaSkew = velTest)
+
+dataTest.evaluate(thetaOffset = posTest[:,-1:,:,:], gammaSkew = velTest[:,-1:,:,:])              
 
 #%%
-
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
 
 gnn_test = np.load('./gnn_test.npz') # the data file loaded from the example folder
 
@@ -287,13 +218,6 @@ skewTest = gnn_test['velTestBest']
 adjlTest = gnn_test['accelTestBest']
 stateTest = gnn_test['stateTestBest']
 commGraphTest = gnn_test['commGraphTestBest']
-
-# posOptim, velOptim, accelOptim = data.computeOptimalTrajectory(posTest[:,0,:,:], \
-#                                                                posTest[:,0,:,:], \
-#                                                                    duration=data.duration, \
-#                                                                        samplingTime=data.samplingTime, \
-#                                                                            repelDist=data.repelDist, \
-#                                                                                accelMax=data.accelMax)
 
 # plot the velocity of all agents via the GNN method
 for i in range(0, 20, 3):
