@@ -126,9 +126,6 @@ initVelValue = 3. # Initial velocities are samples from an interval
 initMinDist = 0.1 # No two agents are located at a distance less than this
 accelMax = 10. # This is the maximum value of acceleration allowed
 
-nRealizations = 1 # Number of data realizations
-    # How many times we repeat the experiment
-
 ############
 # TRAINING #
 ############
@@ -298,12 +295,10 @@ for n in range(nSimPoints):
     costLastFull[n] = {} # Accuracy for the last model
     costLastEnd[n] = {} # Accuracy for the last model
     for thisModel in modelList: # Create an element for each split realization,
-        costBestFull[n][thisModel] = [None] * nRealizations
-        costBestEnd[n][thisModel] = [None] * nRealizations
-        costLastFull[n][thisModel] = [None] * nRealizations
-        costLastEnd[n][thisModel] = [None] * nRealizations
-    costOptFull[n] = [None] * nRealizations # Accuracy for optimal controller
-    costOptEnd[n] = [None] * nRealizations # Accuracy for optimal controller
+        costBestFull[n][thisModel] = [None] 
+        costBestEnd[n][thisModel] = [None] 
+        costLastFull[n][thisModel] = [None] 
+        costLastEnd[n][thisModel] = [None] 
 
 ####################
 # TRAINING OPTIONS #
@@ -349,10 +344,6 @@ datasetTestAgentTrajectoryDir = [None] * nSimPoints
 for n in range(nSimPoints):    
     datasetTestAgentTrajectoryDir[n] = os.path.join(datasetTestTrajectoryDir,
                                                     '%03d' % nAgentsTest[n])
-    
-if nRealizations > 1:
-    datasetTrainTrajectoryDirOrig = datasetTrainTrajectoryDir
-    datasetTestAgentTrajectoryDirOrig = datasetTestAgentTrajectoryDir.copy()
 
 #%%##################################################################
 #                                                                   #
@@ -366,22 +357,6 @@ for realization in range(nRealizations):
 
     # On top of the rest of the training options, we pass the identification
     # of this specific data split realization.
-
-    if nRealizations > 1:
-        trainingOptions['realizationNo'] = realization
-        
-        # Create new directories (specific for this realization)
-        datasetTrainTrajectoryDir = os.path.join(datasetTrainTrajectoryDirOrig,
-                                                 '%03d' % realization)
-        if not os.path.exists(datasetTrainTrajectoryDir):
-            os.makedirs(datasetTrainTrajectoryDir)
-            
-        for n in range(nSimPoints):
-            datasetTestAgentTrajectoryDir[n] = os.path.join(
-                                          datasetTestAgentTrajectoryDirOrig[n],
-                                          '%03d' % realization)
-            if not os.path.exists(datasetTestAgentTrajectoryDir[n]):
-                os.makedirs(datasetTestAgentTrajectoryDir[n])
 
     if doPrint:
         print("", flush = True)
@@ -398,8 +373,6 @@ for realization in range(nRealizations):
 
     if doPrint:
         print("Generating data", end = '')
-        if nRealizations > 1:
-            print(" for realization %d" % realization, end = '')
         print("...", flush = True)
 
     #   Generate the dataset
@@ -428,8 +401,6 @@ for realization in range(nRealizations):
     
     if doPrint:
         print("Preview data", end = '')
-        if nRealizations > 1:
-            print(" for realization %d" % realization, end = '')
         print("...", flush = True)
 
     #%%##################################################################
@@ -472,8 +443,6 @@ for realization in range(nRealizations):
         # If more than one graph or data realization is going to be carried out,
         # we are going to store all of thos models separately, so that any of
         # them can be brought back and studied in detail.
-        if nRealizations > 1:
-            thisName += 'G%02d' % realization
 
         if doPrint:
             print("\tInitializing %s..." % thisName,
@@ -593,8 +562,6 @@ for realization in range(nRealizations):
             print("")
             print("[%3d Agents] Generating test set" % nAgentsTest[n],
                   end = '')
-            if nRealizations > 1:
-                print(" for realization %d" % realization, end = '')
             print("...", flush = True)
 
         #   Load the data, which will give a specific split
@@ -632,8 +599,6 @@ for realization in range(nRealizations):
     
         if doPrint:
             print("[%3d Agents] Preview data"  % nAgentsTest[n], end = '')
-            if nRealizations > 1:
-                print(" for realization %d" % realization, end = '')
             print("...", flush = True)
         
         #\\\ EVAL
@@ -658,15 +623,11 @@ for realization in range(nRealizations):
             if doPrint:
                 print("[%3d Agents] Evaluating model %s" % \
                                          (nAgentsTest[n], thisModel), end = '')
-                if nRealizations > 1:
-                    print(" for realization %d" % realization, end = '')
                 print("...", flush = True)
                 
             addKW = {}
             addKW['nVideos'] = nVideos
             addKW['graphNo'] = nAgentsTest[n]
-            if nRealizations > 1:
-                addKW['realizationNo'] = realization
                 
             thisEvalVars = modelsGNN[thisModel].evaluate(dataTest, **addKW)
     
@@ -683,155 +644,6 @@ for realization in range(nRealizations):
                     costBestEnd[n][m][realization] = thisCostBestEnd
                     costLastFull[n][m][realization] = thisCostLastFull
                     costLastEnd[n][m][realization] = thisCostLastEnd
-
-
-############################
-# FINAL EVALUATION RESULTS #
-############################
-                    
-meanCostBestFull = [None] * nSimPoints # Mean across data splits
-meanCostBestEnd = [None] * nSimPoints # Mean across data splits
-meanCostLastFull = [None] * nSimPoints # Mean across data splits
-meanCostLastEnd = [None] * nSimPoints # Mean across data splits
-stdDevCostBestFull = [None] * nSimPoints # Standard deviation across data splits
-stdDevCostBestEnd = [None] * nSimPoints # Standard deviation across data splits
-stdDevCostLastFull = [None] * nSimPoints # Standard deviation across data splits
-stdDevCostLastEnd = [None] * nSimPoints # Standard deviation across data splits
-meanCostOptFull = [None] * nSimPoints
-stdDevCostOptFull = [None] * nSimPoints
-meanCostOptEnd = [None] * nSimPoints
-stdDevCostOptEnd = [None] * nSimPoints
-                    
-for n in range(nSimPoints):
-
-    # Now that we have computed the accuracy of all runs, we can obtain a final
-    # result (mean and standard deviation)
-    
-    meanCostBestFull[n] = {} # Mean across data splits
-    meanCostBestEnd[n] = {} # Mean across data splits
-    meanCostLastFull[n] = {} # Mean across data splits
-    meanCostLastEnd[n] = {} # Mean across data splits
-    stdDevCostBestFull[n] = {} # Standard deviation across data splits
-    stdDevCostBestEnd[n] = {} # Standard deviation across data splits
-    stdDevCostLastFull[n] = {} # Standard deviation across data splits
-    stdDevCostLastEnd[n] = {} # Standard deviation across data splits
-    
-    if doPrint:
-        print("\n[%3d Agents] Final evaluations (%02d data splits)" % \
-                                               (nAgentsTest[n], nRealizations))
-        
-    costOptFull[n] = np.array(costOptFull[n])
-    meanCostOptFull[n] = np.mean(costOptFull[n])
-    stdDevCostOptFull[n] = np.std(costOptFull[n])
-    costOptEnd[n] = np.array(costOptEnd[n])
-    meanCostOptEnd[n] = np.mean(costOptEnd[n])
-    stdDevCostOptEnd[n] = np.std(costOptEnd[n])
-    
-    if doPrint:
-        print("\t%8s: %8.4f (+-%6.4f) [Optm/Full]" % (
-                'Optimal',
-                meanCostOptFull[n],
-                stdDevCostOptFull[n]))
-        print("\t%9s %8.4f (+-%6.4f) [Optm/End ]" % (
-                '',
-                meanCostOptEnd[n],
-                stdDevCostOptEnd[n]))
-            
-    for thisModel in modelList:
-        # Convert the lists into a nDataSplits vector
-        costBestFull[n][thisModel] = np.array(costBestFull[n][thisModel])
-        costBestEnd[n][thisModel] = np.array(costBestEnd[n][thisModel])
-        costLastFull[n][thisModel] = np.array(costLastFull[n][thisModel])
-        costLastEnd[n][thisModel] = np.array(costLastEnd[n][thisModel])
-    
-        # And now compute the statistics (across graphs)
-        meanCostBestFull[n][thisModel] = np.mean(costBestFull[n][thisModel])
-        meanCostBestEnd[n][thisModel] = np.mean(costBestEnd[n][thisModel])
-        meanCostLastFull[n][thisModel] = np.mean(costLastFull[n][thisModel])
-        meanCostLastEnd[n][thisModel] = np.mean(costLastEnd[n][thisModel])
-        stdDevCostBestFull[n][thisModel] = np.std(costBestFull[n][thisModel])
-        stdDevCostBestEnd[n][thisModel] = np.std(costBestEnd[n][thisModel])
-        stdDevCostLastFull[n][thisModel] = np.std(costLastFull[n][thisModel])
-        stdDevCostLastEnd[n][thisModel] = np.std(costLastEnd[n][thisModel])
-    
-        # And print it:
-        if doPrint:
-            print(
-              "\t%s: %8.4f (+-%6.4f) [Best/Full] %8.4f (+-%6.4f) [Last/Full]"%(
-                    thisModel,
-                    meanCostBestFull[n][thisModel],
-                    stdDevCostBestFull[n][thisModel],
-                    meanCostLastFull[n][thisModel],
-                    stdDevCostLastFull[n][thisModel]))
-            print(
-              "\t%9s %8.4f (+-%6.4f) [Best/End ] %8.4f (+-%6.4f) [Last/End ]"%(
-                    '',
-                    meanCostBestEnd[n][thisModel],
-                    stdDevCostBestEnd[n][thisModel],
-                    meanCostLastEnd[n][thisModel],
-                    stdDevCostLastEnd[n][thisModel]))    
-            
-    # Save the printed info into the .txt file as well
-    with open(varsFile, 'a+') as file:
-        file.write("\n[%3d Agents] Final evaluations (%02d data splits)" % \
-                                               (nAgentsTest[n], nRealizations))
-        file.write("\t%8s: %8.4f (+-%6.4f) [Optm/Full]" % (
-                   'Optimal',
-                   meanCostOptFull[n],
-                   stdDevCostOptFull[n]))
-        file.write("\t%9s %8.4f (+-%6.4f) [Optm/End ]" % (
-                   '',
-                   meanCostOptEnd[n],
-                   stdDevCostOptEnd[n]))
-        for thisModel in modelList:
-            file.write(
-              "\t%s: %8.4f (+-%6.4f) [Best/Full] %8.4f (+-%6.4f) [Last/Full]"%(
-                    thisModel,
-                    meanCostBestFull[n][thisModel],
-                    stdDevCostBestFull[n][thisModel],
-                    meanCostLastFull[n][thisModel],
-                    stdDevCostLastFull[n][thisModel]))
-            file.write(
-              "\t%9s %8.4f (+-%6.4f) [Best/End ] %8.4f (+-%6.4f) [Last/End ]"%(
-                    '',
-                    meanCostBestEnd[n][thisModel],
-                    stdDevCostBestEnd[n][thisModel],
-                    meanCostLastEnd[n][thisModel],
-                    stdDevCostLastEnd[n][thisModel]))
-        file.write('\n')
-
-#%%##################################################################
-#                                                                   #
-#                    PLOT                                           #
-#                                                                   #
-#####################################################################
-
-# Finish measuring time
-endRunTime = datetime.datetime.now()
-
-totalRunTime = abs(endRunTime - startRunTime)
-totalRunTimeH = int(divmod(totalRunTime.total_seconds(), 3600)[0])
-totalRunTimeM, totalRunTimeS = \
-               divmod(totalRunTime.total_seconds() - totalRunTimeH * 3600., 60)
-totalRunTimeM = int(totalRunTimeM)
-
-if doPrint:
-    print(" ")
-    print("Simulation started: %s" %startRunTime.strftime("%Y/%m/%d %H:%M:%S"))
-    print("Simulation ended:   %s" % endRunTime.strftime("%Y/%m/%d %H:%M:%S"))
-    print("Total time: %dh %dm %.2fs" % (totalRunTimeH,
-                                         totalRunTimeM,
-                                         totalRunTimeS))
-    
-# And save this info into the .txt file as well
-with open(varsFile, 'a+') as file:
-    file.write("Simulation started: %s\n" % 
-                                     startRunTime.strftime("%Y/%m/%d %H:%M:%S"))
-    file.write("Simulation ended:   %s\n" % 
-                                       endRunTime.strftime("%Y/%m/%d %H:%M:%S"))
-    file.write("Total time: %dh %dm %.2fs" % (totalRunTimeH,
-                                              totalRunTimeM,
-                                              totalRunTimeS))
 
 #%%
 
