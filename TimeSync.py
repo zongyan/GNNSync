@@ -1,8 +1,6 @@
 import os
 import numpy as np
 import matplotlib
-matplotlib.rcParams['text.usetex'] = True
-matplotlib.rcParams['font.family'] = 'serif'
 import matplotlib.pyplot as plt
 import datetime
 from copy import deepcopy
@@ -18,7 +16,6 @@ import modules.training as training
 import modules.evaluation as evaluation
 
 #%%
-
 thisFilename = 'TimeSync'
 nAgents = 50 # number of UAVs during training 
 saveDirRoot = 'experiments' 
@@ -31,15 +28,16 @@ if not os.path.exists(saveDir):
 
 useGPU = True
 commRadius = 2. # communication radius
-repelDist = 1. # minimum distance before activating repelling potential
+repelDist = 1. # minimum distance before activating repelling function
 nTrain = 400 # number of training samples
 nValid = 20 # number of valid samples
 nTest = 50 # number of testing samples
-duration = 2. # trajectory duration 
+duration = 2. # simulation duration 
 samplingTime = 0.01 # sampling time
 initVelValue = 3. # initial velocities: [-initVelValue, initVelValue]
-initMinDist = 0.1 # minimum distance between any two UAVs
+initMinDist = 0.1 # initial minimum distance between any two UAVs
 accelMax = 10. # maximum acceleration value
+normalizeGraph = True # normalise wireless communication graph
 
 optimAlg = 'ADAM' 
 learningRate = 0.0005 
@@ -57,36 +55,26 @@ nonlinearityHidden = torch.tanh
 nonlinearityOutput = torch.tanh
 nonlinearity = nn.Tanh
 
-modelList = []
-
-hParamsGCNN = {}
-
-hParamsGCNN['name'] = 'GCNN'
-# Chosen architecture
-hParamsGCNN['archit'] = architTime.LocalGNN_DB
-hParamsGCNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-
-# Graph convolutional parameters
-hParamsGCNN['dimNodeSignals'] = [2, 16] # Features per layer
-hParamsGCNN['nFilterTaps'] = [2] # Number of filter taps
-hParamsGCNN['bias'] = True # Decide whether to include a bias term
-# Nonlinearity
-hParamsGCNN['nonlinearity'] = nonlinearity # Selected nonlinearity
-    # is affected by the summary
-# Readout layer: local linear combination of features
-hParamsGCNN['dimReadout'] = [2] # Dimension of the fully connected
-    # layers after the GCN layers (map); this fully connected layer
-    # is applied only at each node, without any further exchanges nor 
-    # considering all nodes at once, making the architecture entirely
-    # local.
-# Graph structure
-hParamsGCNN['dimEdgeFeatures'] = 1 # Scalar edge weights
-
-modelList += [hParamsGCNN['name']]
-
 printInterval = 1 # after how many training steps, print the partial results
                   #   0 means to never print partial results while training
 
+modelList = []
+
+hParamsGCNN = {}
+hParamsGCNN['name'] = 'GCNN'
+hParamsGCNN['archit'] = architTime.LocalGNN_DB
+hParamsGCNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsGCNN['dimNodeSignals'] = [2, 16] # features per layer
+hParamsGCNN['nFilterTaps'] = [2] # number of filter taps
+hParamsGCNN['bias'] = True
+hParamsGCNN['nonlinearity'] = nonlinearity
+hParamsGCNN['dimReadout'] = [2] 
+hParamsGCNN['dimEdgeFeatures'] = 1 # scalar edge weights
+modelList += [hParamsGCNN['name']]
+
+trainingOptions = {}
+trainingOptions['printInterval'] = printInterval
+trainingOptions['validationInterval'] = validationInterval
 #%%
 if useGPU and torch.cuda.is_available():
     torch.cuda.empty_cache()
@@ -95,50 +83,29 @@ print("Selected devices:")
 for thisModel in modelList:
     hParamsDict = eval('hParams' + thisModel)
     print("\t%s: %s" % (thisModel, hParamsDict['device']))
-    
-trainingOptions = {}
-
-trainingOptions['printInterval'] = printInterval
-trainingOptions['validationInterval'] = validationInterval
-
 #%%
 print("Generating data", end = '')
 print("...", flush = True)
 
-data = dataTools.AerialSwarm(
-            # Structure
-            nAgents,
-            commRadius,
-            repelDist,
-            # Samples
-            nTrain,
-            nValid,
-            1, # We do not care about testing, we will re-generate the dataset for testing
-            # Time
-            duration,
-            samplingTime,
-            # Initial conditions
-            initVelValue = initVelValue,
-            initMinDist = initMinDist,
-            accelMax = accelMax)
+data = dataTools.AerialSwarm(nAgents, commRadius,repelDist,
+            nTrain, nValid, 1, # no care about testing, re-generating the dataset for testing
+            duration, samplingTime,
+            initVelValue, initMinDist, accelMax,
+            normalizeGraph)
 
 print("Preview data", end = '')
 print("...", flush = True)
-
 #%%
 modelsGNN = {}
 
-print("Model initialization...", flush = True)
+print("Model initialisation...", flush = True)
 
 for thisModel in modelList:
-
     hParamsDict = deepcopy(eval('hParams' + thisModel))
-
     thisName = hParamsDict.pop('name')
     callArchit = hParamsDict.pop('archit')
     thisDevice = hParamsDict.pop('device')
-
-    print("\tInitializing %s..." % thisName, end = ' ',flush = True)
+    print("\tInitialising %s..." % thisName, end = ' ',flush = True)
 
     thisOptimAlg = optimAlg
     thisLearningRate = learningRate
@@ -163,49 +130,26 @@ for thisModel in modelList:
                                thisDevice,
                                thisName,
                                saveDir)
-
     modelsGNN[thisName] = modelCreated
-
     print("OK")
-
 #%%
 for thisModel in modelsGNN.keys():
-
     print("Training model %s..." % thisModel)
         
-    for m in modelList:
-        if m in thisModel:
-            modelName = m
-
-    thisTrainVars = modelsGNN[thisModel].train(data,
-                                               nEpochs,
-                                               batchSize)
+    thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize)
 
 #%%
-dataTest = dataTools.AerialSwarm(
-                # Structure
-                nAgents,
-                commRadius,
-                repelDist,
-                # Samples
-                1, # We don't care about training
-                1, # nor validation
-                nTest,
-                # Time
-                duration,
-                samplingTime,
-                # Initial conditions
-                initVelValue = initVelValue,
-                initMinDist = initMinDist,
-                accelMax = accelMax)
+dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
+                1, 1, nTest, # no care about training nor validation
+                duration, samplingTime,
+                initVelValue, initMinDist, accelMax)
 
-posTest = dataTest.getData('offset', 'train')
-velTest = dataTest.getData('skew', 'train')
+offsetTest = dataTest.getData('offset', 'train')
+skewTest = dataTest.getData('skew', 'train')
 commGraphTest = dataTest.getData('commGraph', 'train')
 
-dataTest.evaluate(thetaOffset = posTest, gammaSkew = velTest)
-
-dataTest.evaluate(thetaOffset = posTest[:,-1:,:,:], gammaSkew = velTest[:,-1:,:,:])              
+dataTest.evaluate(offsetTest, skewTest, 1)
+dataTest.evaluate(offsetTest[:,-1:,:,:], skewTest[:,-1:,:,:], 1)              
 
 #%%
 
