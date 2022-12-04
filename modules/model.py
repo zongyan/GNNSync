@@ -22,7 +22,7 @@ class Model:
                 self.nParameters += thisNParam
             else:
                 pass
-
+              
         self.loss = loss
         self.optim = optimizer
         self.trainer = trainer
@@ -30,7 +30,7 @@ class Model:
         self.device = device
         self.name = name
         self.saveDir = saveDir
-        
+ 
     def train(self, data, nEpochs, batchSize, **kwargs):        
         self.trainer = self.trainer(self, data, nEpochs, batchSize, **kwargs)        
         return self.trainer.train()
