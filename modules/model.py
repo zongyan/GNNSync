@@ -1,12 +1,19 @@
 import os
 import torch
 
-class Model:
-    def __init__(self, architecture, loss, optimizer, trainer, evaluator, device, name, saveDir):
+class Model:    
+    def __init__(self,
+                 architecture, # architecture (nn.Module)
+                 loss, # loss function (nn.modules.loss._Loss)                 
+                 optimizer, # optimisation algorithm (nn.optim)
+                 trainer, # training algorithm (Modules.training)
+                 evaluator, # evaluating algorithm (Modules.evaluation)
+                 device, name, saveDir):
         
         self.archit = architecture
         self.archit.to(device)
         self.nParameters = 0
+        
         for param in list(self.archit.parameters()):
             if len(param.shape)>0:
                 thisNParam = 1
@@ -15,8 +22,7 @@ class Model:
                 self.nParameters += thisNParam
             else:
                 pass
-            # end if 
-        # end for
+              
         self.loss = loss
         self.optim = optimizer
         self.trainer = trainer
@@ -24,15 +30,12 @@ class Model:
         self.device = device
         self.name = name
         self.saveDir = saveDir
-
-    def train(self, data, nEpochs, batchSize, **kwargs):
-        
-        self.trainer = self.trainer(self, data, nEpochs, batchSize, **kwargs)
-        
+ 
+    def train(self, data, nEpochs, batchSize, **kwargs):        
+        self.trainer = self.trainer(self, data, nEpochs, batchSize, **kwargs)        
         return self.trainer.train()
     
-    def evaluate(self, data, **kwargs):
-        
+    def evaluate(self, data, **kwargs):        
         return self.evaluator(self, data, **kwargs)
     
     def save(self, label = '', **kwargs):
@@ -41,7 +44,6 @@ class Model:
         else:
             saveDir = self.saveDir
         saveModelDir = os.path.join(saveDir,'savedModels')
-        # Create directory savedModels if it doesn't exist yet:
         if not os.path.exists(saveModelDir):
             os.makedirs(saveModelDir)
         saveFile = os.path.join(saveModelDir, self.name)
