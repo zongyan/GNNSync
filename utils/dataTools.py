@@ -111,7 +111,7 @@ class _data:
 class AerialSwarm(_data):    
     def __init__(self, nAgents, commRadius, repelDist,
                  nTrain, nValid, nTest,
-                 duration, samplingTime,
+                 duration, updateTime, adjustTime,
                  initVelValue=3.,initMinDist=0.1,
                  accelMax=10.,
                  initOffsetValue=1, initSkewValue=0,
@@ -143,7 +143,8 @@ class AerialSwarm(_data):
         self.sigmaProcessOffsetValue = sigmaProcessOffsetValue # x100us
         
         self.duration = float(duration)
-        self.samplingTime = samplingTime
+        self.updateTime = updateTime
+        self.adjustTime = adjustTime        
 
         self.normalizeGraph = normalizeGraph
         self.dataType = dataType
@@ -184,7 +185,7 @@ class AerialSwarm(_data):
             
         clockNoiseAll, packetExchangeDelayAll, \
             processingDelayAll = self.computeNoises(self.nAgents, nSamples, 
-                                                    self.duration, self.samplingTime,
+                                                    self.duration, self.updateTime,
                                                     self.sigmaMeasureOffsetValue,
                                                     self.sigmaProcessOffsetValue, 
                                                     sigmaOffsetVal=0, 
@@ -203,7 +204,7 @@ class AerialSwarm(_data):
             offsetAll, skewAll, adjAll = self.computeOptimalTrajectory(
                                         initPosAll, initVelAll, initOffsetAll, initSkewAll, 
                                         packetExchangeDelayAll, processingDelayAll, clockNoiseAll,
-                                        self.duration, self.samplingTime, self.repelDist,
+                                        self.duration, self.updateTime, self.adjustTime, self.repelDist,
                                         accelMax = self.accelMax)
         
         self.offset = {}
@@ -596,7 +597,7 @@ class AerialSwarm(_data):
 
         return thisData
         
-    def evaluate(self, thetaOffset=None, gammaSkew=None, samplingTime=None):
+    def evaluate(self, thetaOffset=None, gammaSkew=None, updateTime=None):
         # input: ###
         # thetaOffset: nSamples x tSamples x 1 x nAgents
         # gammaSkew: nSamples x tSamples x 1 x nAgents
@@ -604,8 +605,8 @@ class AerialSwarm(_data):
         # output: ###
         # cost: scalar
         
-        if samplingTime is None:
-            samplingTime = self.samplingTime    
+        if updateTime is None:
+            updateTime = self.updateTime    
         
         assert len(thetaOffset.shape) == len(gammaSkew.shape) == 4
         nSamples = thetaOffset.shape[0]
@@ -631,7 +632,7 @@ class AerialSwarm(_data):
             diffOffsetAvg = torch.mean(diffOffset, dim = 2) # nSamples x tSamples
             diffSkewAvg = torch.mean(diffSkew, dim = 2) # nSamples x tSamples            
 
-            costPerSample = torch.sum(diffOffsetAvg, dim = 1) + torch.sum(diffSkewAvg, dim = 1)*(samplingTime**2) # nSamples            
+            costPerSample = torch.sum(diffOffsetAvg, dim = 1) + torch.sum(diffSkewAvg, dim = 1)*(updateTime**2) # nSamples            
 
             cost = torch.mean(costPerSample) # scalar            
         else:            
@@ -647,7 +648,7 @@ class AerialSwarm(_data):
             diffOffsetAvg = np.mean(diffOffset, axis = 2) # nSamples x tSamples
             diffSkewAvg = np.mean(diffSkew, axis = 2) # nSamples x tSamples
 
-            costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*samplingTime # nSamples
+            costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*updateTime # nSamples
 
             cost = np.mean(costPerSample) # scalar        
         return cost
@@ -682,7 +683,7 @@ class AerialSwarm(_data):
         
         assert len(graph.shape) == 4
         assert graph.shape[0] == batchSize
-        assert graph.shape[1] == int(duration/self.samplingTime)
+        assert graph.shape[1] == int(duration/self.updateTime)
         assert graph.shape[2] == nAgents
         assert graph.shape[3] == nAgents       
 
@@ -699,7 +700,7 @@ class AerialSwarm(_data):
         else:
             useTorch = False
         
-        time = np.arange(0, duration, self.samplingTime)
+        time = np.arange(0, duration, self.updateTime)
         tSamples = len(time)
        
         assert 'archit' in kwargs.keys()
@@ -743,13 +744,27 @@ class AerialSwarm(_data):
                 thisAdjust = archit(x, S)
             thisAdjust = thisAdjust.cpu().numpy()[:,-1,:,:]
             adjust[:,t-1,:,:] = thisAdjust
-                
-            theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.samplingTime \
-                                              + (1/nAgents) * np.expand_dims(adjust[:,t-1,0,:], 1) \
-                                              + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
-                                              - np.expand_dims(processNoise[:,t-1,0,:], 1)
-            gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/nAgents) * np.expand_dims(adjust[:,t-1,1,:], 1)\
-                                              + np.expand_dims(clkNoise[:,t-1,1,:], 1)
+
+            if self.updateTime == self.adjustTime:                            
+                theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
+                                                  + (1/nAgents) * np.expand_dims(adjust[:,t-1,0,:], 1) \
+                                                  + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                  - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/nAgents) * np.expand_dims(adjust[:,t-1,1,:], 1)\
+                                                  + np.expand_dims(clkNoise[:,t-1,1,:], 1)                                              
+            else:                                
+                if int((t*self.updateTime) % self.adjustTime) == 0:
+                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
+                                                      + (1/nAgents) * np.expand_dims(adjust[:,t-1,0,:], 1) \
+                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/nAgents) * np.expand_dims(adjust[:,t-1,1,:], 1)\
+                                                      + np.expand_dims(clkNoise[:,t-1,1,:], 1)                                        
+                else: 
+                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
+                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + np.expand_dims(clkNoise[:,t-1,1,:], 1)                    
             
             if doPrint:
                 percentageCount = int(100*(t+1)/tSamples)
@@ -846,7 +861,7 @@ class AerialSwarm(_data):
     def computeOptimalTrajectory(self, initPos, initVel, 
                                  initOffsetTheta, initSkewGamma, 
                                  measureNoise, processNoise, clkNoise, 
-                                 duration, samplingTime, 
+                                 duration, updateTime, adjustTime,
                                  repelDist, accelMax = 100.):
         # input: ######
         # initPos: nSamples x 2 x nAgents 
@@ -879,7 +894,7 @@ class AerialSwarm(_data):
         assert initSkewGamma.shape[0] == nSamples
         assert initSkewGamma.shape[2] == nAgents
        
-        time = np.arange(0, duration, samplingTime)
+        time = np.arange(0, duration, updateTime)
         tSamples = len(time)
         
         pos = np.zeros((nSamples, tSamples, 2, nAgents))
@@ -936,17 +951,31 @@ class AerialSwarm(_data):
             deltaGamma[:,t-1,:,:] = -0.5*np.sum(ijDiffSkew, axis = 3)                  
 
             ### Update the values ###
-            vel[:,t,:,:] = vel[:,t-1,:,:] + accel[:,t-1,:,:] * samplingTime
-            pos[:,t,:,:] = pos[:,t-1,:,:] + vel[:,t-1,:,:] * samplingTime \
-                                          + accel[:,t-1,:,:] * (samplingTime ** 2)/2 
-
-            theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.samplingTime \
-                                              + (1/self.nAgents) * deltaTheta[:,t-1,:,:] \
-                                              + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
-                                              - np.expand_dims(processNoise[:,t-1,0,:], 1)
-            gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:] \
-                                              + np.expand_dims(clkNoise[:,t-1,1,:], 1)
+            vel[:,t,:,:] = vel[:,t-1,:,:] + accel[:,t-1,:,:] * updateTime
+            pos[:,t,:,:] = pos[:,t-1,:,:] + vel[:,t-1,:,:] * updateTime \
+                                          + accel[:,t-1,:,:] * (updateTime ** 2)/2             
             
+            if updateTime == adjustTime:                            
+                theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * updateTime \
+                                                  + (1/self.nAgents) * deltaTheta[:,t-1,:,:] \
+                                                  + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                  - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:] \
+                                                  + np.expand_dims(clkNoise[:,t-1,1,:], 1)
+            else:                                
+                if int((t*updateTime) % adjustTime) == 0:
+                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * updateTime \
+                                                      + (1/self.nAgents) * deltaTheta[:,t-1,:,:] \
+                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:] \
+                                                      + np.expand_dims(clkNoise[:,t-1,1,:], 1)                                    
+                else: 
+                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * updateTime \
+                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + np.expand_dims(clkNoise[:,t-1,1,:], 1)
+                                                      
             if self.doPrint:
                 percentageCount = int(100*(t+1)/tSamples)
                 print('\b \b' * 4 + "%3d%%" % percentageCount,
@@ -959,14 +988,14 @@ class AerialSwarm(_data):
 
         return pos, vel, accel, theta, gamma, clockCorrection
 
-    def computeNoises(self, nAgents, nSamples, duration, samplingTime, 
+    def computeNoises(self, nAgents, nSamples, duration, updateTime, 
                       sigmaMeasureOffsetVal=0., sigmaProcessOffsetVal=0.,
                       sigmaOffsetVal=0., sigmaSkewVal=0.):
         # clkNoise: nSamples x time x 2 x nAgents
         # measurementNoise: nSamples x time x 2 x nAgents
         # processingNoise: nSamples x time x 2 x nAgents
 
-        time = np.int64(duration/samplingTime)
+        time = np.int64(duration/updateTime)
 
         sigmaOffsetSq = sigmaOffsetVal**2 # unit: 10000 us^2
         sigmaSkewSq = sigmaSkewVal**2 # unit: 100 ppm^2          

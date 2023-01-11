@@ -17,7 +17,7 @@ import modules.evaluation as evaluation
 
 #%%
 thisFilename = 'TimeSync'
-nAgents = 50 # number of UAVs during training 
+nAgents = 30  # number of UAVs during training 
 saveDirRoot = 'experiments' 
 saveDir = os.path.join(saveDirRoot, thisFilename) 
 
@@ -32,8 +32,9 @@ repelDist = 1. # minimum distance before activating repelling function
 nTrain = 400 # number of training samples
 nValid = 20 # number of valid samples
 nTest = 50 # number of testing samples
-duration = 2. # simulation duration 
-samplingTime = 0.01 # sampling time
+duration = 20. # simulation duration 
+updateTime = 0.1 # sampling time
+adjustTime = 1 # sampling time
 initVelValue = 3. # initial velocities: [-initVelValue, initVelValue]
 initMinDist = 0.1 # initial minimum distance between any two UAVs
 accelMax = 10. # maximum acceleration value
@@ -89,7 +90,7 @@ print("...", flush = True)
 
 data = dataTools.AerialSwarm(nAgents, commRadius,repelDist,
             nTrain, nValid, 1, # no care about testing, re-generating the dataset for testing
-            duration, samplingTime,
+            duration, updateTime, adjustTime, 
             initVelValue, initMinDist, accelMax,
             normalizeGraph)
 
@@ -141,7 +142,7 @@ for thisModel in modelsGNN.keys():
 #%%
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
                 1, 1, nTest, # no care about training nor validation
-                duration, samplingTime,
+                duration, updateTime, adjustTime,
                 initVelValue, initMinDist, accelMax)
 
 offsetTest = dataTest.getData('offset', 'train')
@@ -149,17 +150,20 @@ skewTest = dataTest.getData('skew', 'train')
 commGraphTest = dataTest.getData('commGraph', 'train')
 
 dataTest.evaluate(offsetTest, skewTest, 1)
-dataTest.evaluate(offsetTest[:,-1:,:,:], skewTest[:,-1:,:,:], 1)              
+dataTest.evaluate(offsetTest[:,-1:,:,:], skewTest[:,-1:,:,:], 1)
+
+for thisModel in modelsGNN.keys():
+
+    modelsGNN[thisModel].evaluate(dataTest)         
 
 #%%
-
 gnn_test = np.load('./gnn_test.npz') # the data file loaded from the example folder
 
 matplotlib.rc('figure', max_open_warning = 0)
 
-offsetTest = gnn_test['posTestBest']
-skewTest = gnn_test['velTestBest']
-adjlTest = gnn_test['accelTestBest']
+offsetTest = gnn_test['offsetTestBest']
+skewTest = gnn_test['skewTestBest']
+adjlTest = gnn_test['adjTestBest']
 stateTest = gnn_test['stateTestBest']
 commGraphTest = gnn_test['commGraphTestBest']
 
@@ -170,8 +174,9 @@ for i in range(0, 20, 3):
     for j in range(0, nAgents, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), offsetTest[i, :, 0, j]) 
-        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+        plt.plot(np.arange(0, np.int32(duration/updateTime), 1), offsetTest[i, :, 0, j]) 
+        plt.xlim((0, np.int32(duration/updateTime)))
+        plt.xticks(np.arange(0, np.int32(duration/updateTime)+1, 2/updateTime), np.arange(0, np.int32(duration/adjustTime)+1, 2/adjustTime))
     # end for 
     plt.xlabel(r'$time (s)$')
     plt.ylabel(r'${\bf \theta}_{gnn}$')
@@ -187,8 +192,9 @@ for i in range(0, 20, 3):
     for j in range(0, nAgents, 1):
         # the input and output features are two dimensions, which means that one 
         # dimension is for x-axis velocity, the other one is for y-axis velocity 
-        plt.plot(np.arange(0, 200, 1), skewTest[i, :, 0, j]) 
-        # networks 4, 6, 7, 8, 9, 10, 12, 14, 15, 16, 17, 19 converge
+        plt.plot(np.arange(0, np.int32(duration/updateTime), 1), skewTest[i, :, 0, j]) 
+        plt.xlim((0, np.int32(duration/updateTime)))
+        plt.xticks(np.arange(0, np.int32(duration/updateTime)+1, 2/updateTime), np.arange(0, np.int32(duration/adjustTime)+1,2/adjustTime))
     # end for 
     plt.xlabel(r'$time (s)$')
     plt.ylabel(r'${\bf \gamma}_{gnn}$')
@@ -196,4 +202,3 @@ for i in range(0, 20, 3):
     plt.grid()
     plt.show()    
 # end for
-

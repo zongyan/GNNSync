@@ -149,7 +149,7 @@ class Trainer:
                     
                     accValid = self.data.evaluate(thetaOffset=offsetTestValid, 
                                                   gammaSkew=skewTestValid, 
-                                                  samplingTime=1)
+                                                  updateTime=0.01)
 
                     endTime = datetime.datetime.now()
 
