@@ -148,8 +148,7 @@ class Trainer:
                             archit = thisArchit, doPrint = False)
                     
                     accValid = self.data.evaluate(thetaOffset=offsetTestValid, 
-                                                  gammaSkew=skewTestValid, 
-                                                  updateTime=0.01)
+                                                  gammaSkew=skewTestValid)
 
                     endTime = datetime.datetime.now()
 
