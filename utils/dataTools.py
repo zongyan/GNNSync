@@ -752,8 +752,8 @@ class AerialSwarm(_data):
                                                   - np.expand_dims(processNoise[:,t-1,0,:], 1)
                 gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/nAgents) * np.expand_dims(adjust[:,t-1,1,:], 1)\
                                                   + np.expand_dims(clkNoise[:,t-1,1,:], 1)                                              
-            else:                                
-                if int((t*self.updateTime) % self.adjustTime) == 0:
+            else:
+                if int(t % (self.adjustTime/self.updateTime)) == 0:                                
                     theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
                                                       + (1/nAgents) * np.expand_dims(adjust[:,t-1,0,:], 1) \
                                                       + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
@@ -963,7 +963,7 @@ class AerialSwarm(_data):
                 gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:] \
                                                   + np.expand_dims(clkNoise[:,t-1,1,:], 1)
             else:                                
-                if int((t*updateTime) % adjustTime) == 0:
+                if int(t % (adjustTime/updateTime)) == 0:
                     theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * updateTime \
                                                       + (1/self.nAgents) * deltaTheta[:,t-1,:,:] \
                                                       + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
