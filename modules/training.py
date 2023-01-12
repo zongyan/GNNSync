@@ -71,11 +71,13 @@ class Trainer:
 
         xTrainOrig, yTrainOrig = self.data.getSamples('train')
         StrainOrig = self.data.getData('commGraph', 'train')
-        initVelTrainAll = self.data.getData('initSkew', 'train')
-
-        xTrainAll = xTrainOrig
-        yTrainAll = yTrainOrig
-        StrainAll = StrainOrig
+        
+        adjStep = [*range(0, np.int32(self.data.duration/self.data.updateTime), \
+                np.int32(self.data.adjustTime/self.data.updateTime))]
+        
+        xTrainAll = xTrainOrig[:,adjStep,:,:]
+        yTrainAll = yTrainOrig[:,adjStep,:,:]
+        StrainAll = StrainOrig[:,adjStep,:,:]        
 
         while epoch < nEpochs:
             randomPermutation = np.random.permutation(nTrain)
@@ -89,12 +91,10 @@ class Trainer:
                 xTrain = xTrainAll[thisBatchIndices]
                 yTrain = yTrainAll[thisBatchIndices]
                 Strain = StrainAll[thisBatchIndices]
-                initVelTrain = initVelTrainAll[thisBatchIndices]
 
                 xTrain = torch.tensor(xTrain, device = thisDevice)
                 Strain = torch.tensor(Strain, device = thisDevice)
                 yTrain = torch.tensor(yTrain, device = thisDevice)
-                initVelTrain = torch.tensor(initVelTrain, device = thisDevice)
 
                 startTime = datetime.datetime.now()
 
@@ -129,7 +129,6 @@ class Trainer:
                 del xTrain
                 del Strain
                 del yTrain
-                del initVelTrain
                 del lossValueTrain
 
                 if (epoch * nBatches + batch) % validationInterval == 0:                    
