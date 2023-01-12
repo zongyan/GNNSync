@@ -15,9 +15,12 @@ import modules.model as model
 import modules.training as training
 import modules.evaluation as evaluation
 
+# Start measuring time
+startRunTime = datetime.datetime.now()
+
 #%%
 thisFilename = 'TimeSync'
-nAgents = 30  # number of UAVs during training 
+nAgents = 25  # number of UAVs during training 
 saveDirRoot = 'experiments' 
 saveDir = os.path.join(saveDirRoot, thisFilename) 
 
@@ -32,9 +35,9 @@ repelDist = 1. # minimum distance before activating repelling function
 nTrain = 400 # number of training samples
 nValid = 20 # number of valid samples
 nTest = 50 # number of testing samples
-duration = 20. # simulation duration 
-updateTime = 0.1 # sampling time
-adjustTime = 1 # sampling time
+duration = 10. # simulation duration 
+updateTime = 0.01 # clock update time
+adjustTime = 0.1 # clock adjustment time
 initVelValue = 3. # initial velocities: [-initVelValue, initVelValue]
 initMinDist = 0.1 # initial minimum distance between any two UAVs
 accelMax = 10. # maximum acceleration value
@@ -155,6 +158,20 @@ dataTest.evaluate(offsetTest[:,-1:,:,:], skewTest[:,-1:,:,:], 1)
 for thisModel in modelsGNN.keys():
 
     modelsGNN[thisModel].evaluate(dataTest)         
+    
+#%%
+endRunTime = datetime.datetime.now()
+
+totalRunTime = abs(endRunTime - startRunTime)
+totalRunTimeH = int(divmod(totalRunTime.total_seconds(), 3600)[0])
+totalRunTimeM, totalRunTimeS = \
+               divmod(totalRunTime.total_seconds() - totalRunTimeH * 3600., 60)
+totalRunTimeM = int(totalRunTimeM)
+print("Simulation started: %s" %startRunTime.strftime("%Y/%m/%d %H:%M:%S"))
+print("Simulation ended:   %s" % endRunTime.strftime("%Y/%m/%d %H:%M:%S"))
+print("Total time: %dh %dm %.2fs" % (totalRunTimeH,
+                                     totalRunTimeM,
+                                     totalRunTimeS))    
 
 #%%
 gnn_test = np.load('./gnn_test.npz') # the data file loaded from the example folder

@@ -116,7 +116,7 @@ class AerialSwarm(_data):
                  accelMax=10.,
                  initOffsetValue=1, initSkewValue=0,
                  maxOffsetValue=0.5, maxSkewValue=5,
-                 sigmaMeasureOffsetValue=0, sigmaProcessOffsetValue=0,                  
+                 sigmaMeasureOffsetValue=0.01, sigmaProcessOffsetValue=0,                  
                  normalizeGraph=True, doPrint=True,
                  dataType=np.float64, device='cpu'):
         
@@ -188,8 +188,8 @@ class AerialSwarm(_data):
                                                     self.duration, self.updateTime,
                                                     self.sigmaMeasureOffsetValue,
                                                     self.sigmaProcessOffsetValue, 
-                                                    sigmaOffsetVal=0, 
-                                                    sigmaSkewVal=0)
+                                                    sigmaOffsetVal=0.01, 
+                                                    sigmaSkewVal=0.001)
                       
         self.clockNoise = {}   
         self.packetExchangeDelay = {}
@@ -1022,6 +1022,12 @@ class AerialSwarm(_data):
         processingMeanVal = np.array([0, 0], self.dataType)         
                     
         rng = default_rng()
+        # for the clock noise configurations, we use the clock A in the following 
+        # paper:
+        # Giada Giorgi, Claudio Narduzzi, Performance Analysis of Kalman-Filter-Based 
+        # Clock Synchronization in IEEE 1588 Networks,
+        # the standard deviation of clock offset is 1us, and the standard 
+        # deviation of the clock skew is 0.01ppm
         clkNoise = rng.multivariate_normal(clockMeanVal, covM, nSamples*time*nAgents)                
         clkNoise = clkNoise.reshape((nSamples, time, nAgents, 2))     
         clkNoise = clkNoise.transpose(0,1,3,2)

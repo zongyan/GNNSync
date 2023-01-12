@@ -72,8 +72,8 @@ class Trainer:
         xTrainOrig, yTrainOrig = self.data.getSamples('train')
         StrainOrig = self.data.getData('commGraph', 'train')
         
-        adjStep = [*range(0, np.int32(self.data.duration/self.data.updateTime), \
-                np.int32(self.data.adjustTime/self.data.updateTime))]
+        adjStep = [*range(0, int(self.data.duration/self.data.updateTime), \
+                int(self.data.adjustTime/self.data.updateTime))]
         
         xTrainAll = xTrainOrig[:,adjStep,:,:]
         yTrainAll = yTrainOrig[:,adjStep,:,:]
