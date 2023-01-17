@@ -266,7 +266,7 @@ class HiddenState_DB(nn.Module):
         return reprString
     
 class OutoutState_DB(nn.Module):
-    def __init__(self, G, F, K, E = 1, bias = True):
+    def __init__(self, G, F, K, H, E = 1, bias = True):
         # K: number of filter taps
         # GSOs will be added later.
         # This combines both weight scalars and weight vectors.
@@ -278,9 +278,12 @@ class OutoutState_DB(nn.Module):
         self.F = F
         self.K = K
         self.E = E
+        self.H = H        
         self.S = None # No GSO assigned yet
 
         self.weight = nn.parameter.Parameter(torch.Tensor(F, E, K, G))
+        self.weightsK3 = nn.parameter.Parameter(torch.Tensor(H, H))        
+        self.weightsK4 = nn.parameter.Parameter(torch.Tensor(H, E, K, G))        
         if bias:
             self.bias = nn.parameter.Parameter(torch.Tensor(F, 1))
         else:
@@ -291,7 +294,10 @@ class OutoutState_DB(nn.Module):
     def reset_parameters(self):
         # taken from _ConvNd initialization of parameters
         stdv = 1. / math.sqrt(self.G * self.K)
-        self.weight.data.uniform_(-stdv, stdv)
+        self.weight.data.uniform_(-stdv, stdv)        
+        self.weightsK3.data.uniform_(-stdv, stdv)
+        self.weightsK4.data.uniform_(-stdv, stdv)        
+        
         if self.bias is not None:
             self.bias.data.uniform_(-stdv, stdv)
 
@@ -303,20 +309,32 @@ class OutoutState_DB(nn.Module):
         assert S.shape[4] == self.N
         self.S = S
 
-    def forward(self, x):
+    def forward(self, z, x):
         # input: ###
+        # z: batchSize x time x dimHidFeatures x numberNodesIn        
         # x: batchSize x time x dimInFeatures x numberNodesIn
         # output: ###
         # u: batchSize x time x dimOutFeatures x numberNodes
             
-        assert len(x.shape) == 4
-        B = x.shape[0]
+        assert len(z.shape) == 4
+        B = z.shape[0]
         assert self.S.shape[0] == B
-        T = x.shape[1]
+        T = z.shape[1]
+        assert self.S.shape[1] == T
+        H = z.shape[2]
+        assert z.shape[3] == self.N
+        
+        assert len(x.shape) == 4
+        assert B == x.shape[0]
+        assert self.S.shape[0] == B
+        assert T == x.shape[1]
         assert self.S.shape[1] == T
         F = x.shape[2]
-        assert x.shape[3] == self.N
+        assert x.shape[3] == self.N        
 
-        u = LSIGF_DB(self.weight, self.S, x, self.bias)
+        WK3 = torch.matmul(self.weightsK3.reshape(1, 1, H, H), z) # [1 x 1 x H x H] * [B x T x H x N]
+        XK4 = LSIGF_DB(self.weightsK4, self.S, x, self.bias) # B x T x H x N        
+
+        u = WK3 + XK4
         
         return u    

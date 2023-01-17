@@ -102,7 +102,7 @@ class GraphRecurrentNN_DB(nn.Module):
                                        nonlinearity = self.sigma, E = self.E,
                                        bias = self.bias)
         # output state
-        self.outputState = gml.GraphFilter_DB(self.H, self.G, self.K[1],
+        self.outputState = gml.OutoutState_DB(self.H, self.G, self.K[1],
                                               E = self.E, bias = self.bias)
 
         fc = []
