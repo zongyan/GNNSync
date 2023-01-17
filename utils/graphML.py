@@ -166,11 +166,12 @@ def GRNN_DB(K1, K2, S, x, sigma, xBias=None, wBias = None):
             WK1t = WK1t + wBias
         
         # Get the corresponding value of XK2 
-        XK2t = torch.index_select(XK2, 1, torch.tensor(0, device = XK2.device)).reshape(B, H, N)        
+        XK2t = torch.index_select(XK2, 1, torch.tensor(t, device = XK2.device)).reshape(B, H, N)        
         wt = WK1t + XK2t # [B x H x N] + [B x H x N]
         
-        wt = sigma(wt).unsqueeze(1) # B x 1 x H x N        
-        w = torch.cat((w, wt), dim = 1) # B x (t+1) x H x N        
+        wt = sigma(wt) # B x H x N        
+        wtThis = wt.unsqueeze(1) # B x 1 x H x N                
+        w = torch.cat((w, wtThis), dim = 1) # B x (t+1) x H x N        
     
     return w # B x T x H x N
 
@@ -179,21 +180,20 @@ class HiddenState_DB(nn.Module):
         # Initialize parent:
         super().__init__()
         
-        # Store the values (using the notation in the paper):
-        self.F = F # Input Features
-        self.H = H # Hidden Features
-        self.K = K # Filter taps
-        self.E = E # Number of edge features
+        self.F = F # input features
+        self.H = H # hidden features
+        self.K = K # filter taps
+        self.E = E # number of edge features
         self.S = None
-        self.bias = bias # Boolean
+        self.bias = bias # boolean
         self.sigma = nonlinearity # torch.nn.functional
         
         # Create parameters:
-        self.weightsK1 = nn.parameter.Parameter(torch.Tensor(H, H))
-        self.weightsK2 = nn.parameter.Parameter(torch.Tensor(H, E, K, F))
+        self.weightsK1 = nn.parameter.Parameter(torch.Tensor(H, H)) # todo: check the dimension
+        self.weightsK2 = nn.parameter.Parameter(torch.Tensor(H, E, K, F)) # todo: check the dimension
         if self.bias:
-            self.xBias = nn.parameter.Parameter(torch.Tensor(H, 1))
-            self.wBias = nn.parameter.Parameter(torch.Tensor(H, 1))
+            self.xBias = nn.parameter.Parameter(torch.Tensor(H, 1)) # todo: check the dimension
+            self.wBias = nn.parameter.Parameter(torch.Tensor(H, 1)) # todo: check the dimension
         else:
             self.register_parameter('xBias', None)
             self.register_parameter('wBias', None)
@@ -209,14 +209,14 @@ class HiddenState_DB(nn.Module):
             self.xBias.data.uniform_(-stdv, stdv)
             self.wBias.data.uniform_(-stdv, stdv)
 
-    def forward(self, x, z0):
+    def forward(self, w0, x):
         
         assert self.S is not None
 
         # Input
         #   S: B x T (x E) x N x N
         #   x: B x T x F x N
-        #   z0: B x H x N
+        #   w0: B x H x N
         # Output
         #   z: B x T x H x N
         
@@ -229,10 +229,10 @@ class HiddenState_DB(nn.Module):
         assert x.shape[2] == self.F
         N = x.shape[3]
         
-        assert len(z0.shape) == 3
-        assert z0.shape[0] == B
-        assert z0.shape[1] == self.H
-        assert z0.shape[2] == N
+        assert len(w0.shape) == 3
+        assert w0.shape[0] == B
+        assert w0.shape[1] == self.H
+        assert w0.shape[2] == N
         
         z = GRNN_DB(self.weightsK1, self.weightsK2,
                     self.S, x, self.sigma,
@@ -265,8 +265,8 @@ class HiddenState_DB(nn.Module):
             reprString += "no GSO stored"
         return reprString
     
-class OutoutState_DB(nn.Module):
-    def __init__(self, G, F, K, H, E = 1, bias = True):
+class OutputState_DB(nn.Module):
+    def __init__(self, F, H, G, K, E = 1, bias = True):
         # K: number of filter taps
         # GSOs will be added later.
         # This combines both weight scalars and weight vectors.
@@ -274,18 +274,17 @@ class OutoutState_DB(nn.Module):
 
         super().__init__() # initialize parent
 
-        self.G = G
         self.F = F
+        self.H = H        
+        self.G = G
         self.K = K
         self.E = E
-        self.H = H        
         self.S = None # No GSO assigned yet
 
-        self.weight = nn.parameter.Parameter(torch.Tensor(F, E, K, G))
-        self.weightsK3 = nn.parameter.Parameter(torch.Tensor(H, H))        
-        self.weightsK4 = nn.parameter.Parameter(torch.Tensor(H, E, K, G))        
+        self.weightsK3 = nn.parameter.Parameter(torch.Tensor(H, H)) # todo: check the dimension        
+        self.weightsK4 = nn.parameter.Parameter(torch.Tensor(H, E, K, F)) # todo: check the dimension        
         if bias:
-            self.bias = nn.parameter.Parameter(torch.Tensor(F, 1))
+            self.bias = nn.parameter.Parameter(torch.Tensor(F, 1)) # todo: check the dimension
         else:
             self.register_parameter('bias', None)
 
@@ -294,7 +293,6 @@ class OutoutState_DB(nn.Module):
     def reset_parameters(self):
         # taken from _ConvNd initialization of parameters
         stdv = 1. / math.sqrt(self.G * self.K)
-        self.weight.data.uniform_(-stdv, stdv)        
         self.weightsK3.data.uniform_(-stdv, stdv)
         self.weightsK4.data.uniform_(-stdv, stdv)        
         
@@ -326,15 +324,15 @@ class OutoutState_DB(nn.Module):
         
         assert len(x.shape) == 4
         assert B == x.shape[0]
-        assert self.S.shape[0] == B
         assert T == x.shape[1]
-        assert self.S.shape[1] == T
         F = x.shape[2]
         assert x.shape[3] == self.N        
-
+        
+        # todo: double check the calculation of WK3
         WK3 = torch.matmul(self.weightsK3.reshape(1, 1, H, H), z) # [1 x 1 x H x H] * [B x T x H x N]
         XK4 = LSIGF_DB(self.weightsK4, self.S, x, self.bias) # B x T x H x N        
 
         u = WK3 + XK4
         
         return u    
+    

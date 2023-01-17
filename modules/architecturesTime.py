@@ -82,27 +82,39 @@ class GraphRecurrentNN_DB(nn.Module):
                  nonlinearityHidden, nonlinearityOutput, nonlinearityReadout,
                  dimReadout, dimEdgeFeatures):
         super().__init__()
+
+        # hParamsGraphRNN['dimInputSignals'] = 2 
+        # hParamsGraphRNN['dimOutputSignals'] = 2
+        # hParamsGraphRNN['dimHiddenSignals'] = 2
+        # hParamsGraphRNN['nFilterTaps'] = [1] * 2 
+        # hParamsGraphRNN['bias'] = True 
+        # hParamsGraphRNN['nonlinearityHidden'] = nonlinearityHidden
+        # hParamsGraphRNN['nonlinearityOutput'] = nonlinearity
+        # hParamsGraphRNN['nonlinearityReadout'] = nonlinearity
+    
+        # hParamsGraphRNN['dimReadout'] = [2]
+        # hParamsGraphRNN['dimEdgeFeatures'] = 1 # Scalar edge weights
         
         assert len(nFilterTaps) == 2
         
-        self.F = dimInputSignals # number of input features
-        self.G = dimOutputSignals # number of output features
-        self.H = dimHiddenSignals # number of hidden features
-        self.K = nFilterTaps # filter taps
-        self.E = dimEdgeFeatures # number of edge features
-        self.bias = bias # boolean
+        self.F = dimInputSignals # number of input features = 2
+        self.G = dimOutputSignals # number of output features = 2
+        self.H = dimHiddenSignals # number of hidden features = 2
+        self.K = nFilterTaps # filter taps = 1
+        self.E = dimEdgeFeatures # number of edge features = 1
+        self.bias = bias # boolean = yes
 
-        self.sigma = nonlinearityHidden
-        self.rho = nonlinearityOutput
-        self.nonlinearityReadout = nonlinearityReadout
-        self.dimReadout = dimReadout
+        self.sigma = nonlinearityHidden # yes
+        self.rho = nonlinearityOutput # no
+        self.nonlinearityReadout = nonlinearityReadout # no
+        self.dimReadout = dimReadout # = 2
 
         # hidden state
         self.hiddenState = gml.HiddenState_DB(self.F, self.H, self.K[0],
                                        nonlinearity = self.sigma, E = self.E,
                                        bias = self.bias)
         # output state
-        self.outputState = gml.OutoutState_DB(self.H, self.G, self.K[1],
+        self.outputState = gml.OutputState_DB(self.F, self.H, self.G, self.K[1],
                                               E = self.E, bias = self.bias)
 
         fc = []
@@ -117,7 +129,7 @@ class GraphRecurrentNN_DB(nn.Module):
         
     def splitForward(self, x, S):
         # input: ### 
-        # x: B x T x F[0] x N        
+        # x: B x T x F x N        
         # S: B x T (x E) x N x N
         
         assert len(S.shape) == 4 or len(S.shape) == 5
@@ -137,17 +149,20 @@ class GraphRecurrentNN_DB(nn.Module):
         
         # This can be generated here or generated outside of here, not clear yet
         # what's the most coherent option
-        z0 = torch.randn((B, self.H, N), device = x.device)
+        # yan: from the control perspective, this w0 shoud not be initialised to 
+        # be zero
+        # w0 = torch.randn((B, self.H, N), device = x.device)
+        w0 = torch.zeros((B, self.H, N), device = x.device)        
         
         # Add the GSO for each graph filter
         self.hiddenState.addGSO(S)
         self.outputState.addGSO(S)
         
         # Compute the trajectory of hidden states
-        z, _ = self.hiddenState(x, z0)
-        # Compute the output trajectory from the hidden states
-        yOut = self.outputState(z)
-        yOut = self.rho(yOut) # Don't forget the nonlinearity!
+        z, _ = self.hiddenState(w0, x)
+        # Compute the output trajectory from the hidden states and input signals
+        yOut = self.outputState(z, x)
+        # yOut = self.rho(yOut) # Don't forget the nonlinearity!
         #   B x T x G x N
         # Change the order, for the readout
         y = yOut.permute(0, 1, 3, 2) # B x T x N x G

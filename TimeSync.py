@@ -35,7 +35,7 @@ repelDist = 1. # minimum distance before activating repelling function
 nTrain = 400 # number of training samples
 nValid = 20 # number of valid samples
 nTest = 50 # number of testing samples
-duration = 5. # simulation duration 
+duration = 2. # simulation duration 
 updateTime = 0.01 # clock update time
 adjustTime = 0.01 # clock adjustment time
 initVelValue = 3. # initial velocities: [-initVelValue, initVelValue]
@@ -64,17 +64,51 @@ printInterval = 1 # after how many training steps, print the partial results
 
 modelList = []
 
-hParamsGCNN = {}
-hParamsGCNN['name'] = 'GCNN'
-hParamsGCNN['archit'] = architTime.LocalGNN_DB
-hParamsGCNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-hParamsGCNN['dimNodeSignals'] = [2, 16] # features per layer
-hParamsGCNN['nFilterTaps'] = [2] # number of filter taps
-hParamsGCNN['bias'] = True
-hParamsGCNN['nonlinearity'] = nonlinearity
-hParamsGCNN['dimReadout'] = [2] 
-hParamsGCNN['dimEdgeFeatures'] = 1 # scalar edge weights
-modelList += [hParamsGCNN['name']]
+doGCNN = False
+if doGCNN:
+    hParamsGCNN = {}
+    hParamsGCNN['name'] = 'GCNN'
+    hParamsGCNN['archit'] = architTime.LocalGNN_DB
+    hParamsGCNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+    hParamsGCNN['dimNodeSignals'] = [2, 16] # features per layer
+    hParamsGCNN['nFilterTaps'] = [2] # number of filter taps
+    hParamsGCNN['bias'] = True
+    hParamsGCNN['nonlinearity'] = nonlinearity
+    hParamsGCNN['dimReadout'] = [2] 
+    hParamsGCNN['dimEdgeFeatures'] = 1 # scalar edge weights
+    modelList += [hParamsGCNN['name']]
+
+doGRNN = True
+if doGRNN:
+
+    #\\\ Basic parameters for the Graph RNN architecture
+
+    hParamsGRNN = {} # Hyperparameters (hParams) for the Local GNN (LclGNN)
+
+    hParamsGRNN['name'] = 'GRNN'
+    # Chosen architecture
+    hParamsGRNN['archit'] = architTime.GraphRecurrentNN_DB
+    hParamsGRNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+
+    # Graph convolutional parameters
+    hParamsGRNN['dimInputSignals'] = 2 # Features per layer
+    hParamsGRNN['dimOutputSignals'] = 2
+    hParamsGRNN['dimHiddenSignals'] = 2
+    hParamsGRNN['nFilterTaps'] = [1] * 2 # Number of filter taps
+    hParamsGRNN['bias'] = True # Decide whether to include a bias term
+    # Nonlinearity
+    hParamsGRNN['nonlinearityHidden'] = nonlinearityHidden
+    hParamsGRNN['nonlinearityOutput'] = nonlinearity
+    hParamsGRNN['nonlinearityReadout'] = nonlinearity
+    # Readout layer: local linear combination of features
+    hParamsGRNN['dimReadout'] = [2] # Dimension of the fully connected
+        # layers after the GCN layers (map); this fully connected layer
+        # is applied only at each node, without any further exchanges nor 
+        # considering all nodes at once, making the architecture entirely
+        # local.
+    # Graph structure
+    hParamsGRNN['dimEdgeFeatures'] = 1 # Scalar edge weights
+    modelList += [hParamsGRNN['name']]    
 
 trainingOptions = {}
 trainingOptions['printInterval'] = printInterval
