@@ -217,7 +217,7 @@ def GRNN_DB(K1, K2, S, x, sigma, xBias=None, wBias = None):
         self.weightsK2.data.uniform_(-stdv, stdv)
         if self.bias:
             self.xBias.data.uniform_(-stdv, stdv)
-            self.zBias.data.uniform_(-stdv, stdv)
+            self.wBias.data.uniform_(-stdv, stdv)
 
     def forward(self, x, z0):
         
