@@ -117,69 +117,44 @@ class GraphFilter_DB(nn.Module):
         
         return u
     
-def GRNN_DB(a, b, S, x, z0, sigma,
-                   xBias=None, zBias = None):
-    """
-    GRNN_DB(signal_to_hidden_taps, hidden_to_hidden_taps, GSO, input,
-            initial_hidden, nonlinearity, signal_bias, hidden_bias)
-    Computes the sequence of hidden states for the input sequence x following 
-    the equation z_{t} = sigma(A(S) x_{t} + B(S) z_{t-1}) with initial state z0
-    and where sigma is the nonlinearity, and A(S) and B(S) are the 
-    Input-to-Hidden filters and the Hidden-to-Hidden filters with the 
-    corresponding taps.
+def GRNN_DB(a, b, K1, K2, S, x, z0, sigma, xBias=None, zBias = None, wBias = None):
+    # input: ###
+    # a: H x E x K x F (Input to Hidden filters)
+    # b: H x E x K x H (Hidden to Hidden filters)
+    # S: B x T x E x N x N (GSO)
+    # x: B x T x F x N (Input signal)
+    # z0: B x H x N (Initial state)
+    # xBias: 1 x 1 x H x 1 (bias on the Input to Hidden features)
+    # zBias: 1 x 1 x H x 1 (bias on the Hidden to Hidden features)
     
-    Inputs:
-        signal_to_hidden_taps (torch.tensor): shape
-            hidden_features x edge_features x filter_taps x signal_features
-        hidden_to_hidden_taps (torch.tensor): shape
-            hidden_features x edge_features x filter_taps x hidden_features
-        GSO (torch.tensor): shape
-            batch_size x time x edge_features x number_nodes x number_nodes
-        input (torch.tensor): shape
-            batch_size x time x signal_features x number_nodes
-        initial_hidden: shape
-            batch_size x hidden_features x number_nodes
-        signal_bias (torch.tensor): shape
-            1 x 1 x hidden_features x 1
-        hidden_bias (torch.tensor): shape
-            1 x 1 x hidden_features x 1
+    # K2: H x E x K x F (input to hidden filters)    
     
-    Outputs:
-        hidden_state: shape
-            batch_size x time x hidden_features x number_nodes
-            
-    """
-    # We will compute the hidden state for a delayed and batch data.
     
-    # So, the input
-    #   a: H x E x K x F (Input to Hidden filters)
-    #   b: H x E x K x H (Hidden to Hidden filters)
-    #   S: B x T x E x N x N (GSO)
-    #   x: B x T x F x N (Input signal)
-    #   z0: B x H x N (Initial state)
-    #   xBias: 1 x 1 x H x 1 (bias on the Input to Hidden features)
-    #   zBias: 1 x 1 x H x 1 (bias on the Hidden to Hidden features)
-    # And the output has to be
-    #   z: B x T x H x N (Hidden state signal)
+    # output: ###
+    # z: B x T x H x N (Hidden state signal)    
     
     # Check dimensions
-    H = a.shape[0] # Number of hidden state features
-    E = a.shape[1] # Number of edge features
-    K = a.shape[2] # Number of filter taps
-    F = a.shape[3] # Number of input features
+    H = a.shape[0] # number of hidden state features
+    E = a.shape[1] # number of edge features
+    K = a.shape[2] # number of filter taps
+    F = a.shape[3] # number of input features
+    
     assert b.shape[0] == H
     assert b.shape[1] == E
     assert b.shape[2] == K
     assert b.shape[3] == H
+
     B = S.shape[0]
     T = S.shape[1]
     assert S.shape[2] == E
     N = S.shape[3]
     assert S.shape[4] == N
+
     assert x.shape[0] == B
     assert x.shape[1] == T
     assert x.shape[2] == F
     assert x.shape[3] == N
+    
     assert z0.shape[0] == B
     assert z0.shape[1] == H
     assert z0.shape[2] == N
@@ -188,6 +163,38 @@ def GRNN_DB(a, b, S, x, z0, sigma,
     Ax = LSIGF_DB(a, S, x, b = xBias) # B x T x H x N
     # This is the filtered signal for all time instants.
     # This also doesn't split S, it only splits x.
+    
+    '''
+    w[t+1] = sigma(K1 w[t] + K2 x[t])
+    '''
+    # K1: H x H (hidden to hidden filters)    
+    # K2: H x E x K x F (input to hidden filters)
+    # S: B x T x E x N x N (GSO)
+    # x: B x T x F x N (input signal)
+    # xBias: 1 x 1 x H x 1 (bias on the input to hidden features)
+    # wBias: 1 x 1 x H x 1 (bias on the hidden to hidden features)    
+    XK2 = LSIGF_DB(K2, S, x, b = xBias) # B x T x H x N 
+
+    # now compute the first time instant
+    wt = torch.index_select(XK2, 1, torch.tensor(0, device = Ax.device)).reshape(B, H, N)
+    w = wt.unsqueeze(1) # B x 1 x H x N
+    
+    # starting now, we need to multiply this by K1 every time
+    for t in range(1,T):
+        WK1t = torch.matmul(K1.unsqueeze(0), wt) # [1 x H x H] * [B x H x N]
+
+        if wBias is not None:
+            WK1t = WK1t + wBias
+        
+        # Get the corresponding value of XK2 
+        XK2t = torch.index_select(XK2, 1, torch.tensor(0, device = Ax.device)).reshape(B, H, N)        
+        wt = WK1t + XK2t # [B x H x N] + [B x H x N]
+        
+        wt = sigma(wt).unsqueeze(1) # B x 1 x H x N        
+        w = torch.cat((w, wt), dim = 1) # B x (t+1) x H x N        
+    
+    return w # B x T x H x N        
+        
     
     # The b parameters we will always need them in this shape
     b = b.unsqueeze(0).reshape(1, H, E*K*H) # 1 x H x EKH, change from 'H x E x K x H'
@@ -248,7 +255,10 @@ def GRNN_DB(a, b, S, x, z0, sigma,
             # now, and there are t of those
             St = St.repeat(1, t, 1, 1, 1) # B x t x E x N x N
             # Multiply by the newly acquired St to do one more delay
-            Sz = torch.matmul(Sz, St) # B x t x E x H x N = [B x 1 x E x H x N] * [B x t x E x N x N]   
+            Sz = torch.matmul(Sz, St) # B x t x E x H x N = [B x 1 x E x H x N] * [B x t x E x N x N] 
+            # 因为这里的S是一个对称矩阵，所以这么乘是可以的了。
+            # 但是最好的方式，还是S * Z，那么此时的S的维度是N x N，Z的维度是N x feature
+            # 而上述的方式，Z的维度是feature x N，然后S的维度是N x N
             # Observe that these delays are backward: the last element in the
             # T dimension (dim = 1) is the latest element, this makes sense 
             # since that is the element we want to multiply by the last element
@@ -299,7 +309,7 @@ def GRNN_DB(a, b, S, x, z0, sigma,
             bSz = Sz.permute(0, 4, 2, 1, 3).reshape(B, N, E*K*H)
         
         # Get back to proper order
-        bSz = bSz.permute(0, 2, 1) # B x EKH x N
+        bSz = bSz.permute(0, 2, 1) # B x EKH x N，因为是一个K步，就是就是K的维度，但是在更新的时候，
         #   And multiply with the coefficients
         Bzt = torch.matmul(b, bSz) # B x H x N
         # Now that we have the Bz for this time instant, add the bias
@@ -312,63 +322,9 @@ def GRNN_DB(a, b, S, x, z0, sigma,
         zt = sigma(Axt + Bzt).unsqueeze(1) # B x 1 x H x N
         z = torch.cat((z, zt), dim = 1) # B x (t+1) x H x N
     
-    return z # B x T x H x N    
+    return z # B x T x H x N    因为我们的T horizon，所以才是会有一个T的维度，但是单个的就是B*H*N
 
 class HiddenState_DB(nn.Module):
-    """
-    HiddenState_DB Creates the layer for computing the hidden state of a GRNN
-    
-    Initialization:
-        
-        HiddenState_DB(signal_features, hidden_features, filter_taps,
-                       nonlinearity=torch.tanh, edge_features=1, bias=True)
-        
-        Inputs:
-            signal_features (int): number of signal features
-            hidden_features (int): number of hidden state features
-            filter_taps (int): number of filter taps (both filters have the
-                same number of filter taps)
-            nonlinearity (torch function): nonlinearity applied when computing
-                the hidden state
-            edge_features (int): number of features over each edge
-            bias (bool): add bias vector (one bias per feature) after each
-                filter
-        
-        Output:
-            torch.nn.Module for a hidden state layer
-            
-        Observation: Input-to-Hidden Filter taps have shape
-                hidden_features x edge_features x filter_taps x signal_features
-            Hidden-to-Hidden FIlter taps have shape
-                hidden_features x edge_features x filter_taps x hidden_features
-                
-    Add graph shift operator:
-
-    HiddenState_DB.addGSO(GSO) Before applying the layer, we need to define
-    the GSO that we are going to use. This allows to change the GSO while
-    using the same filtering coefficients (as long as the number of edge
-    features is the same; but the number of nodes can change).
-
-    Inputs:
-        GSO (torch.tensor): graph shift operator; shape:
-            batch_size x time_samples x edge_features 
-                                              x number_nodes x number_nodes
-                                              
-    Forward call:
-
-        y = HiddenState_DB(x, z0)
-
-        Inputs:
-            x (torch.tensor): input data; shape:
-                batch_size x time_samples x signal_features x number_nodes
-            z0 (torch.tensor): initial hidden state; shape:
-                batch_size x hidden_features x number_nodes
-
-        Outputs:
-            y (torch.tensor): hidden state; shape:
-                batch_size x time_samples x hidden_features x number_nodes
-    """
-
     def __init__(self, F, H, K, nonlinearity = torch.tanh, E = 1, bias = True):
         # Initialize parent:
         super().__init__()
