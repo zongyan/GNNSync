@@ -264,3 +264,59 @@ class HiddenState_DB(nn.Module):
         else:
             reprString += "no GSO stored"
         return reprString
+    
+class OutoutState_DB(nn.Module):
+    def __init__(self, G, F, K, E = 1, bias = True):
+        # K: number of filter taps
+        # GSOs will be added later.
+        # This combines both weight scalars and weight vectors.
+        # Bias will always be shared and scalar.
+
+        super().__init__() # initialize parent
+
+        self.G = G
+        self.F = F
+        self.K = K
+        self.E = E
+        self.S = None # No GSO assigned yet
+
+        self.weight = nn.parameter.Parameter(torch.Tensor(F, E, K, G))
+        if bias:
+            self.bias = nn.parameter.Parameter(torch.Tensor(F, 1))
+        else:
+            self.register_parameter('bias', None)
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        # taken from _ConvNd initialization of parameters
+        stdv = 1. / math.sqrt(self.G * self.K)
+        self.weight.data.uniform_(-stdv, stdv)
+        if self.bias is not None:
+            self.bias.data.uniform_(-stdv, stdv)
+
+    def addGSO(self, S):
+        # S: B x T x E x N x N        
+        assert len(S.shape) == 5
+        assert S.shape[2] == self.E
+        self.N = S.shape[3]
+        assert S.shape[4] == self.N
+        self.S = S
+
+    def forward(self, x):
+        # input: ###
+        # x: batchSize x time x dimInFeatures x numberNodesIn
+        # output: ###
+        # u: batchSize x time x dimOutFeatures x numberNodes
+            
+        assert len(x.shape) == 4
+        B = x.shape[0]
+        assert self.S.shape[0] == B
+        T = x.shape[1]
+        assert self.S.shape[1] == T
+        F = x.shape[2]
+        assert x.shape[3] == self.N
+
+        u = LSIGF_DB(self.weight, self.S, x, self.bias)
+        
+        return u    
