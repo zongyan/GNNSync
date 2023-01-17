@@ -199,17 +199,7 @@ class HiddenState_DB(nn.Module):
             self.register_parameter('wBias', None)
         # Initialize parameters
         self.reset_parameters()        
-
-def GRNN_DB(K1, K2, S, x, sigma, xBias=None, wBias = None):
-    # input: ###
-    # K1: H x H (hidden to hidden filters)    
-    # K2: H x E x K x F (input to hidden filters)
-    # S: B x T x E x N x N (GSO)
-    # x: B x T x F x N (input signal)
-    # xBias: 1 x 1 x H x 1 (bias on the input to hidden features)
-    # wBias: 1 x 1 x H x 1 (bias on the hidden to hidden features)    
-        
-        
+               
     def reset_parameters(self):
         # Taken from _ConvNd initialization of parameters:
         stdv = 1. / math.sqrt(self.F * self.K)
