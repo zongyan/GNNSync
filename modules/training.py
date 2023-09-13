@@ -34,7 +34,7 @@ class Trainer:
             while sum(batchSize) != nTrain:
                 batchSize[-1] -= 1
         else:
-            nBatches = np.int(nTrain/batchSize)
+            nBatches = np.int64(nTrain/batchSize)
             batchSize = [batchSize] * nBatches
         batchIndex = np.cumsum(batchSize).tolist()
         batchIndex = [0] + batchIndex

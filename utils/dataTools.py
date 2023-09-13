@@ -712,10 +712,10 @@ class AerialSwarm(_data):
         else:
             doPrint = self.doPrint # Use default      
             
-        theta = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float)
-        gamma = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float)
-        adjust = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float)
-        state = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float)
+        theta = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float64)
+        gamma = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float64)
+        adjust = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float64)
+        state = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float64)
             
         if useTorch:
             theta[:,0,:,:] = initTheta.cpu().numpy()
