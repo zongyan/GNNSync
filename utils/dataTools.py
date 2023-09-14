@@ -114,9 +114,10 @@ class AerialSwarm(_data):
                  duration, updateTime, adjustTime,
                  initVelValue=3.,initMinDist=0.1,
                  accelMax=10.,
-                 initOffsetValue=1, initSkewValue=0,
-                 maxOffsetValue=0.5, maxSkewValue=5,
-                 sigmaMeasureOffsetValue=0.01, sigmaProcessOffsetValue=0,                  
+                 initOffsetValue=1., initSkewValue=0.,
+                 meanOffsetValue=0.0, stdOffsetValue=0.5,
+                 meanSkewValue=0.0, stdSkewValue=5.,
+                 sigmaMeasureOffsetValue=0., sigmaProcessOffsetValue=0.,                  
                  normalizeGraph=True, doPrint=True,
                  dataType=np.float64, device='cpu'):
         
@@ -135,9 +136,12 @@ class AerialSwarm(_data):
         self.accelMax = accelMax
         
         self.initOffsetValue = initOffsetValue # x100 us
-        self.initSkewValue = initSkewValue # x10 ppm
-        self.maxOffsetValue = maxOffsetValue # x100 us
-        self.maxSkewValue = maxSkewValue # x10 ppm  
+        self.meanOffsetValue = meanOffsetValue # x100 us
+        self.stdOffsetValue = stdOffsetValue # x100 us
+        
+        self.initSkewValue = initSkewValue # x10 ppm        
+        self.meanSkewValue = meanSkewValue # x10 ppm
+        self.stdSkewValue = stdSkewValue # x10 ppm
 
         self.sigmaMeasureOffsetValue = sigmaMeasureOffsetValue # x100us 
         self.sigmaProcessOffsetValue = sigmaProcessOffsetValue # x100us
@@ -172,7 +176,8 @@ class AerialSwarm(_data):
                                           self.nAgents, nSamples, 
                                           self.commRadius, self.initMinDist,                                                                                           
                                           self.initOffsetValue, self.initSkewValue,
-                                          self.maxOffsetValue, self.maxSkewValue,
+                                          self.meanOffsetValue, self.stdOffsetValue,
+                                          self.meanSkewValue, self.stdSkewValue,
                                           xMaxInitVel=self.initVelValue,
                                           yMaxInitVel=self.initVelValue)
         
@@ -1052,13 +1057,13 @@ class AerialSwarm(_data):
     
     def computeInitialConditions(self, nAgents, nSamples, commRadius, minDist=0.1,
                                 initOffsetVal=1., initSkewVal=2.5,
-                                maxOffset=0.5, maxSkew=2.5,                                
+                                meanOffset=0.0, stdOffset=0.5, meanSkew=0.0, stdSkew=2.5,
                                 **kwargs):             
         # initPos: nSamples x 2 x nNodes
         # initVel: nSamples x 2 x nNodes
         # initOffset: nSamples x 1 x nNodes
-        # initSkew: nSamples x 1 x nNodes
-                
+        # initSkew: nSamples x 1 x nNodes                
+        
         assert minDist*(1.+zeroTolerance) <= commRadius*(1.-zeroTolerance)
         minDist = minDist * (1. + zeroTolerance)
         commRadius = commRadius * (1. - zeroTolerance)
@@ -1154,16 +1159,17 @@ class AerialSwarm(_data):
         velBias = np.concatenate((xVelBias, yVelBias)).reshape((nSamples,2,1))
         initVel = np.concatenate((xInitVel, yInitVel), axis = 1) + velBias # nSamples x 2 x nAgents            
         
-        #### next generate the time information of UAVs ####                                
+        #### next generate the time information of UAVs ####
+        # ToDo: the distributions of clock offset and skew noises should be determined carefully                                  
         offsetFixed = np.repeat(initOffsetVal, nSamples*nAgents, axis = 0)             
-        skewFixed = np.repeat(initSkewVal, nSamples*nAgents, axis = 0)     
-                
-        offsetPerturb = np.random.uniform(low = -maxOffset,
-                                          high = maxOffset,
-                                          size = nSamples*nAgents)
+        skewFixed = np.repeat(initSkewVal, nSamples*nAgents, axis = 0)
+               
+        offsetPerturb = np.random.normal(loc = meanOffset,
+                                          scale = stdOffset,
+                                          size = nSamples*nAgents)    
 
-        skewPerturb = np.random.uniform(low = -maxSkew,
-                                        high = maxSkew,
+        skewPerturb = np.random.normal(loc = meanSkew,
+                                        scale = stdSkew,
                                         size = nSamples*nAgents)
         
         initOffset = offsetFixed + offsetPerturb 
