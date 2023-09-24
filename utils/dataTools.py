@@ -115,8 +115,8 @@ class AerialSwarm(_data):
                  initVelValue=3.,initMinDist=0.1,
                  accelMax=10.,
                  initOffsetValue=1., initSkewValue=0.,
-                 meanOffsetValue=0.0, stdOffsetValue=0.5,
-                 meanSkewValue=0.0, stdSkewValue=5.,
+                 meanOffsetValue=0., stdOffsetValue=0.5,
+                 meanSkewValue=0., stdSkewValue=5.,
                  sigmaMeasureOffsetValue=0., sigmaProcessOffsetValue=0.,                  
                  normalizeGraph=True, doPrint=True,
                  dataType=np.float64, device='cpu'):
@@ -193,8 +193,8 @@ class AerialSwarm(_data):
                                                     self.duration, self.updateTime,
                                                     self.sigmaMeasureOffsetValue,
                                                     self.sigmaProcessOffsetValue, 
-                                                    sigmaOffsetVal=0.01, 
-                                                    sigmaSkewVal=0.001)
+                                                    sigmaOffsetVal=0., 
+                                                    sigmaSkewVal=0.)
                       
         self.clockNoise = {}   
         self.packetExchangeDelay = {}
@@ -801,6 +801,158 @@ class AerialSwarm(_data):
             adjust = torch.tensor(adjust).to(device)
             
         return theta, gamma, adjust, state, graph     
+
+####################
+    def computeSingleStepTrajectory(self, initTheta, initGamma, 
+                           measureNoise, processNoise, clkNoise,
+                           graph, duration, **kwargs):
+        # input: ###
+        # initTheta: nSamples x 1 x nAgents
+        # initGamma: nSamples x 1 x nAgents
+        # measureNoise: nSamples x tSamples x 2 x nAgents
+        # processNoise: nSamples x tSamples x 2 x nAgents
+        # clkNoise: nSamples x tSamples x 2 x nAgents
+        # graph: nSamples x tSamples x nAgents x nAgents
+        
+        # output: ###
+        # theta: nSamples x tSamples x 1 x nAgents
+        # gamma： nSamples x tSamples x 1 x nAgents
+        # adjust： nSamples x tSamples x 2 x nAgents
+        # state： nSamples x tSamples x 2 x nAgents
+        # graph： nSamples x tSamples x nAgents x nAgents
+        
+        assert len(initTheta.shape) == 3
+        batchSize = initTheta.shape[0]
+        assert initTheta.shape[1] == 1
+        nAgents = initTheta.shape[2]
+        
+        assert len(initGamma.shape) == 3
+        assert initGamma.shape[0] == batchSize
+        assert initGamma.shape[1] == 1
+        assert initGamma.shape[2] == nAgents
+        
+        assert len(graph.shape) == 4
+        assert graph.shape[0] == batchSize
+        assert graph.shape[1] == int(duration/self.updateTime)
+        assert graph.shape[2] == nAgents
+        assert graph.shape[3] == nAgents       
+
+        '''
+        ToDo: since this function is numpy, but the torch is used during 
+        training. There exists exchange beteween numpy and torch, which slows 
+        down training speed [torch -> numpy -> torch]. 
+        '''
+        if 'torch' in repr(initTheta.dtype):
+            assert 'torch' in repr(initGamma.dtype)
+            useTorch = True
+            device = initTheta.device
+            assert initGamma.device == device
+        else:
+            useTorch = False
+        
+        time = np.arange(0, duration, self.updateTime)
+        tSamples = len(time)
+       
+        assert 'archit' in kwargs.keys()
+        archit = kwargs['archit']
+        architDevice = list(archit.parameters())[0].device
+            
+        if 'doPrint' in kwargs.keys():
+            doPrint = kwargs['doPrint']
+        else:
+            doPrint = self.doPrint # Use default      
+            
+        theta = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float64)
+        gamma = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float64)
+        adjust = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float64)
+        state = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float64)
+            
+        if useTorch:
+            theta[:,0,:,:] = initTheta.cpu().numpy()
+            gamma[:,0,:,:] = initGamma.cpu().numpy()
+        else:
+            theta[:,0,:,:] = initTheta.copy()
+            gamma[:,0,:,:] = initGamma.copy()
+            
+        if doPrint:
+            percentageCount = int(100/tSamples)
+            print("%3d%%" % percentageCount, end = '', flush = True)            
+
+        for t in range(1, tSamples):
+            thisOffset = np.expand_dims(theta[:,t-1,:,:], 1) \
+                         + np.expand_dims(measureNoise[:,t-1,0,:], (1, 2))
+            thisSkew = np.expand_dims(gamma[:,t-1,:,:], 1) \
+                         + np.expand_dims(measureNoise[:,t-1,1,:], (1, 2))
+            thisGraph = np.expand_dims(graph[:,t-1,:,:], 1)
+
+            thisState = self.computeStates(thisOffset, thisSkew, thisGraph, doPrint=False)
+            state[:,t-1,:,:] = thisState.squeeze(1)
+            
+            x = torch.tensor(state[:,0:t,:,:], device = architDevice)
+            S = torch.tensor(graph[:,0:t,:,:], device = architDevice)
+            with torch.no_grad():
+                thisAdjust = archit(x, S)
+            thisAdjust = thisAdjust.cpu().numpy()[:,-1,:,:]
+            adjust[:,t-1,:,:] = thisAdjust
+
+            if self.updateTime == self.adjustTime:                            
+                theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
+                                                  + (1/nAgents) * np.expand_dims(adjust[:,t-1,0,:], 1) \
+                                                  + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                  - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/nAgents) * np.expand_dims(adjust[:,t-1,1,:], 1)\
+                                                  + np.expand_dims(clkNoise[:,t-1,1,:], 1)                                              
+            else:
+                if int(t % (self.adjustTime/self.updateTime)) == 0:                                
+                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
+                                                      + (1/nAgents) * np.expand_dims(adjust[:,t-1,0,:], 1) \
+                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/nAgents) * np.expand_dims(adjust[:,t-1,1,:], 1)\
+                                                      + np.expand_dims(clkNoise[:,t-1,1,:], 1)                                        
+                else: 
+                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
+                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + np.expand_dims(clkNoise[:,t-1,1,:], 1)                    
+            
+            if doPrint:
+                percentageCount = int(100*(t+1)/tSamples)
+                print('\b \b' * 4 + "%3d%%" % percentageCount,
+                      end = '', flush = True)
+
+        thisOffset = np.expand_dims(theta[:,-1,:,:], 1) \
+                        + np.expand_dims(measureNoise[:,-1,0,:], (1, 2))
+        thisSkew = np.expand_dims(gamma[:,-1,:,:], 1) \
+                         + np.expand_dims(measureNoise[:,-1,1,:], (1, 2))            
+        thisGraph = np.expand_dims(graph[:,-1,:,:], 1)
+
+        thisState = self.computeStates(thisOffset, thisSkew, thisGraph, doPrint=False)
+        state[:,-1,:,:] = thisState.squeeze(1)
+
+        x = torch.tensor(state).to(architDevice)
+        S = torch.tensor(graph).to(architDevice)
+        with torch.no_grad():
+            thisAdjust = archit(x, S)
+        thisAdjust = thisAdjust.cpu().numpy()[:,-1,:,:]
+        adjust[:,-1,:,:] = thisAdjust
+                
+        if doPrint:
+            print('\b \b' * 4, end = '', flush = True)
+
+        if useTorch:            
+            theta = torch.tensor(theta).to(device)
+            gamma = torch.tensor(gamma).to(device)
+            adjust = torch.tensor(adjust).to(device)
+            
+        return theta, gamma, adjust, state, graph     
+
+
+
+
+
+
+####################
     
     def computeDifferences(self, u):        
         # input u shape: ###
@@ -992,6 +1144,152 @@ class AerialSwarm(_data):
             print('\b \b' * 4, end = '', flush = True)
 
         return pos, vel, accel, theta, gamma, clockCorrection
+    
+#########################################################
+    def computeSingleStepOptimalTrajectory(self, initPos, initVel, 
+                                 initOffsetTheta, initSkewGamma, 
+                                 measureNoise, processNoise, clkNoise, 
+                                 duration, updateTime, adjustTime,
+                                 repelDist, accelMax = 100.):
+        # input: ######
+        # initPos: nSamples x 2 x nAgents 
+        # initVel: nSamples x 2 x nAgents
+        # initOffsetTheta: nSamples x 1 x nAgents
+        # initSkewGamma: nSamples x 1 x nAgents
+        # measureNoise: nSamples x tSamples x 2 x nAgents 
+        # processNoise: nSamples x tSamples x 2 x nAgents
+        # clkNoise: nSamples x tSamples x 2 x nAgents
+        
+        # output: ######        
+        # pos: nSamples x tSamples x 2 x nAgents 
+        # vel: nSamples x tSamples x 2 x nAgents 
+        # accel: nSamples x tSamples x 2 x nAgents  
+        # theta: nSamples x tSamples x 1 x nAgents 
+        # gamma: nSamples x tSamples x 1 x nAgents 
+        # clockCorrection: nSamples x tSamples x 2 x nAgents 
+        
+        assert len(initPos.shape) == len(initVel.shape) == 3
+        nSamples = initPos.shape[0]
+        assert initPos.shape[1] == initVel.shape[1] == 2
+        nAgents = initPos.shape[2]
+        assert initVel.shape[0] == nSamples
+        assert initVel.shape[2] == nAgents
+
+        assert len(initOffsetTheta.shape) == len(initSkewGamma.shape) == 3
+        assert nSamples == initOffsetTheta.shape[0]
+        assert initOffsetTheta.shape[1] == initSkewGamma.shape[1] == 1
+        assert nAgents == initOffsetTheta.shape[2]
+        assert initSkewGamma.shape[0] == nSamples
+        assert initSkewGamma.shape[2] == nAgents
+       
+        time = np.arange(0, duration, updateTime)
+        tSamples = len(time)
+        
+        pos = np.zeros((nSamples, tSamples, 2, nAgents))
+        vel = np.zeros((nSamples, tSamples, 2, nAgents))
+        accel = np.zeros((nSamples, tSamples, 2, nAgents))        
+        theta = np.zeros((nSamples, tSamples, 1, nAgents)) # offset 
+        gamma = np.zeros((nSamples, tSamples, 1, nAgents)) # skew 
+        deltaTheta = np.zeros((nSamples, tSamples, 1, nAgents)) # offset adjustment        
+        deltaGamma = np.zeros((nSamples, tSamples, 1, nAgents)) # skew adjustment               
+        
+        pos[:,0,:,:] = initPos
+        vel[:,0,:,:] = initVel        
+        theta[:,0,:,:] = initOffsetTheta
+        gamma[:,0,:,:] = initSkewGamma        
+        
+        if self.doPrint:
+            percentageCount = int(100/tSamples)
+            print("%3d%%" % percentageCount, end = '', flush = True)        
+
+        for t in range(1,tSamples):
+            ### Compute the optimal UAVs trajectories ###            
+            ijDiffPos, ijDistSq = self.computeDifferences(pos[:,t-1,:,:])
+            #   ijDiffPos: nSamples x 2 x nAgents x nAgents
+            #   ijDistSq:  nSamples x nAgents x nAgents
+            
+            ijDiffVel, _ = self.computeDifferences(vel[:,t-1,:,:])
+            #   ijDiffVel: nSamples x 2 x nAgents x nAgents
+
+            repelMask = (ijDistSq < (repelDist**2)).astype(ijDiffPos.dtype)
+            ijDiffPos = ijDiffPos * np.expand_dims(repelMask, 1)
+            ijDistSqInv = invertTensorEW(ijDistSq)
+            ijDistSqInv = np.expand_dims(ijDistSqInv, 1)
+
+            accel[:,t-1,:,:] = \
+                    -np.sum(ijDiffVel, axis = 3) \
+                    +2* np.sum(ijDiffPos * (ijDistSqInv ** 2 + ijDistSqInv),
+                               axis = 3)
+                    
+            thisAccel = accel[:,t-1,:,:].copy()
+            thisAccel[accel[:,t-1,:,:] > accelMax] = accelMax
+            thisAccel[accel[:,t-1,:,:] < -accelMax] = -accelMax
+            accel[:,t-1,:,:] = thisAccel
+            
+            ### Compute the optimal clock offset and skew correction values ###
+            ijDiffOffset, _ = self.computeDifferences(theta[:,t-1,:,:] \
+                                                      + np.expand_dims(measureNoise[:,t-1,0,:], 1))
+            #   ijDiffOffset: nSamples x 1 x nAgents x nAgents
+
+            ijDiffSkew, _ = self.computeDifferences(gamma[:,t-1,:,:] \
+                                                    + np.expand_dims(measureNoise[:,t-1,1,:], 1))
+            #   ijDiffVel: nSamples x 1 x nAgents x nAgents
+
+            deltaTheta[:,t-1,:,:] = -0.5*np.sum(ijDiffOffset, axis = 3)                                
+            deltaGamma[:,t-1,:,:] = -0.5*np.sum(ijDiffSkew, axis = 3)                  
+
+            ### Update the values ###
+            vel[:,t,:,:] = vel[:,t-1,:,:] + accel[:,t-1,:,:] * updateTime
+            pos[:,t,:,:] = pos[:,t-1,:,:] + vel[:,t-1,:,:] * updateTime \
+                                          + accel[:,t-1,:,:] * (updateTime ** 2)/2             
+            
+            if updateTime == adjustTime:                            
+                theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * updateTime \
+                                                  + (1/self.nAgents) * deltaTheta[:,t-1,:,:] \
+                                                  + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                  - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:] \
+                                                  + np.expand_dims(clkNoise[:,t-1,1,:], 1)
+            else:                                
+                if int(t % (adjustTime/updateTime)) == 0:
+                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * updateTime \
+                                                      + (1/self.nAgents) * deltaTheta[:,t-1,:,:] \
+                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:] \
+                                                      + np.expand_dims(clkNoise[:,t-1,1,:], 1)                                    
+                else: 
+                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * updateTime \
+                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + np.expand_dims(clkNoise[:,t-1,1,:], 1)
+                                                      
+            if self.doPrint:
+                percentageCount = int(100*(t+1)/tSamples)
+                print('\b \b' * 4 + "%3d%%" % percentageCount,
+                      end = '', flush = True)
+        
+        clockCorrection = np.concatenate((deltaTheta,deltaGamma),axis=2)
+        
+        if self.doPrint:
+            print('\b \b' * 4, end = '', flush = True)
+
+        return pos, vel, accel, theta, gamma, clockCorrection
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+############################################################    
 
     def computeNoises(self, nAgents, nSamples, duration, updateTime, 
                       sigmaMeasureOffsetVal=0., sigmaProcessOffsetVal=0.,
