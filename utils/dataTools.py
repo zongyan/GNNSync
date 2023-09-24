@@ -802,13 +802,14 @@ class AerialSwarm(_data):
             
         return theta, gamma, adjust, state, graph     
 
-####################
-    def computeSingleStepTrajectory(self, initTheta, initGamma, 
-                           measureNoise, processNoise, clkNoise,
-                           graph, duration, **kwargs):
+    def computeSingleStepTrajectory(self, theta, gamma, adjust, state,
+                                measureNoise, processNoise, clkNoise,
+                           graph, step, duration, **kwargs):
         # input: ###
-        # initTheta: nSamples x 1 x nAgents
-        # initGamma: nSamples x 1 x nAgents
+        # theta: nSamples x tSamples x 1 x nAgents
+        # gamma: nSamples x tSamples x 1 x nAgents
+        # adjust： nSamples x tSamples x 2 x nAgents
+        # state： nSamples x tSamples x 2 x nAgents        
         # measureNoise: nSamples x tSamples x 2 x nAgents
         # processNoise: nSamples x tSamples x 2 x nAgents
         # clkNoise: nSamples x tSamples x 2 x nAgents
@@ -821,15 +822,29 @@ class AerialSwarm(_data):
         # state： nSamples x tSamples x 2 x nAgents
         # graph： nSamples x tSamples x nAgents x nAgents
         
-        assert len(initTheta.shape) == 3
-        batchSize = initTheta.shape[0]
-        assert initTheta.shape[1] == 1
-        nAgents = initTheta.shape[2]
+        assert len(theta.shape) == 4
+        batchSize = theta.shape[0]
+        assert theta.shape[1] == int(duration/self.updateTime)
+        assert theta.shape[2] == 1
+        nAgents = theta.shape[3]
         
-        assert len(initGamma.shape) == 3
-        assert initGamma.shape[0] == batchSize
-        assert initGamma.shape[1] == 1
-        assert initGamma.shape[2] == nAgents
+        assert len(gamma.shape) == 4
+        assert gamma.shape[0] == batchSize
+        assert gamma.shape[1] == int(duration/self.updateTime)        
+        assert gamma.shape[2] == 1
+        assert gamma.shape[3] == nAgents
+        
+        assert len(adjust.shape) == 4
+        assert adjust.shape[0] == batchSize
+        assert adjust.shape[1] == int(duration/self.updateTime)        
+        assert adjust.shape[2] == 2
+        assert adjust.shape[3] == nAgents     
+        
+        assert len(state.shape) == 4
+        assert state.shape[0] == batchSize
+        assert state.shape[1] == int(duration/self.updateTime)        
+        assert state.shape[2] == 2
+        assert state.shape[3] == nAgents        
         
         assert len(graph.shape) == 4
         assert graph.shape[0] == batchSize
@@ -842,11 +857,11 @@ class AerialSwarm(_data):
         training. There exists exchange beteween numpy and torch, which slows 
         down training speed [torch -> numpy -> torch]. 
         '''
-        if 'torch' in repr(initTheta.dtype):
-            assert 'torch' in repr(initGamma.dtype)
+        if 'torch' in repr(theta.dtype):
+            assert 'torch' in repr(gamma.dtype)
             useTorch = True
-            device = initTheta.device
-            assert initGamma.device == device
+            device = theta.device
+            assert gamma.device == device
         else:
             useTorch = False
         
@@ -861,98 +876,51 @@ class AerialSwarm(_data):
             doPrint = kwargs['doPrint']
         else:
             doPrint = self.doPrint # Use default      
-            
-        theta = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float64)
-        gamma = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float64)
-        adjust = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float64)
-        state = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float64)
-            
-        if useTorch:
-            theta[:,0,:,:] = initTheta.cpu().numpy()
-            gamma[:,0,:,:] = initGamma.cpu().numpy()
-        else:
-            theta[:,0,:,:] = initTheta.copy()
-            gamma[:,0,:,:] = initGamma.copy()
-            
-        if doPrint:
-            percentageCount = int(100/tSamples)
-            print("%3d%%" % percentageCount, end = '', flush = True)            
 
         for t in range(1, tSamples):
-            thisOffset = np.expand_dims(theta[:,t-1,:,:], 1) \
-                         + np.expand_dims(measureNoise[:,t-1,0,:], (1, 2))
-            thisSkew = np.expand_dims(gamma[:,t-1,:,:], 1) \
-                         + np.expand_dims(measureNoise[:,t-1,1,:], (1, 2))
-            thisGraph = np.expand_dims(graph[:,t-1,:,:], 1)
+            thisOffset = np.expand_dims(theta[:,step,:,:], 1) \
+                         + np.expand_dims(measureNoise[:,step,0,:], (1, 2))
+            thisSkew = np.expand_dims(gamma[:,step,:,:], 1) \
+                         + np.expand_dims(measureNoise[:,step,1,:], (1, 2))
+            thisGraph = np.expand_dims(graph[:,step,:,:], 1)
 
             thisState = self.computeStates(thisOffset, thisSkew, thisGraph, doPrint=False)
-            state[:,t-1,:,:] = thisState.squeeze(1)
+            state[:,step,:,:] = thisState.squeeze(1)
             
-            x = torch.tensor(state[:,0:t,:,:], device = architDevice)
-            S = torch.tensor(graph[:,0:t,:,:], device = architDevice)
+            x = torch.tensor(state[:,0:step+1,:,:], device = architDevice)
+            S = torch.tensor(graph[:,0:step+1,:,:], device = architDevice)
             with torch.no_grad():
                 thisAdjust = archit(x, S)
             thisAdjust = thisAdjust.cpu().numpy()[:,-1,:,:]
-            adjust[:,t-1,:,:] = thisAdjust
+            adjust[:,step,:,:] = thisAdjust
 
             if self.updateTime == self.adjustTime:                            
-                theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
-                                                  + (1/nAgents) * np.expand_dims(adjust[:,t-1,0,:], 1) \
-                                                  + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
-                                                  - np.expand_dims(processNoise[:,t-1,0,:], 1)
-                gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/nAgents) * np.expand_dims(adjust[:,t-1,1,:], 1)\
-                                                  + np.expand_dims(clkNoise[:,t-1,1,:], 1)                                              
+                theta[:,step+1,:,:] = theta[:,step,:,:] + gamma[:,step,:,:] * self.updateTime \
+                                                  + (1/nAgents) * np.expand_dims(adjust[:,step,0,:], 1) \
+                                                  + np.expand_dims(clkNoise[:,step,0,:], 1) \
+                                                  - np.expand_dims(processNoise[:,step,0,:], 1)
+                gamma[:,step+1,:,:] = gamma[:,step,:,:] + (1/nAgents) * np.expand_dims(adjust[:,step,1,:], 1)\
+                                                  + np.expand_dims(clkNoise[:,step,1,:], 1)                                              
             else:
                 if int(t % (self.adjustTime/self.updateTime)) == 0:                                
-                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
-                                                      + (1/nAgents) * np.expand_dims(adjust[:,t-1,0,:], 1) \
-                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
-                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
-                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/nAgents) * np.expand_dims(adjust[:,t-1,1,:], 1)\
-                                                      + np.expand_dims(clkNoise[:,t-1,1,:], 1)                                        
+                    theta[:,step+1,:,:] = theta[:,step,:,:] + gamma[:,step,:,:] * self.updateTime \
+                                                      + (1/nAgents) * np.expand_dims(adjust[:,step,0,:], 1) \
+                                                      + np.expand_dims(clkNoise[:,step,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,step,0,:], 1)
+                    gamma[:,step+1,:,:] = gamma[:,step,:,:] + (1/nAgents) * np.expand_dims(adjust[:,step,1,:], 1)\
+                                                      + np.expand_dims(clkNoise[:,step,1,:], 1)                                        
                 else: 
-                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
-                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
-                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
-                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + np.expand_dims(clkNoise[:,t-1,1,:], 1)                    
-            
-            if doPrint:
-                percentageCount = int(100*(t+1)/tSamples)
-                print('\b \b' * 4 + "%3d%%" % percentageCount,
-                      end = '', flush = True)
-
-        thisOffset = np.expand_dims(theta[:,-1,:,:], 1) \
-                        + np.expand_dims(measureNoise[:,-1,0,:], (1, 2))
-        thisSkew = np.expand_dims(gamma[:,-1,:,:], 1) \
-                         + np.expand_dims(measureNoise[:,-1,1,:], (1, 2))            
-        thisGraph = np.expand_dims(graph[:,-1,:,:], 1)
-
-        thisState = self.computeStates(thisOffset, thisSkew, thisGraph, doPrint=False)
-        state[:,-1,:,:] = thisState.squeeze(1)
-
-        x = torch.tensor(state).to(architDevice)
-        S = torch.tensor(graph).to(architDevice)
-        with torch.no_grad():
-            thisAdjust = archit(x, S)
-        thisAdjust = thisAdjust.cpu().numpy()[:,-1,:,:]
-        adjust[:,-1,:,:] = thisAdjust
-                
-        if doPrint:
-            print('\b \b' * 4, end = '', flush = True)
+                    theta[:,step+1,:,:] = theta[:,step,:,:] + gamma[:,step,:,:] * self.updateTime \
+                                                      + np.expand_dims(clkNoise[:,step,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,step,0,:], 1)
+                    gamma[:,step+1,:,:] = gamma[:,step,:,:] + np.expand_dims(clkNoise[:,step,1,:], 1)                    
 
         if useTorch:            
             theta = torch.tensor(theta).to(device)
             gamma = torch.tensor(gamma).to(device)
             adjust = torch.tensor(adjust).to(device)
             
-        return theta, gamma, adjust, state, graph     
-
-
-
-
-
-
-####################
+        return theta, gamma, adjust, state
     
     def computeDifferences(self, u):        
         # input u shape: ###
