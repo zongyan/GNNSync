@@ -33,17 +33,19 @@ useGPU = True
 commRadius = 2. # communication radius
 repelDist = 1. # minimum distance before activating repelling function
 nTrain = 400 # number of training samples
+nDAgger = nTrain
 nValid = 20 # number of valid samples
 nTest = 50 # number of testing samples
 duration = 10. # simulation duration 
 updateTime = 0.01 # clock update time
-adjustTime = 0.1 # clock adjustment time
+adjustTime = 0.01 # clock adjustment time
 initVelValue = 3. # initial velocities: [-initVelValue, initVelValue]
 initMinDist = 0.1 # initial minimum distance between any two UAVs
 accelMax = 10. # maximum acceleration value
 normalizeGraph = True # normalise wireless communication graph
 
 optimAlg = 'ADAM' 
+probExpert = 0.993
 learningRate = 0.0005 
 beta1 = 0.9  
 beta2 = 0.999 
@@ -51,9 +53,12 @@ lossFunction = nn.MSELoss
 trainer = training.Trainer
 evaluator = evaluation.evaluate
 
-nEpochs = 30 # number of epochs
+nEpochs = 2 # number of epochs
 batchSize = 20 # batch size
 validationInterval = 5 # how many training steps to do the validation
+nDAggers = 50
+expertProb = 0.9
+aggregationSize = 20
 
 nonlinearityHidden = torch.tanh
 nonlinearityOutput = torch.tanh
@@ -92,7 +97,7 @@ print("Generating data", end = '')
 print("...", flush = True)
 
 data = dataTools.AerialSwarm(nAgents, commRadius,repelDist,
-            nTrain, nValid, 1, # no care about testing, re-generating the dataset for testing
+            nTrain, nDAgger, nValid, 1, # no care about testing, re-generating the dataset for testing
             duration, updateTime, adjustTime, 
             initVelValue, initMinDist, accelMax,
             normalizeGraph)
@@ -116,7 +121,7 @@ for thisModel in modelList:
     thisBeta1 = beta1
     thisBeta2 = beta2
 
-    thisArchit = callArchit(**hParamsDict)
+    thisArchit = callArchit(**hParamsDict) # 这个部分，就是初始化GNN模型
     thisArchit.to(thisDevice)
 
     thisOptim = optim.Adam(thisArchit.parameters(),
@@ -140,7 +145,7 @@ for thisModel in modelList:
 for thisModel in modelsGNN.keys():
     print("Training model %s..." % thisModel)
         
-    thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize)
+    thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, nDAggers, expertProb, aggregationSize)
 
 #%%
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,

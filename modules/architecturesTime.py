@@ -22,7 +22,8 @@ class LocalGNN_DB(nn.Module):
         self.bias = bias # boolean
         self.sigma = nonlinearity
         self.dimReadout = dimReadout
-
+        
+        # 这个部分，就是初始化GNN模块
         gfl = [] # graph filtering layers
         for l in range(self.L):
             gfl.append(gml.GraphFilter_DB(self.F[l], self.F[l+1], self.K[l],
