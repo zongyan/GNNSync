@@ -84,7 +84,7 @@ class Trainer:
         
         xTrainAll = xTrainOrig[:,adjStep,:,:]
         yTrainAll = yTrainOrig[:,adjStep,:,:]
-        StrainAll = StrainOrig[:,adjStep,:,:]        
+        sTrainAll = StrainOrig[:,adjStep,:,:]        
 
         while iteration < nDAggers:
             
@@ -99,7 +99,7 @@ class Trainer:
     
                     xTrain = xTrainAll[thisBatchIndices]
                     yTrain = yTrainAll[thisBatchIndices]
-                    Strain = StrainAll[thisBatchIndices]
+                    Strain = sTrainAll[thisBatchIndices]
     
                     xTrain = torch.tensor(xTrain, device = thisDevice)
                     Strain = torch.tensor(Strain, device = thisDevice)
@@ -218,59 +218,82 @@ class Trainer:
             chooseExpertProb = expertProb ** iteration
             chooseExpertControl = np.random.binomial(1, chooseExpertProb, tSamples)
 
-            measureNoise, 
-            processNoise, 
-            clkNoise,
-            initThetaValid = self.data.getData('initOffset','dagger')
-            initGammaValid = self.data.getData('initSkew','dagger')
-            graphValid = self.data.getData('commGraph','dagger')                       
-            clockNoiseValid = self.data.getData('clockNoise','dagger')                        
-            measurementNoiseValid = self.data.getData('packetExchangeDelay','dagger')    
-            processingNoiseValid = self.data.getData('processingDelay','dagger')                
-                        
+            xDAggerOrig, yDAggerOrig = self.data.getSamples('dagger')            
+            initThetaDAgger = self.data.getData('initOffset','dagger')
+            initGammaDAgger = self.data.getData('initSkew','dagger')
+            clockNoiseDAgger = self.data.getData('clockNoise','dagger')                        
+            measurementNoiseDAgger = self.data.getData('packetExchangeDelay','dagger')    
+            processingNoiseDAgger = self.data.getData('processingDelay','dagger')
+            thetaDAgger = self.data.getData('offset','dagger')                       
+            gammaDAgger = self.data.getData('skew','dagger')                                   
+            adjustDAgger= self.data.getData('adj','dagger')                       
+            graphDAgger = self.data.getData('commGraph','dagger')                       
+            stateDAgger = self.data.getData('state','dagger')            
+
             aggTheta  = np.zeros((aggSize, tSamples, 1, self.data.nAgents), dtype = np.float64)
             aggGamma  = np.zeros((aggSize, tSamples, 1, self.data.nAgents), dtype = np.float64)
             aggAdjust = np.zeros((aggSize, tSamples, 2, self.data.nAgents), dtype=np.float64)
             aggState  = np.zeros((aggSize, tSamples, 2, self.data.nAgents), dtype=np.float64)
-                        
-            aggPos = np.zeros((aggSize, tSamples, 2, nAgents), dtype=np.float64)
-            aggVel = np.zeros((aggSize, tSamples, 2, nAgents), dtype=np.float64)
-            aggAccel = np.zeros((aggSize, tSamples, 2, nAgents), dtype=np.float64)
-                        
+            
+            # position and velocity are under the optimal expert controller, 
+            # quadrotor position is used to obtain the communication graph, 
+            # no need to re-calculate again
+            aggTheta[:,0,:,:] = initThetaDAgger
+            aggGamma[:,0,:,:] = initGammaDAgger
+            
             for t in range(1, tSamples):
-                
-                aggPos[:,t,:,:], aggVel[:,t,:,:], aggAccel[:,t,:,:] = self.data.computeSingleStepOptimalSpatialTrajectory(aggPos[:,t-1,:,:], aggVel[:,t-1,:,:], self.data.duration, self.data.updateTime, self.data.adjustTime, self.data.repelDist, self.data.accelMax)
-                
+                                
                 # choose the expeter strategy 
                 if chooseExpertControl[t] == 1:
 
-                    aggTheta[:,t,:,:], aggGamma[:,t,:,:], aggAdjust[:,t,:,:] = self.data.computeSingleStepOptimalTemporalTrajectory(aggTheta[:,t-1,:,:], aggGamma[:,t-1,:,:], measureNoise, processNoise, clkNoise, self.data.duration, self.data.updateTime, self.data.adjustTime)
+                    aggTheta[:,t,:,:], aggGamma[:,t,:,:], aggAdjust[:,t-1,:,:] = \
+                        self.data.computeSingleStepOptimalTrajectory(aggTheta[:,t-1,:,:], aggGamma[:,t-1,:,:], \
+                                                                     measurementNoiseDAgger[:,t-1,:,:], processingNoiseDAgger[:,t-1,:,:], clockNoiseDAgger[:,t-1,:,:], \
+                                                                         t, self.data.duration, self.data.updateTime, self.data.adjustTime)
         
                 # If not, we compute a new trajectory based on the given architecture
                 elif chooseExpertControl[t] == 0:
 
-                    aggTheta[:,t,:,:], aggGamma[:,t,:,:], aggAdjust[:,t,:,:], aggState[:,t,:,:] = self.data.computeSingleStepTrajectory(aggTheta[:,t-1,:,:], aggGamma[:,t-1,:,:], aggAdjust[:,t-1,:,:], aggState[:,t-1,:,:], \
-                                                                                                    measureNoise, processNoise, clkNoise, graph, \
-                                                                                                        t, self.data.updateTime, self.data.duration)                    
+                    aggTheta, aggGamma, aggAdjust, aggState = \
+                        self.data.computeSingleStepTrajectory(aggTheta, aggGamma, aggAdjust, aggState, \
+                                                              measurementNoiseDAgger, processingNoiseDAgger, clockNoiseDAgger, \
+                                                                  graphDAgger, t, self.data.duration, archit = thisArchit)                    
+                            
+                    _, _, _, aggInput = self.data.computeSingleStepTrajectory(aggTheta, aggGamma, aggAdjust, aggState, \
+                                                              measurementNoiseDAgger, processingNoiseDAgger, clockNoiseDAgger, \
+                                                                  graphDAgger, t, self.data.duration, archit = thisArchit)
 
-                else:
-                    raise Exception('Warning: error occurs in choosing expert or gnn control!')           
-                    
-                # store the expert controlling strategy
-                    
-                if 'xDAgg' not in globals():
-                    xDAgg = aggInput
-                else:
-                    xDAgg = np.append(xDAgg, aggInput, axis=1)
-                    
-                if 'sDAgg' not in globals():
-                    sDAgg = aggInput
-                else:
-                    sDAgg= np.append(xDAgg, aggInput, axis=1)                        
+                    _, _, aggOutput = self.data.computeSingleStepOptimalTrajectory(aggTheta[:,t,:,:], aggGamma[:,t,:,:], \
+                                                                     measurementNoiseDAgger[:,t,:,:], processingNoiseDAgger[:,t,:,:], clockNoiseDAgger[:,t,:,:], \
+                                                                         t, self.data.duration, self.data.updateTime, self.data.adjustTime)
+
+                    # store the expert controlling strategy                    
+                    if 'xDAgg' not in globals():
+                        xDAgg = np.expand_dims(aggInput[:,t,:,:], axis=1) 
+                    else:
+                        xDAgg = np.append(xDAgg, np.expand_dims(aggInput[:,t,:,:], axis=1), axis=1)
                         
-                if 'yDAgg' not in globals():
-                    yDAgg = np.expand_dims(aggExpertTorqueThrust[:, :, k], axis=1) # (nDAgg, 1, 4)
-                else:
-                    yDAgg = np.append(yDAgg, np.expand_dims(aggExpertTorqueThrust[:, :, k], axis=1), axis=1)                    
+                    if 'sDAgg' not in globals():
+                        sDAgg = np.expand_dims(graphDAgger[:,t,:,:], axis=1)
+                    else:
+                        sDAgg= np.append(sDAgg, np.expand_dims(graphDAgger[:,t,:,:], axis=1), axis=1)                        
+                            
+                    if 'yDAgg' not in globals():
+                        yDAgg = np.expand_dims(aggOutput, axis=1)
+                    else:
+                        yDAgg = np.append(yDAgg, np.expand_dims(aggOutput, axis=1), axis=1)                    
 
-                    _, _, clockCorrection = self.data.computeSingleStepOptimalTemporalTrajectory(aggTheta[:,t,:,:], aggGamma[:,t,:,:], measureNoise, processNoise, clkNoise, self.data.duration, self.data.updateTime, self.data.adjustTime)
+                else:
+                    raise Exception('Warning: error occurs in choosing expert or gnn control!')
+            
+            if 'xDAgg' in globals() and 'sDAgg' in globals() and 'yDAgg' in globals():
+                xTrainAll = np.concatenate((xTrainAll, xDAgg), axis=1) # np.append uses np.concatenate   
+                sTrainAll = np.concatenate((sTrainAll, sDAgg), axis=1)
+                yTrainAll = np.concatenate((yTrainAll, yDAgg), axis=1)
+                
+                del xDAgg, sDAgg, yDAgg
+            
+            iteration = iteration + 1 # end of DAgger, increase iteration count
+            print("\t done.", flush=True)            
+            
+            

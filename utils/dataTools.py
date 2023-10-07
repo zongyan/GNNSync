@@ -72,7 +72,7 @@ class _data:
         # args: 1 arg: if int, give that number of samples, chosen at random
         # args: 1 arg: if list (or np.array), give those samples precisely.
 
-        assert samplesType=='train' or samplesType=='valid' or samplesType=='test'        
+        assert samplesType=='train' or samplesType=='dagger' or  samplesType=='valid' or samplesType=='test'
         assert len(args) <= 1
         
         if len(args)==0:
@@ -896,43 +896,42 @@ class AerialSwarm(_data):
         else:
             doPrint = self.doPrint # Use default      
 
-        for t in range(1, tSamples):
-            thisOffset = np.expand_dims(theta[:,step-1,:,:], 1) \
-                         + np.expand_dims(measureNoise[:,step-1,0,:], (1, 2))
-            thisSkew = np.expand_dims(gamma[:,step-1,:,:], 1) \
-                         + np.expand_dims(measureNoise[:,step-1,1,:], (1, 2))
-            thisGraph = np.expand_dims(graph[:,step-1,:,:], 1)
+        thisOffset = np.expand_dims(theta[:,step-1,:,:], 1) \
+                     + np.expand_dims(measureNoise[:,step-1,0,:], (1, 2))
+        thisSkew = np.expand_dims(gamma[:,step-1,:,:], 1) \
+                     + np.expand_dims(measureNoise[:,step-1,1,:], (1, 2))
+        thisGraph = np.expand_dims(graph[:,step-1,:,:], 1)
 
-            thisState = self.computeStates(thisOffset, thisSkew, thisGraph, doPrint=False)
-            state[:,step-1,:,:] = thisState.squeeze(1)
-            
-            x = torch.tensor(state[:,0:step,:,:], device = architDevice)
-            S = torch.tensor(graph[:,0:step,:,:], device = architDevice)
-            with torch.no_grad():
-                thisAdjust = archit(x, S)
-            thisAdjust = thisAdjust.cpu().numpy()[:,-1,:,:]
-            adjust[:,step,:,:] = thisAdjust
+        thisState = self.computeStates(thisOffset, thisSkew, thisGraph, doPrint=False)
+        state[:,step-1,:,:] = thisState.squeeze(1)
+        
+        x = torch.tensor(state[:,0:step,:,:], device = architDevice)
+        S = torch.tensor(graph[:,0:step,:,:], device = architDevice)
+        with torch.no_grad():
+            thisAdjust = archit(x, S)
+        thisAdjust = thisAdjust.cpu().numpy()[:,-1,:,:]
+        adjust[:,step,:,:] = thisAdjust
 
-            if self.updateTime == self.adjustTime:                            
+        if self.updateTime == self.adjustTime:                            
+            theta[:,step,:,:] = theta[:,step-1,:,:] + gamma[:,step-1,:,:] * self.updateTime \
+                                              + (1/nAgents) * np.expand_dims(adjust[:,step-1,0,:], 1) \
+                                              + np.expand_dims(clkNoise[:,step-1,0,:], 1) \
+                                              - np.expand_dims(processNoise[:,step-1,0,:], 1)
+            gamma[:,step,:,:] = gamma[:,step-1,:,:] + (1/nAgents) * np.expand_dims(adjust[:,step-1,1,:], 1)\
+                                              + np.expand_dims(clkNoise[:,step-1,1,:], 1)                                              
+        else:
+            if int(step % (self.adjustTime/self.updateTime)) == 0:                                
                 theta[:,step,:,:] = theta[:,step-1,:,:] + gamma[:,step-1,:,:] * self.updateTime \
                                                   + (1/nAgents) * np.expand_dims(adjust[:,step-1,0,:], 1) \
                                                   + np.expand_dims(clkNoise[:,step-1,0,:], 1) \
                                                   - np.expand_dims(processNoise[:,step-1,0,:], 1)
                 gamma[:,step,:,:] = gamma[:,step-1,:,:] + (1/nAgents) * np.expand_dims(adjust[:,step-1,1,:], 1)\
-                                                  + np.expand_dims(clkNoise[:,step-1,1,:], 1)                                              
-            else:
-                if int(t % (self.adjustTime/self.updateTime)) == 0:                                
-                    theta[:,step,:,:] = theta[:,step-1,:,:] + gamma[:,step-1,:,:] * self.updateTime \
-                                                      + (1/nAgents) * np.expand_dims(adjust[:,step-1,0,:], 1) \
-                                                      + np.expand_dims(clkNoise[:,step-1,0,:], 1) \
-                                                      - np.expand_dims(processNoise[:,step-1,0,:], 1)
-                    gamma[:,step,:,:] = gamma[:,step-1,:,:] + (1/nAgents) * np.expand_dims(adjust[:,step-1,1,:], 1)\
-                                                      + np.expand_dims(clkNoise[:,step-1,1,:], 1)                                        
-                else: 
-                    theta[:,step,:,:] = theta[:,step-1,:,:] + gamma[:,step-1,:,:] * self.updateTime \
-                                                      + np.expand_dims(clkNoise[:,step-1,0,:], 1) \
-                                                      - np.expand_dims(processNoise[:,step-1,0,:], 1)
-                    gamma[:,step,:,:] = gamma[:,step-1,:,:] + np.expand_dims(clkNoise[:,step-1,1,:], 1)                    
+                                                  + np.expand_dims(clkNoise[:,step-1,1,:], 1)                                        
+            else: 
+                theta[:,step,:,:] = theta[:,step-1,:,:] + gamma[:,step-1,:,:] * self.updateTime \
+                                                  + np.expand_dims(clkNoise[:,step-1,0,:], 1) \
+                                                  - np.expand_dims(processNoise[:,step-1,0,:], 1)
+                gamma[:,step,:,:] = gamma[:,step-1,:,:] + np.expand_dims(clkNoise[:,step-1,1,:], 1)                    
 
         if useTorch:            
             theta = torch.tensor(theta).to(device)
@@ -1132,80 +1131,9 @@ class AerialSwarm(_data):
 
         return pos, vel, accel, theta, gamma, clockCorrection
     
-    def computeSingleStepOptimalSpatialTrajectory(self, pos, vel, duration, updateTime, adjustTime, repelDist, accelMax = 100.):
-        # input: ######
-        # pos: nSamples x 2 x nAgents 
-        # vel: nSamples x 2 x nAgents
-        # offset: nSamples x 1 x nAgents
-        # skew: nSamples x 1 x nAgents
-        # measureNoise: nSamples x 2 x nAgents 
-        # processNoise: nSamples x 2 x nAgents
-        # clkNoise: nSamples x 2 x nAgents
-        
-        # output: ######        
-        # pos: nSamples x 2 x nAgents 
-        # vel: nSamples x 2 x nAgents 
-        # accel: nSamples x 2 x nAgents  
-        # theta: nSamples x 1 x nAgents 
-        # gamma: nSamples x 1 x nAgents 
-        # clockCorrection: nSamples x 2 x nAgents 
-        
-        assert len(pos.shape) == len(vel.shape) == 3
-        nSamples = pos.shape[0]
-        assert pos.shape[1] == vel.shape[1] == 2
-        nAgents = pos.shape[2]
-        assert vel.shape[0] == nSamples
-        assert vel.shape[2] == nAgents
-               
-        # pos = np.zeros((nSamples, tSamples, 2, nAgents))
-        # vel = np.zeros((nSamples, tSamples, 2, nAgents))
-        # accel = np.zeros((nSamples, tSamples, 2, nAgents))        
-        # theta = np.zeros((nSamples, tSamples, 1, nAgents)) # offset 
-        # gamma = np.zeros((nSamples, tSamples, 1, nAgents)) # skew 
-        # deltaTheta = np.zeros((nSamples, tSamples, 1, nAgents)) # offset adjustment        
-        # deltaGamma = np.zeros((nSamples, tSamples, 1, nAgents)) # skew adjustment               
-        
-        # pos[:,0,:,:] = initPos
-        # vel[:,0,:,:] = initVel        
-        # theta[:,0,:,:] = initOffsetTheta
-        # gamma[:,0,:,:] = initSkewGamma        
-        
-        # if self.doPrint:
-        #     percentageCount = int(100/tSamples)
-        #     print("%3d%%" % percentageCount, end = '', flush = True)        
-        tSamples = 10
-        for t in range(1,tSamples):
-            ### Compute the optimal UAVs trajectories ###            
-            ijDiffPos, ijDistSq = self.computeDifferences(pos)
-            #   ijDiffPos: nSamples x 2 x nAgents x nAgents
-            #   ijDistSq:  nSamples x nAgents x nAgents
-            
-            ijDiffVel, _ = self.computeDifferences(vel)
-            #   ijDiffVel: nSamples x 2 x nAgents x nAgents
-
-            repelMask = (ijDistSq < (repelDist**2)).astype(ijDiffPos.dtype)
-            ijDiffPos = ijDiffPos * np.expand_dims(repelMask, 1)
-            ijDistSqInv = invertTensorEW(ijDistSq)
-            ijDistSqInv = np.expand_dims(ijDistSqInv, 1)
-
-            accel = -np.sum(ijDiffVel, axis = 3) \
-                    +2* np.sum(ijDiffPos * (ijDistSqInv ** 2 + ijDistSqInv),
-                               axis = 3)
-                    
-            thisAccel = accel.copy()
-            thisAccel[accel > accelMax] = accelMax
-            thisAccel[accel < -accelMax] = -accelMax
-            accel = thisAccel
-
-            ### Update the values ###
-            nextVel = vel + accel * updateTime
-            nextPos = pos + vel * updateTime + accel * (updateTime ** 2)/2
-                                                      
-        return nextPos, nextVel, accel
-
-    def computeSingleStepOptimalTemporalTrajectory(self, offset, skew, 
+    def computeSingleStepOptimalTrajectory(self, offset, skew, 
                                                    measureNoise, processNoise, clkNoise, 
-                                                   duration, updateTime, adjustTime):
+                                                   step, duration, updateTime, adjustTime):
         # input: ######
         # pos: nSamples x 2 x nAgents 
         # vel: nSamples x 2 x nAgents
@@ -1229,64 +1157,37 @@ class AerialSwarm(_data):
         nAgents = offset.shape[2]
         assert skew.shape[0] == nSamples
         assert skew.shape[2] == nAgents
-               
-        # pos = np.zeros((nSamples, tSamples, 2, nAgents))
-        # vel = np.zeros((nSamples, tSamples, 2, nAgents))
-        # accel = np.zeros((nSamples, tSamples, 2, nAgents))        
-        # theta = np.zeros((nSamples, tSamples, 1, nAgents)) # offset 
-        # gamma = np.zeros((nSamples, tSamples, 1, nAgents)) # skew 
-        # deltaTheta = np.zeros((nSamples, tSamples, 1, nAgents)) # offset adjustment        
-        # deltaGamma = np.zeros((nSamples, tSamples, 1, nAgents)) # skew adjustment               
-        
-        # pos[:,0,:,:] = initPos
-        # vel[:,0,:,:] = initVel        
-        # theta[:,0,:,:] = initOffsetTheta
-        # gamma[:,0,:,:] = initSkewGamma        
-        
-        # if self.doPrint:
-        #     percentageCount = int(100/tSamples)
-        #     print("%3d%%" % percentageCount, end = '', flush = True)        
-        tSamples = 10
-        for t in range(1,tSamples):            
-            ### Compute the optimal clock offset and skew correction values ###
-            ijDiffOffset, _ = self.computeDifferences(offset + np.expand_dims(measureNoise[:, 0, :], 1))
-            #   ijDiffOffset: nSamples x 1 x nAgents x nAgents
+                          
+        ### Compute the optimal clock offset and skew correction values ###
+        ijDiffOffset, _ = self.computeDifferences(offset + np.expand_dims(measureNoise[:, 0, :], 1))
+        #   ijDiffOffset: nSamples x 1 x nAgents x nAgents
 
-            ijDiffSkew, _ = self.computeDifferences(skew + np.expand_dims(measureNoise[:, 1, :], 1))
-            #   ijDiffVel: nSamples x 1 x nAgents x nAgents
+        ijDiffSkew, _ = self.computeDifferences(skew + np.expand_dims(measureNoise[:, 1, :], 1))
+        #   ijDiffVel: nSamples x 1 x nAgents x nAgents
 
-            deltaTheta = -0.5*np.sum(ijDiffOffset, axis = 3)                                
-            deltaGamma = -0.5*np.sum(ijDiffSkew, axis = 3)                  
+        deltaTheta = -0.5*np.sum(ijDiffOffset, axis = 3)                                
+        deltaGamma = -0.5*np.sum(ijDiffSkew, axis = 3)                  
 
-            ### Update the values ###            
-            if updateTime == adjustTime:                            
+        ### Update the values ###            
+        if updateTime == adjustTime:                            
+            nextOffset = offset + skew * updateTime + (1/self.nAgents) * deltaTheta \
+                                              + np.expand_dims(clkNoise[:, 0, :], 1) \
+                                              - np.expand_dims(processNoise[:, 0, :], 1)
+            nextSkew = skew + (1/self.nAgents) * deltaGamma + np.expand_dims(clkNoise[:, 1, :], 1)
+        else:                                
+            if int(step % (adjustTime/updateTime)) == 0:
                 nextOffset = offset + skew * updateTime + (1/self.nAgents) * deltaTheta \
                                                   + np.expand_dims(clkNoise[:, 0, :], 1) \
                                                   - np.expand_dims(processNoise[:, 0, :], 1)
-                nextSkew = skew + (1/self.nAgents) * deltaGamma + np.expand_dims(clkNoise[:, 1, :], 1)
-            else:                                
-                if int(t % (adjustTime/updateTime)) == 0:
-                    nextOffset = offset + skew * updateTime + (1/self.nAgents) * deltaTheta \
-                                                      + np.expand_dims(clkNoise[:, 0, :], 1) \
-                                                      - np.expand_dims(processNoise[:, 0, :], 1)
-                    nextSkew = skew + (1/self.nAgents) * deltaGamma + np.expand_dims(clkNoise[:, 1, :], 1)                                    
-                else: 
-                    nextOffset = offset + skew * updateTime + np.expand_dims(clkNoise[:, 0, :], 1) \
-                                                      - np.expand_dims(processNoise[:, 0, :], 1)
-                    nextSkew = skew + np.expand_dims(clkNoise[:, 1, :], 1)
-                                                      
-            # if self.doPrint:
-            #     percentageCount = int(100*(t+1)/tSamples)
-            #     print('\b \b' * 4 + "%3d%%" % percentageCount,
-            #           end = '', flush = True)
+                nextSkew = skew + (1/self.nAgents) * deltaGamma + np.expand_dims(clkNoise[:, 1, :], 1)                                    
+            else: 
+                nextOffset = offset + skew * updateTime + np.expand_dims(clkNoise[:, 0, :], 1) \
+                                                  - np.expand_dims(processNoise[:, 0, :], 1)
+                nextSkew = skew + np.expand_dims(clkNoise[:, 1, :], 1)
         
         clockCorrection = np.concatenate((deltaTheta,deltaGamma),axis=1)
         
-        # if self.doPrint:
-        #     print('\b \b' * 4, end = '', flush = True)
-
         return nextOffset, nextSkew, clockCorrection
-############################################################    
 
     def computeNoises(self, nAgents, nSamples, duration, updateTime, 
                       sigmaMeasureOffsetVal=0., sigmaProcessOffsetVal=0.,

@@ -53,12 +53,12 @@ lossFunction = nn.MSELoss
 trainer = training.Trainer
 evaluator = evaluation.evaluate
 
-nEpochs = 2 # number of epochs
+nEpochs = 30 # number of epochs
 batchSize = 20 # batch size
 validationInterval = 5 # how many training steps to do the validation
-nDAggers = 50
+nDAggers = 10
 expertProb = 0.9
-aggregationSize = 20
+aggregationSize = nDAgger
 
 nonlinearityHidden = torch.tanh
 nonlinearityOutput = torch.tanh
@@ -149,7 +149,7 @@ for thisModel in modelsGNN.keys():
 
 #%%
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
-                1, 1, nTest, # no care about training nor validation
+                1, 1, 1, nTest, # no care about training nor validation
                 duration, updateTime, adjustTime,
                 initVelValue, initMinDist, accelMax)
 
