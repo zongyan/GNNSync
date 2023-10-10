@@ -1057,7 +1057,7 @@ class AerialSwarm(_data):
             percentageCount = int(100/tSamples)
             print("%3d%%" % percentageCount, end = '', flush = True)        
 
-        for t in range(1,tSamples):
+        for t in range(1, tSamples):
             ### Compute the optimal UAVs trajectories ###            
             ijDiffPos, ijDistSq = self.computeDifferences(pos[:,t-1,:,:])
             #   ijDiffPos: nSamples x 2 x nAgents x nAgents

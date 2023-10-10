@@ -88,6 +88,7 @@ class Trainer:
 
         while iteration < nDAggers:
             
+            epoch = 0 # epoch counter
             while epoch < nEpochs:
                 randomPermutation = np.random.permutation(nTrain)
                 idxEpoch = [int(i) for i in randomPermutation]
@@ -218,17 +219,12 @@ class Trainer:
             chooseExpertProb = expertProb ** iteration
             chooseExpertControl = np.random.binomial(1, chooseExpertProb, tSamples)
 
-            xDAggerOrig, yDAggerOrig = self.data.getSamples('dagger')            
             initThetaDAgger = self.data.getData('initOffset','dagger')
             initGammaDAgger = self.data.getData('initSkew','dagger')
             clockNoiseDAgger = self.data.getData('clockNoise','dagger')                        
             measurementNoiseDAgger = self.data.getData('packetExchangeDelay','dagger')    
             processingNoiseDAgger = self.data.getData('processingDelay','dagger')
-            thetaDAgger = self.data.getData('offset','dagger')                       
-            gammaDAgger = self.data.getData('skew','dagger')                                   
-            adjustDAgger= self.data.getData('adj','dagger')                       
-            graphDAgger = self.data.getData('commGraph','dagger')                       
-            stateDAgger = self.data.getData('state','dagger')            
+            graphDAgger = self.data.getData('commGraph','dagger')
 
             aggTheta  = np.zeros((aggSize, tSamples, 1, self.data.nAgents), dtype = np.float64)
             aggGamma  = np.zeros((aggSize, tSamples, 1, self.data.nAgents), dtype = np.float64)
@@ -241,7 +237,7 @@ class Trainer:
             aggTheta[:,0,:,:] = initThetaDAgger
             aggGamma[:,0,:,:] = initGammaDAgger
             
-            for t in range(1, tSamples):
+            for t in range(1, tSamples-1):
                                 
                 # choose the expeter strategy 
                 if chooseExpertControl[t] == 1:
@@ -261,11 +257,11 @@ class Trainer:
                             
                     _, _, _, aggInput = self.data.computeSingleStepTrajectory(aggTheta, aggGamma, aggAdjust, aggState, \
                                                               measurementNoiseDAgger, processingNoiseDAgger, clockNoiseDAgger, \
-                                                                  graphDAgger, t, self.data.duration, archit = thisArchit)
+                                                                  graphDAgger, t+1, self.data.duration, archit = thisArchit)
 
                     _, _, aggOutput = self.data.computeSingleStepOptimalTrajectory(aggTheta[:,t,:,:], aggGamma[:,t,:,:], \
                                                                      measurementNoiseDAgger[:,t,:,:], processingNoiseDAgger[:,t,:,:], clockNoiseDAgger[:,t,:,:], \
-                                                                         t, self.data.duration, self.data.updateTime, self.data.adjustTime)
+                                                                         t+1, self.data.duration, self.data.updateTime, self.data.adjustTime)
 
                     # store the expert controlling strategy                    
                     if 'xDAgg' not in globals():

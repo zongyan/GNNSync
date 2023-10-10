@@ -56,7 +56,7 @@ evaluator = evaluation.evaluate
 nEpochs = 30 # number of epochs
 batchSize = 20 # batch size
 validationInterval = 5 # how many training steps to do the validation
-nDAggers = 10
+nDAggers = 5 # 2 means no DAgger, 
 expertProb = 0.9
 aggregationSize = nDAgger
 
@@ -121,7 +121,7 @@ for thisModel in modelList:
     thisBeta1 = beta1
     thisBeta2 = beta2
 
-    thisArchit = callArchit(**hParamsDict) # 这个部分，就是初始化GNN模型
+    thisArchit = callArchit(**hParamsDict) # initialise the GNN structure
     thisArchit.to(thisDevice)
 
     thisOptim = optim.Adam(thisArchit.parameters(),
@@ -179,7 +179,7 @@ print("Total time: %dh %dm %.2fs" % (totalRunTimeH,
                                      totalRunTimeS))    
 
 #%%
-gnn_test = np.load('./gnn_test.npz') # the data file loaded from the example folder
+gnn_test = np.load('./gnn_test_10DAgger.npz') # the data file loaded from the example folder
 
 matplotlib.rc('figure', max_open_warning = 0)
 
@@ -190,7 +190,7 @@ stateTest = gnn_test['stateTestBest']
 commGraphTest = gnn_test['commGraphTestBest']
 
 # plot the velocity of all agents via the GNN method
-for i in range(0, 20, 3):
+for i in range(0, 20, 11):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
     for j in range(0, nAgents, 1):
@@ -208,7 +208,7 @@ for i in range(0, 20, 3):
 # end for
 
 # plot the velocity of all agents via the centralised optimal controller
-for i in range(0, 20, 3):
+for i in range(0, 20, 11):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
     for j in range(0, nAgents, 1):
@@ -224,3 +224,24 @@ for i in range(0, 20, 3):
     plt.grid()
     plt.show()    
 # end for
+
+#####################
+offsetTest = offsetTest[:, 350:-1, :, :]
+skewTest = skewTest[:, 350:-1, :, :]
+avgOffset = np.mean(offsetTest, axis = 3) # nSamples x tSamples x 1
+avgSkew = np.mean(skewTest/10, axis= 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
+
+diffOffset = offsetTest - np.tile(np.expand_dims(avgOffset, 3), (1, 1, 1, nAgents)) # nSamples x tSamples x 1 x nAgents
+diffSkew = skewTest/10 - np.tile(np.expand_dims(avgSkew, 3), (1, 1, 1, nAgents)) # nSamples x tSamples x 1 x nAgents
+
+diffOffset = np.sum(diffOffset**2, 2) # nSamples x tSamples x nAgents
+diffSkew = np.sum(diffSkew**2, 2) # nSamples x tSamples x nAgents
+
+diffOffsetAvg = np.mean(diffOffset, axis = 2) # nSamples x tSamples
+diffSkewAvg = np.mean(diffSkew, axis = 2) # nSamples x tSamples
+
+costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*updateTime # nSamples
+
+cost = np.mean(costPerSample) # scalar
+
+print(cost)  
