@@ -31,8 +31,8 @@ class Model:
         self.name = name
         self.saveDir = saveDir
  
-    def train(self, data, nEpochs, batchSize, nDAggers, expertProb, aggregationSize, **kwargs):        
-        self.trainer = self.trainer(self, data, nEpochs, batchSize, nDAggers, expertProb, aggregationSize, **kwargs)        
+    def train(self, data, nEpochs, batchSize, nDAggers, expertProb, aggregationSize, nLayers, hParamsbaseGNN, paramsLayerWiseTrain, **kwargs):        
+        self.trainer = self.trainer(self, data, nEpochs, batchSize, nDAggers, expertProb, aggregationSize, nLayers, hParamsbaseGNN, paramsLayerWiseTrain, **kwargs)        
         return self.trainer.train()
     
     def evaluate(self, data, **kwargs):        

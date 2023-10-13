@@ -23,22 +23,24 @@ class LocalGNN_DB(nn.Module):
         self.sigma = nonlinearity
         self.dimReadout = dimReadout
         
-        # 这个部分，就是初始化GNN模块
-        gfl = [] # graph filtering layers
-        for l in range(self.L):
-            gfl.append(gml.GraphFilter_DB(self.F[l], self.F[l+1], self.K[l],
-                                              self.E, self.bias))
+        gfl = []
+        gfl.append(gml.GraphFilter_DB(self.F[0], self.F[1], self.K[0], self.E, self.bias))
+            
+        for l in range(1, self.L):
             gfl.append(self.sigma())
+            gfl.append(gml.GraphFilter_DB(self.F[l], self.F[l+1], self.K[l],
+                                              self.E, self.bias))                
         self.GFL = nn.Sequential(*gfl) # graph filtering layers
 
         fc = []
-        if len(self.dimReadout) > 0: 
+        if len(self.dimReadout) > 0:
+            fc.append(self.sigma())            
             fc.append(nn.Linear(self.F[-1], dimReadout[0], bias = self.bias))
             for l in range(len(dimReadout)-1):
                 fc.append(self.sigma())
                 fc.append(nn.Linear(dimReadout[l], dimReadout[l+1],
                                     bias = self.bias))
-        self.Readout = nn.Sequential(*fc)
+            self.Readout = nn.Sequential(*fc) # readout layers
 
     def splitForward(self, x, S):
         # input: ### 

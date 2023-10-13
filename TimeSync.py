@@ -32,7 +32,7 @@ if not os.path.exists(saveDir):
 useGPU = True
 commRadius = 2. # communication radius
 repelDist = 1. # minimum distance before activating repelling function
-nTrain = 400 # number of training samples
+nTrain = 40 # number of training samples
 nDAgger = nTrain
 nValid = 20 # number of valid samples
 nTest = 50 # number of testing samples
@@ -53,12 +53,13 @@ lossFunction = nn.MSELoss
 trainer = training.Trainer
 evaluator = evaluation.evaluate
 
-nEpochs = 30 # number of epochs
+nEpochs = 3 # number of epochs
 batchSize = 20 # batch size
 validationInterval = 5 # how many training steps to do the validation
-nDAggers = 5 # 2 means no DAgger, 
+nDAggers = 2 # 2 means no DAgger, 
 expertProb = 0.9
 aggregationSize = nDAgger
+nLayers = 5 # number of layers added to neural network
 
 nonlinearityHidden = torch.tanh
 nonlinearityOutput = torch.tanh
@@ -69,21 +70,31 @@ printInterval = 1 # after how many training steps, print the partial results
 
 modelList = []
 
-hParamsGCNN = {}
-hParamsGCNN['name'] = 'GCNN'
-hParamsGCNN['archit'] = architTime.LocalGNN_DB
-hParamsGCNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-hParamsGCNN['dimNodeSignals'] = [2, 16] # features per layer
-hParamsGCNN['nFilterTaps'] = [2] # number of filter taps
-hParamsGCNN['bias'] = True
-hParamsGCNN['nonlinearity'] = nonlinearity
-hParamsGCNN['dimReadout'] = [2] 
-hParamsGCNN['dimEdgeFeatures'] = 1 # scalar edge weights
-modelList += [hParamsGCNN['name']]
+hParamsbaseGNN = {}
+hParamsbaseGNN['name'] = 'baseGNN'
+hParamsbaseGNN['archit'] = architTime.LocalGNN_DB
+hParamsbaseGNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsbaseGNN['dimNodeSignals'] = [2, 2, 2, 2] # features per layer
+hParamsbaseGNN['nFilterTaps'] = [1, 1, 1] # number of filter taps
+hParamsbaseGNN['bias'] = True
+hParamsbaseGNN['nonlinearity'] = nonlinearity
+hParamsbaseGNN['dimReadout'] = [2, 2, 2] 
+hParamsbaseGNN['dimEdgeFeatures'] = 1 # scalar edge weights
+modelList += [hParamsbaseGNN['name']]
 
 trainingOptions = {}
 trainingOptions['printInterval'] = printInterval
 trainingOptions['validationInterval'] = validationInterval
+
+'''ONLY for hidden layer parameters [at the layer-wise training] '''
+paramsLayerWiseTrain = {}
+paramsLayerWiseTrain['dimNodeSignals'] = [2, 2, 2, 2, 2] # features per hidden layer
+paramsLayerWiseTrain['nFilterTaps'] = [1, 1, 1, 1, 1] # number of filter taps for each hidden layer
+paramsLayerWiseTrain['bias'] = True
+paramsLayerWiseTrain['nonlinearity'] = 2 # nonlinearity for each hidden layer
+paramsLayerWiseTrain['dimReadout'] = [16, 8, 4, 2] 
+paramsLayerWiseTrain['dimEdgeFeatures'] = 1 # scalar edge weights
+
 #%%
 if useGPU and torch.cuda.is_available():
     torch.cuda.empty_cache()
@@ -145,7 +156,9 @@ for thisModel in modelList:
 for thisModel in modelsGNN.keys():
     print("Training model %s..." % thisModel)
         
-    thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, nDAggers, expertProb, aggregationSize)
+    thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
+                                               nDAggers, expertProb, aggregationSize, \
+                                                   nLayers, hParamsDict, paramsLayerWiseTrain)
 
 #%%
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
@@ -225,7 +238,7 @@ for i in range(0, 20, 11):
     plt.show()    
 # end for
 
-#####################
+#%%
 offsetTest = offsetTest[:, 350:-1, :, :]
 skewTest = skewTest[:, 350:-1, :, :]
 avgOffset = np.mean(offsetTest, axis = 3) # nSamples x tSamples x 1

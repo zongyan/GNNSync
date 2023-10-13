@@ -1,11 +1,14 @@
 import torch
 import numpy as np
 import datetime
+import torch.nn as nn
+
+import utils.graphML as gml
                     
 class Trainer:   
-    def __init__(self, model, data, nEpochs, batchSize, nDAggers, expertProb, aggregationSize, **kwargs):
+    def __init__(self, model, data, nEpochs, batchSize, nDAggers, expertProb, aggregationSize, nLayers, hParamsbaseGNN, paramsLayerWiseTrain, **kwargs):
                 
-        self.model = model # 很好奇呀，这个model，也没有传递这个参数呀，怎么就自动的传动过来了呢。
+        self.model = model
         self.data = data
         
         if 'printInterval' in kwargs.keys():
@@ -50,6 +53,9 @@ class Trainer:
         self.trainingOptions['nDAggers'] = nDAggers
         self.trainingOptions['expertProb'] = expertProb
         self.trainingOptions['aggSize'] = aggregationSize
+        self.trainingOptions['nLayers'] = nLayers
+        self.trainingOptions['hParamsbaseGNN'] = hParamsbaseGNN
+        self.trainingOptions['paramsLayerWiseTrain'] = paramsLayerWiseTrain
         
     def train(self):        
         printInterval = self.trainingOptions['printInterval']
@@ -61,6 +67,23 @@ class Trainer:
         nDAggers = self.trainingOptions['nDAggers']
         expertProb = self.trainingOptions['expertProb']
         aggSize = self.trainingOptions['aggSize']
+        nLayers = self.trainingOptions['nLayers']
+        hParamsbaseGNN = self.trainingOptions['hParamsbaseGNN']
+        paramsLayerWiseTrain = self.trainingOptions['paramsLayerWiseTrain']
+                
+        paramsNameLayerWiseTrain = list(paramsLayerWiseTrain)
+        
+        layerWiseTrainL = len(paramsLayerWiseTrain[paramsNameLayerWiseTrain[1]])
+
+        assert nLayers == layerWiseTrainL
+        assert len(paramsLayerWiseTrain[paramsNameLayerWiseTrain[0]]) == len(paramsLayerWiseTrain[paramsNameLayerWiseTrain[1]])        
+                        
+        layerWiseTrainF = paramsNameLayerWiseTrain[0]
+        layerWiseTrainK = paramsNameLayerWiseTrain[1]
+        layerWiseTrainE = paramsNameLayerWiseTrain[5]
+        layerWiseTrainBias = paramsNameLayerWiseTrain[2]
+        layerWiseTrainSigma = paramsNameLayerWiseTrain[3]
+        layerWiseTraindimReadout = paramsNameLayerWiseTrain[4]
         
         nTrain = self.data.nTrain
         thisArchit = self.model.archit
@@ -70,7 +93,8 @@ class Trainer:
         
         epoch = 0 # epoch counter
         iteration = 1 # DAgger counter        
-
+        l = 0 # adding layer counter
+        
         lossTrain = []
         evalValid = []
         timeTrain = []
@@ -86,6 +110,62 @@ class Trainer:
         yTrainAll = yTrainOrig[:,adjStep,:,:]
         sTrainAll = StrainOrig[:,adjStep,:,:]        
 
+        while l < layerWiseTrainL: # number of layers added to neural network
+            
+            modules = [name for name, _ in thisArchit.named_parameters()]
+            layers = [name[0:3] for name in modules if len(name)<=13]
+            layers = layers + [name[0:7] for name in modules if len(name)>13]
+            
+            if "GFL" in layers:
+                thisGraphFilterLayers = thisArchit.GFL
+                # preserve the output layer
+                lastGraphFilterLayer = thisGraphFilterLayers[-1]
+                
+                layerWiseGFL = [] 
+                for i in range(len(thisGraphFilterLayers) - 1):                
+                    # set parameters of all layers except the output layer to non-trainable
+                    origLayer = thisGraphFilterLayers[i]
+                    for param in origLayer.parameters():
+                        param.requires_grad = False        
+
+                    # append the original layer
+                    layerWiseGFL.append(origLayer)
+
+                # append the layer-wise training layer
+                layerWiseGFL.append(layerWiseTrainSigma)                
+                layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], layerWiseTrainF[l+1], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias))
+                 
+                # add the original final output layer
+                layerWiseGFL.append(lastGraphFilterLayer)
+
+                self.GFL = nn.Sequential(*layerWiseGFL) # graph filtering layers for layer-wise training
+                
+            if "Readout" in layers:
+                thisReadoutLayers = thisArchit.Readout
+                # preserve the output layer
+                lastReadoutLayer = thisReadoutLayers[-1]
+                
+                layerWiseFC = []
+                for i in range(len(thisReadoutLayers) - 1):                
+                    # set parameters of all layers except the output layer to non-trainable
+                    origLayer = thisReadoutLayers[i]
+                    for param in origLayer.parameters():
+                        param.requires_grad = False      
+                        
+                    # append the original layer
+                    layerWiseFC.append(origLayer)
+
+                # append the original layer
+                layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], layerWiseTraindimReadout[l+1], bias = layerWiseTrainBias))            
+                layerWiseFC.append(layerWiseTrainSigma)
+                
+                # add the original final output layer                
+                layerWiseFC.append(lastReadoutLayer)
+
+                self.Readout = nn.Sequential(*layerWiseFC) # readout layer for layer-wise training
+
+            l = l + 1 # increase layer count
+            
         while iteration < nDAggers:
             
             epoch = 0 # epoch counter
