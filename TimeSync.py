@@ -73,8 +73,8 @@ hParamsbaseGNN = {}
 hParamsbaseGNN['name'] = 'baseGNN'
 hParamsbaseGNN['archit'] = architTime.LocalGNN_DB
 hParamsbaseGNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-hParamsbaseGNN['dimNodeSignals'] = [2, 32] # features per layer
-hParamsbaseGNN['nFilterTaps'] = [1] # number of filter taps
+hParamsbaseGNN['dimNodeSignals'] = [2, 32, 2] # features per layer
+hParamsbaseGNN['nFilterTaps'] = [1, 1] # number of filter taps
 hParamsbaseGNN['bias'] = True
 hParamsbaseGNN['nonlinearity'] = nonlinearity
 hParamsbaseGNN['dimReadout'] = [2] 
@@ -87,8 +87,8 @@ trainingOptions['validationInterval'] = validationInterval
 
 '''ONLY for hidden layer parameters [at the layer-wise training] '''
 paramsLayerWiseTrain = {}
-paramsLayerWiseTrain['dimNodeSignals'] = [] # features per hidden layer
-paramsLayerWiseTrain['nFilterTaps'] = [] # number of filter taps for each hidden layer
+paramsLayerWiseTrain['dimNodeSignals'] = [16, 8, 4, 2] # features per hidden layer
+paramsLayerWiseTrain['nFilterTaps'] = [1, 1, 1, 1] # number of filter taps for each hidden layer
 paramsLayerWiseTrain['bias'] = True
 paramsLayerWiseTrain['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
 paramsLayerWiseTrain['dimReadout'] = [16, 8, 4]

@@ -108,12 +108,20 @@ class Trainer:
         
         modules = [name for name, _ in thisArchit.named_parameters()]
         layers = [name[0:3] for name in modules if len(name)<=13]
-        layers = layers + [name[0:7] for name in modules if len(name)>13]        
+        layers = layers + [name[0:7] for name in modules if len(name)>13]  
+        
+        """
+        if the number of graph filter layers is less than 2, layer-wise training
+        in graph filter layers will raise bugs, (see the first 'append the 
+        layer-wise training layer' thisArchit.F[-2] part)
+        """
+        assert len(thisArchit.K) >= 2
         
         if "GFL" in layers:
             
+            l = 0 # graph filter layer wise training counter
             while l < layerWiseTrainL: # number of layers added to neural network                            
-        
+                
                 thisGraphFilterLayers = thisArchit.GFL
                 # preserve the output layer
                 lastGraphFilterLayer = thisGraphFilterLayers[-1]
@@ -140,9 +148,10 @@ class Trainer:
                 architTime.LocalGNN_DB.gflLayerWiseInit(thisArchit, layerWiseGFL) # graph filtering layers for layer-wise training
                 
                 l = l + 1 # increase layer count                
-
+        
         if "Readout" in layers:
-                            
+
+            l = 0 # fully connected layer wise training counter                           
             while l < len(layerWiseTraindimReadout): # number of layers added to neural network   
             
                 thisReadoutLayers = thisArchit.Readout
