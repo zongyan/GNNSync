@@ -41,6 +41,12 @@ class LocalGNN_DB(nn.Module):
                 fc.append(nn.Linear(dimReadout[l], dimReadout[l+1],
                                     bias = self.bias))
             self.Readout = nn.Sequential(*fc) # readout layers
+            
+    def gflLayerWiseInit(self, layerWiseStructure):        
+        self.GFL = nn.Sequential(*layerWiseStructure)
+        
+    def readoutLayerWiseInit(self, readoutStructure):        
+        self.Readout = nn.Sequential(*readoutStructure)        
 
     def splitForward(self, x, S):
         # input: ### 

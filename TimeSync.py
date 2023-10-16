@@ -59,7 +59,6 @@ validationInterval = 5 # how many training steps to do the validation
 nDAggers = 2 # 2 means no DAgger, 
 expertProb = 0.9
 aggregationSize = nDAgger
-nLayers = 5 # number of layers added to neural network
 
 nonlinearityHidden = torch.tanh
 nonlinearityOutput = torch.tanh
@@ -74,11 +73,11 @@ hParamsbaseGNN = {}
 hParamsbaseGNN['name'] = 'baseGNN'
 hParamsbaseGNN['archit'] = architTime.LocalGNN_DB
 hParamsbaseGNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-hParamsbaseGNN['dimNodeSignals'] = [2, 2, 2, 2] # features per layer
-hParamsbaseGNN['nFilterTaps'] = [1, 1, 1] # number of filter taps
+hParamsbaseGNN['dimNodeSignals'] = [2, 32] # features per layer
+hParamsbaseGNN['nFilterTaps'] = [1] # number of filter taps
 hParamsbaseGNN['bias'] = True
 hParamsbaseGNN['nonlinearity'] = nonlinearity
-hParamsbaseGNN['dimReadout'] = [2, 2, 2] 
+hParamsbaseGNN['dimReadout'] = [2] 
 hParamsbaseGNN['dimEdgeFeatures'] = 1 # scalar edge weights
 modelList += [hParamsbaseGNN['name']]
 
@@ -88,11 +87,11 @@ trainingOptions['validationInterval'] = validationInterval
 
 '''ONLY for hidden layer parameters [at the layer-wise training] '''
 paramsLayerWiseTrain = {}
-paramsLayerWiseTrain['dimNodeSignals'] = [2, 2, 2, 2, 2] # features per hidden layer
-paramsLayerWiseTrain['nFilterTaps'] = [1, 1, 1, 1, 1] # number of filter taps for each hidden layer
+paramsLayerWiseTrain['dimNodeSignals'] = [] # features per hidden layer
+paramsLayerWiseTrain['nFilterTaps'] = [] # number of filter taps for each hidden layer
 paramsLayerWiseTrain['bias'] = True
-paramsLayerWiseTrain['nonlinearity'] = 2 # nonlinearity for each hidden layer
-paramsLayerWiseTrain['dimReadout'] = [16, 8, 4, 2] 
+paramsLayerWiseTrain['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
+paramsLayerWiseTrain['dimReadout'] = [16, 8, 4]
 paramsLayerWiseTrain['dimEdgeFeatures'] = 1 # scalar edge weights
 
 #%%
@@ -157,8 +156,7 @@ for thisModel in modelsGNN.keys():
     print("Training model %s..." % thisModel)
         
     thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
-                                               nDAggers, expertProb, aggregationSize, \
-                                                   nLayers, hParamsDict, paramsLayerWiseTrain)
+                                               nDAggers, expertProb, aggregationSize, paramsLayerWiseTrain)
 
 #%%
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
