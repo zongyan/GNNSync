@@ -398,6 +398,8 @@ class Trainer:
                 layerWiseFC.append(layerWiseTrainSigma())
                 
                 # add the original final output layer                
+                
+                thisArchit.dimReadout = np.append(np.append(thisArchit.dimReadout[-1], thisArchit.dimReadout[0:-1], layerWiseTraindimReadout[l]))
                 layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], lastReadoutLayer.out_features, bias = thisArchit.bias))
                 architTime.LocalGNN_DB.readoutLayerWiseInit(thisArchit, layerWiseFC) # readout layer for layer-wise training  
             
