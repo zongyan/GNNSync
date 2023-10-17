@@ -132,6 +132,11 @@ class Trainer:
         l = 0 # layer wise training counter
         while l < maximumLayerWiseNum:
             
+            print("\tdimGFL: % 2s, numTap: % 2s, dimReadout %2s " % (
+                str(list(thisArchit.F)), str(list(thisArchit.K)), str(list(thisArchit.dimReadout))
+                ), end = ' ')
+            print("")
+            
             iteration = 0 # DAgger counter
             while iteration < nDAggers:
                 
@@ -179,10 +184,8 @@ class Trainer:
         
                         if printInterval > 0:
                             if (epoch * nBatches + batch) % printInterval == 0:
-                                print("\t(E: %2d, B: %3d) %7.4f - %6.4fs" % (
-                                        epoch+1, batch+1,
-                                        lossValueTrain.item(), timeElapsed),
-                                    end = ' ')
+                                print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) %7.4f" % (
+                                        l, iteration, epoch, batch, lossValueTrain.item()), end = ' ')
                                 print("")
         
                         del xTrain
@@ -206,7 +209,7 @@ class Trainer:
                                     archit = thisArchit, doPrint = False)
                             
                             accValid = self.data.evaluate(thetaOffset=offsetTestValid, 
-                                                          gammaSkew=skewTestValid) # 这个数值太大了，感觉不太合理
+                                                          gammaSkew=skewTestValid)
         
                             endTime = datetime.datetime.now()
         
@@ -217,12 +220,9 @@ class Trainer:
                             evalValid += [accValid]
                             timeValid += [timeElapsed]
         
-                            print("\t(E: %2d, B: %3d) %8.4f - %6.4fs" % (
-                                    epoch+1, batch+1,
-                                    accValid, 
-                                    timeElapsed), end = ' ')
-                            print("[VALIDATION", end = '')
-                            print(" (%s)]" % self.model.name)
+                            print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) %8.4f" % (
+                                    l, iteration, epoch, batch, accValid), end = ' ')
+                            print("[VALIDATION]")
         
                             if epoch == 0 and batch == 0:
                                 bestScore = accValid
@@ -256,7 +256,7 @@ class Trainer:
         
                 if nEpochs > 0:
                     print("\t=> Best validation achieved (E: %d, B: %d): %.4f" % (
-                            bestEpoch + 1, bestBatch + 1, bestScore))
+                            bestEpoch, bestBatch, bestScore))
                 
                 '''ToDo: if the 'adjustTime' is not the same as the 'updateTime', 
                          we may need to re-write the DAgger part'''
@@ -339,7 +339,6 @@ class Trainer:
                     del xDAgg, sDAgg, yDAgg
                 
                 iteration = iteration + 1 # end of DAgger, increase iteration count
-                print("\t done.", flush=True)
 
             # store the gnn architecture in the layer-wise training                             
             historicalL = np.append(historicalL, thisArchit.L)
@@ -375,6 +374,7 @@ class Trainer:
                 
                 thisArchit.F = np.append(np.append(thisArchit.F[0:-1], layerWiseTrainF[l]), thisArchit.F[-1])
                 thisArchit.K = np.append(thisArchit.K, layerWiseTrainK[l])
+                thisArchit.L = len(thisArchit.K)
                 architTime.LocalGNN_DB.gflLayerWiseInit(thisArchit, layerWiseGFL) # graph filtering layers for layer-wise training            
             
             if ("Readout" in layers) and (l < len(layerWiseTraindimReadout)):
@@ -400,7 +400,9 @@ class Trainer:
                 # add the original final output layer                
                 layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], lastReadoutLayer.out_features, bias = thisArchit.bias))
                 architTime.LocalGNN_DB.readoutLayerWiseInit(thisArchit, layerWiseFC) # readout layer for layer-wise training  
-
+            
+            thisArchit.to(self.model.device)
+            
             saveArchitDir = os.path.join(self.model.saveDir,'savedArchits')
             if not os.path.exists(saveArchitDir):
                 os.makedirs(saveArchitDir)

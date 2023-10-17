@@ -1,3 +1,15 @@
+
+try:
+    from IPython import get_ipython
+    get_ipython().magic('clear')
+    get_ipython().magic('reset -f')
+except:
+    pass
+
+import time
+time.sleep(10) # wait 10 seconds
+
+#%%
 import os
 import numpy as np
 import matplotlib
