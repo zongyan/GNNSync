@@ -132,7 +132,7 @@ class Trainer:
         l = 0 # layer wise training counter
         while l < maximumLayerWiseNum:
             
-            print("\tdimGFL: % 2s, numTap: % 2s, dimReadout %2s " % (
+            print("\tdimGFL: % 2s, numTap: % 2s, dimReadout: %2s " % (
                 str(list(thisArchit.F)), str(list(thisArchit.K)), str(list(thisArchit.dimReadout))
                 ), end = ' ')
             print("")
@@ -400,7 +400,7 @@ class Trainer:
                 # add the original final output layer
                 layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], lastReadoutLayer.out_features, bias = thisArchit.bias))
                 
-                thisArchit.dimReadout = np.append(thisArchit.dimReadout[-1], np.append(thisArchit.dimReadout[0:-1], layerWiseTraindimReadout[l]), )
+                thisArchit.dimReadout = np.append(np.append(np.append(thisArchit.dimReadout[0], thisArchit.dimReadout[1:-1]), layerWiseTraindimReadout[l]), thisArchit.dimReadout[-1])                                                
                 architTime.LocalGNN_DB.readoutLayerWiseInit(thisArchit, layerWiseFC) # readout layer for layer-wise training  
             
             thisArchit.to(self.model.device)

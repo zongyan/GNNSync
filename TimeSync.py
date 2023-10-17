@@ -43,9 +43,9 @@ if not os.path.exists(saveDir):
 useGPU = True
 commRadius = 2. # communication radius
 repelDist = 1. # minimum distance before activating repelling function
-nTrain = 40 # number of training samples
+nTrain = 20 # number of training samples
 nDAgger = nTrain
-nValid = 20 # number of valid samples
+nValid = 10 # number of valid samples
 nTest = 50 # number of testing samples
 duration = 10. # simulation duration 
 updateTime = 0.01 # clock update time
@@ -64,7 +64,7 @@ lossFunction = nn.MSELoss
 trainer = training.Trainer
 evaluator = evaluation.evaluate
 
-nEpochs = 3 # number of epochs
+nEpochs = 1 # number of epochs
 batchSize = 20 # batch size
 validationInterval = 5 # how many training steps to do the validation
 nDAggers = 3 # 2 means no DAgger, 
