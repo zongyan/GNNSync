@@ -397,10 +397,10 @@ class Trainer:
                 layerWiseFC.append(nn.Linear(lastReadoutLayer.in_features, layerWiseTraindimReadout[l], bias = layerWiseTrainBias))            
                 layerWiseFC.append(layerWiseTrainSigma())
                 
-                # add the original final output layer                
-                
-                thisArchit.dimReadout = np.append(np.append(thisArchit.dimReadout[-1], thisArchit.dimReadout[0:-1], layerWiseTraindimReadout[l]))
+                # add the original final output layer
                 layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], lastReadoutLayer.out_features, bias = thisArchit.bias))
+                
+                thisArchit.dimReadout = np.append(thisArchit.dimReadout[-1], np.append(thisArchit.dimReadout[0:-1], layerWiseTraindimReadout[l]), )
                 architTime.LocalGNN_DB.readoutLayerWiseInit(thisArchit, layerWiseFC) # readout layer for layer-wise training  
             
             thisArchit.to(self.model.device)
