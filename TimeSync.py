@@ -56,7 +56,7 @@ evaluator = evaluation.evaluate
 nEpochs = 3 # number of epochs
 batchSize = 20 # batch size
 validationInterval = 5 # how many training steps to do the validation
-nDAggers = 2 # 2 means no DAgger, 
+nDAggers = 3 # 2 means no DAgger, 
 expertProb = 0.9
 aggregationSize = nDAgger
 
