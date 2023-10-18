@@ -130,7 +130,7 @@ class Trainer:
         historicalReadout = []
         
         l = 0 # layer wise training counter
-        while l < maximumLayerWiseNum:
+        while l < maximumLayerWiseNum + 1:
             
             print("\tdimGFL: % 2s, numTap: % 2s, dimReadout: %2s " % (
                 str(list(thisArchit.F)), str(list(thisArchit.K)), str(list(thisArchit.dimReadout))
