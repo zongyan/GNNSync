@@ -28,7 +28,7 @@ startRunTime = datetime.datetime.now()
 
 #%%
 thisFilename = 'TimeSync'
-nAgents = 25  # number of UAVs during training 
+nAgents = 50  # number of UAVs during training 
 saveDirRoot = 'experiments' 
 saveDir = os.path.join(saveDirRoot, thisFilename) 
 
@@ -40,9 +40,9 @@ if not os.path.exists(saveDir):
 useGPU = True
 commRadius = 2. # communication radius
 repelDist = 1. # minimum distance before activating repelling function
-nTrain = 20 # number of training samples
+nTrain = 400 # number of training samples
 nDAgger = nTrain
-nValid = 10 # number of valid samples
+nValid = 50 # number of valid samples
 nTest = 50 # number of testing samples
 duration = 10. # simulation duration 
 updateTime = 0.01 # clock update time
@@ -53,18 +53,17 @@ accelMax = 10. # maximum acceleration value
 normalizeGraph = True # normalise wireless communication graph
 
 optimAlg = 'ADAM' 
-probExpert = 0.993
-learningRate = 0.0005 
-beta1 = 0.9  
-beta2 = 0.999 
+learningRate = 0.0001 
+beta1 = 0.9 # default value in pytorch adam
+beta2 = 0.999 # default value in pytorch adam
 lossFunction = nn.MSELoss
 trainer = training.Trainer
 evaluator = evaluation.evaluate
 
-nEpochs = 1 # number of epochs
+nEpochs = 50 # number of epochs
 batchSize = 20 # batch size
 validationInterval = 5 # how many training steps to do the validation
-nDAggers = 3 # 2 means no DAgger, 
+nDAggers = 1 # 1 means no DAgger
 expertProb = 0.9
 aggregationSize = nDAgger
 
@@ -164,7 +163,7 @@ for thisModel in modelsGNN.keys():
     print("Training model %s..." % thisModel)
         
     thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
-                                               nDAggers, expertProb, aggregationSize, paramsLayerWiseTrain)
+                                               nDAggers, expertProb, aggregationSize, paramsLayerWiseTrain, **trainingOptions)
 
 #%%
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
