@@ -28,8 +28,8 @@ class LocalGNN_DB(nn.Module):
             
         for l in range(1, self.L):
             gfl.append(self.sigma())
-            gfl.append(gml.GraphFilter_DB(self.F[l], self.F[l+1], self.K[l],
-                                              self.E, self.bias))                
+            gfl.append(gml.GraphFilter_DB(self.F[l], self.F[l+1], self.K[l], self.E, self.bias))                
+
         self.GFL = nn.Sequential(*gfl) # graph filtering layers
 
         fc = []
@@ -38,8 +38,8 @@ class LocalGNN_DB(nn.Module):
             fc.append(nn.Linear(self.F[-1], dimReadout[0], bias = self.bias))
             for l in range(len(dimReadout)-1):
                 fc.append(self.sigma())
-                fc.append(nn.Linear(dimReadout[l], dimReadout[l+1],
-                                    bias = self.bias))
+                fc.append(nn.Linear(dimReadout[l], dimReadout[l+1], bias = self.bias))
+
             self.Readout = nn.Sequential(*fc) # readout layers
             
     def gflLayerWiseInit(self, layerWiseStructure):        

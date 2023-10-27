@@ -71,6 +71,9 @@ nonlinearityHidden = torch.tanh
 nonlinearityOutput = torch.tanh
 nonlinearity = nn.Tanh
 
+layerWiseTraining = False
+endToEndTraining = not layerWiseTraining
+
 printInterval = 1 # after how many training steps, print the partial results
                   #   0 means to never print partial results while training
 
@@ -94,11 +97,11 @@ trainingOptions['validationInterval'] = validationInterval
 
 '''ONLY for hidden layer parameters [at the layer-wise training] '''
 paramsLayerWiseTrain = {}
-paramsLayerWiseTrain['dimNodeSignals'] = [16, 8, 4, 2] # features per hidden layer
-paramsLayerWiseTrain['nFilterTaps'] = [1, 1, 1, 1] # number of filter taps for each hidden layer
+paramsLayerWiseTrain['dimNodeSignals'] = [32, 32, 32, 32, 32, 32, 32, 32, 32] # features per hidden layer
+paramsLayerWiseTrain['nFilterTaps'] = [1, 1, 1, 1, 1, 1, 1, 1, 1] # number of filter taps for each hidden layer
 paramsLayerWiseTrain['bias'] = True
 paramsLayerWiseTrain['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
-paramsLayerWiseTrain['dimReadout'] = [16, 8, 4]
+paramsLayerWiseTrain['dimReadout'] = [ ]
 paramsLayerWiseTrain['dimEdgeFeatures'] = 1 # scalar edge weights
 
 #%%
@@ -163,7 +166,7 @@ for thisModel in modelsGNN.keys():
     print("Training model %s..." % thisModel)
         
     thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
-                                               nDAggers, expertProb, aggregationSize, paramsLayerWiseTrain, **trainingOptions)
+                                               nDAggers, expertProb, aggregationSize, paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, **trainingOptions)
 
 #%%
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,

@@ -8,7 +8,7 @@ import utils.graphML as gml
 import modules.architecturesTime as architTime
                     
 class Trainer:   
-    def __init__(self, model, data, nEpochs, batchSize, nDAggers, expertProb, aggregationSize, paramsLayerWiseTrain, **kwargs):
+    def __init__(self, model, data, nEpochs, batchSize, nDAggers, expertProb, aggregationSize, paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, **kwargs):
                 
         self.model = model
         self.data = data
@@ -56,6 +56,8 @@ class Trainer:
         self.trainingOptions['expertProb'] = expertProb
         self.trainingOptions['aggSize'] = aggregationSize
         self.trainingOptions['paramsLayerWiseTrain'] = paramsLayerWiseTrain
+        self.trainingOptions['layerWiseTraining'] = layerWiseTraining
+        self.trainingOptions['endToEndTraining'] = endToEndTraining        
         
     def train(self):        
         printInterval = self.trainingOptions['printInterval']
@@ -67,7 +69,11 @@ class Trainer:
         nDAggers = self.trainingOptions['nDAggers']
         expertProb = self.trainingOptions['expertProb']
         aggSize = self.trainingOptions['aggSize']
-        paramsLayerWiseTrain = self.trainingOptions['paramsLayerWiseTrain']
+        paramsLayerWiseTrain = self.trainingOptions['paramsLayerWiseTrain']        
+        layerWiseTraining = self.trainingOptions['layerWiseTraining']
+        endToEndTraining = self.trainingOptions['endToEndTraining']
+
+        assert layerWiseTraining == (not endToEndTraining)        
                 
         paramsNameLayerWiseTrain = list(paramsLayerWiseTrain)
         
@@ -133,7 +139,7 @@ class Trainer:
         while l < maximumLayerWiseNum + 1:
             
             print("\tdimGFL: % 2s, numTap: % 2s, dimReadout: %2s " % (
-                str(list(thisArchit.F)), str(list(thisArchit.K)), str(list(thisArchit.dimReadout))
+                str(list(thisArchit.F)), str(list(thisArchit.K)), str(list(np.int64(thisArchit.dimReadout)))
                 ), end = ' ')
             print("")
             
@@ -226,16 +232,16 @@ class Trainer:
         
                             if epoch == 0 and batch == 0:
                                 bestScore = accValid
-                                bestEpoch, bestBatch = epoch, batch
-                                self.model.save(label = 'Best')
+                                bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
+                                self.model.save(layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = 'Best')
                             else:
                                 thisValidScore = accValid
                                 if thisValidScore < bestScore:
                                     bestScore = thisValidScore
-                                    bestEpoch, bestBatch = epoch, batch
+                                    bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
                                     print("\t=> New best achieved: %.4f" % \
                                               (bestScore))
-                                    self.model.save(label = 'Best')
+                                    self.model.save(layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = 'Best')
                                     # initialBest = False
         
                             del initThetaValid
@@ -245,14 +251,15 @@ class Trainer:
         
                     epoch += 1 # end of epoch, increase epoch count
         
-                self.model.save(label = 'Last') # training over, save the last model
+                self.model.save(layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = 'Last') # training over, save the last model
         
                 if nEpochs == 0:
-                    self.model.save(label = 'Best')
-                    self.model.save(label = 'Last')
+                    bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
+                    self.model.save(layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = 'Best')
+                    self.model.save(layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = 'Last')
                     print("\nWARNING: No training. Best and Last models are the same.\n")
         
-                self.model.load(label = 'Best') # reload best model for evaluation
+                self.model.load(layerWiseTraining, endToEndTraining, bestL, bestIteration, bestEpoch, bestBatch, label = 'Best') # reload best model for evaluation
         
                 if nEpochs > 0:
                     print("\t=> Best validation achieved (E: %d, B: %d): %.4f" % (
@@ -349,6 +356,14 @@ class Trainer:
             historicalSigma = np.append(historicalSigma, thisArchit.sigma)
             historicalReadout = np.append(historicalReadout, thisArchit.dimReadout)
             
+            lastL = thisArchit.L
+            lastF = thisArchit.F
+            lastK = thisArchit.K
+            lastE = thisArchit.E
+            lastBias = thisArchit.bias
+            lastSigma = thisArchit.sigma
+            lastReadout = thisArchit.dimReadout
+            
             if ("GFL" in layers) and (l < layerWiseTrainL):
                 
                 thisGraphFilterLayers = thisArchit.GFL
@@ -357,13 +372,27 @@ class Trainer:
                 
                 layerWiseGFL = [] 
                 for i in range(len(thisGraphFilterLayers) - 1):                
+
                     # set parameters of all layers except the output layer to non-trainable
                     origLayer = thisGraphFilterLayers[i]
-                    for param in origLayer.parameters():
-                        param.requires_grad = False        
-        
-                    # append the original layer
-                    layerWiseGFL.append(origLayer)
+                    
+                    if layerWiseTraining == True:
+                    
+                        for param in origLayer.parameters():
+                            param.requires_grad = False
+            
+                        # append the original layer
+                        layerWiseGFL.append(origLayer)
+
+                    elif endToEndTraining == True:
+
+                        if (i % 2) == 0:
+                            layerWiseGFL.append(gml.GraphFilter_DB(thisArchit.F[np.int64(i/2)], thisArchit.F[np.int64((i/2) + 1)], thisArchit.K[np.int64(i/2)], thisArchit.E, thisArchit.bias))
+                        else:
+                            layerWiseGFL.append(thisArchit.sigma())                        
+
+                    else:
+                        print("\nWARNING: no training method is found.\n")  
         
                 # append the layer-wise training layer
                 layerWiseGFL.append(gml.GraphFilter_DB(thisArchit.F[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias))
@@ -384,14 +413,28 @@ class Trainer:
                 lastReadoutLayer = thisReadoutLayers[-1]
                 
                 layerWiseFC = []
-                for i in range(len(thisReadoutLayers) - 1):                
+                for i in range(len(thisReadoutLayers) - 1): 
+
                     # set parameters of all layers except the output layer to non-trainable
                     origLayer = thisReadoutLayers[i]
-                    for param in origLayer.parameters():
-                        param.requires_grad = False
+                        
+                    if layerWiseTraining == True:              
                     
-                    # append the original layer
-                    layerWiseFC.append(origLayer)
+                        for param in origLayer.parameters():
+                            param.requires_grad = False
+                        
+                        # append the original layer
+                        layerWiseFC.append(origLayer)
+
+                    elif endToEndTraining == True:
+
+                        if (i % 2) == 0:
+                            layerWiseFC.append(thisArchit.sigma())  
+                        else:
+                            layerWiseFC.append(nn.Linear(origLayer.in_features, origLayer.out_features, bias = thisArchit.bias))
+                            
+                    else:
+                        print("\nWARNING: no training method is found.\n")                             
     
                 # append the original layer
                 layerWiseFC.append(nn.Linear(lastReadoutLayer.in_features, layerWiseTraindimReadout[l], bias = layerWiseTrainBias))            
@@ -408,10 +451,21 @@ class Trainer:
             saveArchitDir = os.path.join(self.model.saveDir,'savedArchits')
             if not os.path.exists(saveArchitDir):
                 os.makedirs(saveArchitDir)
-            saveFile = os.path.join(saveArchitDir, str(l))            
-            np.savez(saveFile+'.npz', historicalL=historicalL, historicalF=historicalF, \
-                     historicalK=historicalK, historicalE=historicalE, \
-                         historicalBias=historicalBias, historicalSigma=historicalSigma, \
-                             historicalReadout=historicalReadout)
+
+            if layerWiseTraining == True:
+                saveFile = os.path.join(saveArchitDir, 'LayerWise-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))
+            elif endToEndTraining == True:
+                saveFile = os.path.join(saveArchitDir, 'EndToEnd-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))                                
+
+            np.savez(saveFile+'.npz', historicalL=lastL, historicalF=lastF, \
+                     historicalK=lastK, historicalE=lastE, \
+                         historicalBias=lastBias, historicalSigma=lastSigma, \
+                             historicalReadout=lastReadout)
             
             l = l + 1
+            
+        saveFile = os.path.join(saveArchitDir, 'LayerWiseTraining')            
+        np.savez(saveFile+'.npz', historicalL=historicalL, historicalF=historicalF, \
+                 historicalK=historicalK, historicalE=historicalE, \
+                     historicalBias=historicalBias, historicalSigma=historicalSigma, \
+                         historicalReadout=historicalReadout)            
