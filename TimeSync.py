@@ -40,10 +40,10 @@ if not os.path.exists(saveDir):
 useGPU = True
 commRadius = 2. # communication radius
 repelDist = 1. # minimum distance before activating repelling function
-nTrain = 10 # number of training samples
+nTrain = 400 # number of training samples
 nDAgger = nTrain
-nValid = 2 # number of valid samples
-nTest = 2 # number of testing samples
+nValid = 20 # number of valid samples
+nTest = 20 # number of testing samples
 duration = 10. # simulation duration 
 updateTime = 0.01 # clock update time
 adjustTime = 0.01 # clock adjustment time
@@ -60,8 +60,8 @@ lossFunction = nn.MSELoss
 trainer = training.Trainer
 evaluator = evaluation.evaluate
 
-nEpochs = 5 # number of epochs
-batchSize = 2 # batch size
+nEpochs = 30 # number of epochs
+batchSize = 20 # batch size
 validationInterval = 5 # how many training steps to do the validation
 nDAggers = 1 # 1 means no DAgger
 expertProb = 0.9
@@ -83,11 +83,11 @@ hParamsbaseGNN = {}
 hParamsbaseGNN['name'] = 'baseGNN'
 hParamsbaseGNN['archit'] = architTime.LocalGNN_DB
 hParamsbaseGNN['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-hParamsbaseGNN['dimNodeSignals'] = [2, 32, 2] # features per layer
+hParamsbaseGNN['dimNodeSignals'] = [2, 16, 2] # features per layer
 hParamsbaseGNN['nFilterTaps'] = [1, 1] # number of filter taps
 hParamsbaseGNN['bias'] = True
 hParamsbaseGNN['nonlinearity'] = nonlinearity
-hParamsbaseGNN['dimReadout'] = [ ] 
+hParamsbaseGNN['dimReadout'] = [2] 
 hParamsbaseGNN['dimEdgeFeatures'] = 1 # scalar edge weights
 modelList += [hParamsbaseGNN['name']]
 
@@ -97,7 +97,7 @@ trainingOptions['validationInterval'] = validationInterval
 
 '''ONLY for hidden layer parameters [at the layer-wise training] '''
 paramsLayerWiseTrain = {}
-paramsLayerWiseTrain['dimNodeSignals'] = [32, 32] # features per hidden layer
+paramsLayerWiseTrain['dimNodeSignals'] = [16, 16] # features per hidden layer
 paramsLayerWiseTrain['nFilterTaps'] = [1, 1] # number of filter taps for each hidden layer
 paramsLayerWiseTrain['bias'] = True
 paramsLayerWiseTrain['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer

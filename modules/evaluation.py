@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 def evaluate(model, trainer, data, **kwargs):
     initPosTest = data.getData('initOffset', 'test')
@@ -29,12 +30,25 @@ def evaluate(model, trainer, data, **kwargs):
         data.computeTrajectory(initPosTest, initVelTest, \
                                measurementNoiseTest, processingNoiseTest, clockNoiseTest, 
                                graphTest, data.duration,
-                               archit = model.archit)
-                
-    SavedPath ='./gnn_test.npz'
-    np.savez(SavedPath, offsetTestBest=offsetTestBest, skewTestBest=skewTestBest, \
+                               archit = model.archit)    
+
+    saveDataDir = os.path.join(model.saveDir,'savedData')
+
+    if layerWiseTraining == True:
+        saveDataDir = os.path.join(saveDataDir,'layerWiseTraining')
+    elif endToEndTraining == True:
+        saveDataDir = os.path.join(saveDataDir,'endToEndTraining')
+
+    if layerWiseTraining == True:
+        saveFile = os.path.join(saveDataDir, model.name + '-LayerWise-' + str(bestL) + '-DAgger-' + str(bestIteration) + '-Epoch-' + str(bestEpoch) + '-Batch-' + str(bestBatch))
+    elif endToEndTraining == True:
+        saveFile = os.path.join(saveDataDir, model.name + '-EndToEnd-' + str(bestL) + '-DAgger-' + str(bestIteration) + '-Epoch-' + str(bestEpoch) + '-Batch-' + str(bestBatch))
+    
+    saveFile = saveFile + '.npz'
+    np.savez(saveFile, offsetTestBest=offsetTestBest, skewTestBest=skewTestBest, \
              adjTestBest=adjTestBest, stateTestBest=stateTestBest, \
-                 commGraphTestBest=commGraphTestBest)    
+                 commGraphTestBest=commGraphTestBest, \
+                     lossTrain=trainer.lossTrain, accValid=trainer.accValid)
     print("OK")
 
     # model.load(label = 'Last')
