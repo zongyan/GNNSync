@@ -101,9 +101,7 @@ class Trainer:
         epoch = 0 # epoch counter
         iteration = 1 # DAgger counter        
         l = 0 # adding layer counter
-        
-        lossTrain = []
-        evalValid = []
+                      
         timeTrain = []
         timeValid = []
 
@@ -139,6 +137,13 @@ class Trainer:
         historicalSigma = []
         historicalReadout = []
         
+        if maximumLayerWiseNum != 0:
+            self.lossTrain = np.zeros((maximumLayerWiseNum , nDAggers, nEpochs, nBatches))
+            self.accValid = np.zeros((maximumLayerWiseNum , nDAggers, nEpochs, np.int64(nBatches/validationInterval)))        
+        else:
+            self.lossTrain = np.zeros((nDAggers, nEpochs, nBatches))
+            self.accValid = np.zeros((nDAggers, nEpochs, np.int64(nBatches/validationInterval)))                    
+        
         l = 0 # layer wise training counter
         while l < maximumLayerWiseNum + 1:
             
@@ -155,6 +160,9 @@ class Trainer:
                     
                     randomPermutation = np.random.permutation(nTrain)
                     idxEpoch = [int(i) for i in randomPermutation]
+                    
+                    lossTrain = []
+                    evalValid = []
                             
                     batch = 0 # batch counter
                     while batch < nBatches:
@@ -194,7 +202,7 @@ class Trainer:
         
                         if printInterval > 0:
                             if (epoch * nBatches + batch) % printInterval == 0:
-                                print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) %7.4f" % (
+                                print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) Loss: %7.4f" % (
                                         l, iteration, epoch, batch, lossValueTrain.item()), end = ' ')
                                 print("")
         
@@ -230,9 +238,9 @@ class Trainer:
                             evalValid += [accValid]
                             timeValid += [timeElapsed]
         
-                            print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) %8.4f" % (
+                            print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) Valid Accuracy: %8.4f" % (
                                     l, iteration, epoch, batch, accValid), end = ' ')
-                            print("[VALIDATION]")
+                            print("")
         
                             if epoch == 0 and batch == 0:
                                 bestScore = accValid
@@ -249,10 +257,17 @@ class Trainer:
                                     # initialBest = False
         
                             del initThetaValid
-                            del initGammaValid
+                            del initGammaValid                                                        
                             
                         batch += 1 # end of batch, and increase batch count
-        
+                        
+                    if maximumLayerWiseNum != 0:
+                        self.lossTrain[l, iteration, epoch, :] = np.asarray(lossTrain, dtype=np.float64)
+                        self.accValid[l, iteration, epoch, :] = np.asarray(evalValid, dtype=np.float64)
+                    else:                        
+                        self.lossTrain[iteration, epoch, :] = np.asarray(lossTrain, dtype=np.float64)
+                        self.accValid[iteration, epoch, :] = np.asarray(evalValid, dtype=np.float64)                       
+                        
                     epoch += 1 # end of epoch, increase epoch count
         
                 self.model.save(layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = 'Last') # training over, save the last model
