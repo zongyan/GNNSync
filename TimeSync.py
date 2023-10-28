@@ -200,7 +200,7 @@ print("Total time: %dh %dm %.2fs" % (totalRunTimeH,
                                      totalRunTimeS))    
 
 #%%
-gnn_test = np.load('./gnn_test_10DAgger.npz') # the data file loaded from the example folder
+gnn_test = np.load('./gnn_test.npz') # the data file loaded from the example folder
 
 matplotlib.rc('figure', max_open_warning = 0)
 
@@ -211,7 +211,7 @@ stateTest = gnn_test['stateTestBest']
 commGraphTest = gnn_test['commGraphTestBest']
 
 # plot the velocity of all agents via the GNN method
-for i in range(0, 20, 11):
+for i in range(0, nTest, 11):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
     for j in range(0, nAgents, 1):
@@ -229,7 +229,7 @@ for i in range(0, 20, 11):
 # end for
 
 # plot the velocity of all agents via the centralised optimal controller
-for i in range(0, 20, 11):
+for i in range(0, nTest, 11):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
     for j in range(0, nAgents, 1):
