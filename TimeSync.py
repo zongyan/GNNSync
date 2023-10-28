@@ -28,7 +28,7 @@ startRunTime = datetime.datetime.now()
 
 #%%
 thisFilename = 'TimeSync'
-nAgents = 50  # number of UAVs during training 
+nAgents = 30  # number of UAVs during training 
 saveDirRoot = 'experiments' 
 saveDir = os.path.join(saveDirRoot, thisFilename) 
 
@@ -40,10 +40,10 @@ if not os.path.exists(saveDir):
 useGPU = True
 commRadius = 2. # communication radius
 repelDist = 1. # minimum distance before activating repelling function
-nTrain = 400 # number of training samples
+nTrain = 10 # number of training samples
 nDAgger = nTrain
-nValid = 50 # number of valid samples
-nTest = 50 # number of testing samples
+nValid = 2 # number of valid samples
+nTest = 2 # number of testing samples
 duration = 10. # simulation duration 
 updateTime = 0.01 # clock update time
 adjustTime = 0.01 # clock adjustment time
@@ -53,15 +53,15 @@ accelMax = 10. # maximum acceleration value
 normalizeGraph = True # normalise wireless communication graph
 
 optimAlg = 'ADAM' 
-learningRate = 0.0001 
+learningRate = 0.0005
 beta1 = 0.9 # default value in pytorch adam
 beta2 = 0.999 # default value in pytorch adam
 lossFunction = nn.MSELoss
 trainer = training.Trainer
 evaluator = evaluation.evaluate
 
-nEpochs = 50 # number of epochs
-batchSize = 20 # batch size
+nEpochs = 5 # number of epochs
+batchSize = 2 # batch size
 validationInterval = 5 # how many training steps to do the validation
 nDAggers = 1 # 1 means no DAgger
 expertProb = 0.9
@@ -87,7 +87,7 @@ hParamsbaseGNN['dimNodeSignals'] = [2, 32, 2] # features per layer
 hParamsbaseGNN['nFilterTaps'] = [1, 1] # number of filter taps
 hParamsbaseGNN['bias'] = True
 hParamsbaseGNN['nonlinearity'] = nonlinearity
-hParamsbaseGNN['dimReadout'] = [2] 
+hParamsbaseGNN['dimReadout'] = [ ] 
 hParamsbaseGNN['dimEdgeFeatures'] = 1 # scalar edge weights
 modelList += [hParamsbaseGNN['name']]
 
@@ -97,8 +97,8 @@ trainingOptions['validationInterval'] = validationInterval
 
 '''ONLY for hidden layer parameters [at the layer-wise training] '''
 paramsLayerWiseTrain = {}
-paramsLayerWiseTrain['dimNodeSignals'] = [32, 32, 32, 32, 32, 32, 32, 32, 32] # features per hidden layer
-paramsLayerWiseTrain['nFilterTaps'] = [1, 1, 1, 1, 1, 1, 1, 1, 1] # number of filter taps for each hidden layer
+paramsLayerWiseTrain['dimNodeSignals'] = [32, 32] # features per hidden layer
+paramsLayerWiseTrain['nFilterTaps'] = [1, 1] # number of filter taps for each hidden layer
 paramsLayerWiseTrain['bias'] = True
 paramsLayerWiseTrain['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
 paramsLayerWiseTrain['dimReadout'] = [ ]

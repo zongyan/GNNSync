@@ -73,7 +73,9 @@ class LocalGNN_DB(nn.Module):
 
         yGFL = self.GFL(x)
         y = yGFL.permute(0, 1, 3, 2) # B x T x N x F[-1]
-        y = self.Readout(y) # B x T x N x dimReadout[-1]
+        
+        if 'self.Readout' in globals():
+            y = self.Readout(y) # B x T x N x dimReadout[-1]
         
         return y.permute(0, 1, 3, 2), yGFL 
                       # B x T x dimReadout[-1] x N, B x T x dimFeatures[-1] x N

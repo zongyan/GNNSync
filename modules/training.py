@@ -58,6 +58,10 @@ class Trainer:
         self.trainingOptions['paramsLayerWiseTrain'] = paramsLayerWiseTrain
         self.trainingOptions['layerWiseTraining'] = layerWiseTraining
         self.trainingOptions['endToEndTraining'] = endToEndTraining        
+        self.bestLayerWiseIteration = 0
+        self.bestDAggerIteration = 0 
+        self.bestEpochIteration = 0
+        self.bestBatchIteration = 0
         
     def train(self):        
         printInterval = self.trainingOptions['printInterval']
@@ -463,7 +467,12 @@ class Trainer:
                              historicalReadout=lastReadout)
             
             l = l + 1
-            
+
+        self.bestLayerWiseIteration = bestL
+        self.bestDAggerIteration = bestIteration 
+        self.bestEpochIteration = bestEpoch
+        self.bestBatchIteration = bestBatch
+
         saveFile = os.path.join(saveArchitDir, 'LayerWiseTraining')            
         np.savez(saveFile+'.npz', historicalL=historicalL, historicalF=historicalF, \
                  historicalK=historicalK, historicalE=historicalE, \

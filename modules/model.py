@@ -36,7 +36,7 @@ class Model:
         return self.trainer.train()
     
     def evaluate(self, data, **kwargs):        
-        return self.evaluator(self, data, **kwargs)
+        return self.evaluator(self, self.trainer, data, **kwargs)        
     
     def save(self, layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = '', **kwargs):        
         assert layerWiseTraining == (not endToEndTraining)

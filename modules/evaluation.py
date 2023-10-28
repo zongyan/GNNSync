@@ -1,15 +1,23 @@
 import numpy as np
 
-def evaluate(model, data, **kwargs):
+def evaluate(model, trainer, data, **kwargs):
     initPosTest = data.getData('initOffset', 'test')
     initVelTest = data.getData('initSkew', 'test')
     graphTest = data.getData('commGraph','test')   
     clockNoiseTest = data.getData('clockNoise','test')   
     measurementNoiseTest = data.getData('packetExchangeDelay','test')   
     processingNoiseTest = data.getData('processingDelay','test')   
-                    
-    model.load(label='Best')
-
+                            
+    layerWiseTraining = trainer.trainingOptions['layerWiseTraining']
+    endToEndTraining = trainer.trainingOptions['endToEndTraining']
+    bestL = trainer.bestLayerWiseIteration
+    bestIteration = trainer.bestDAggerIteration
+    bestEpoch = trainer.bestEpochIteration
+    bestBatch = trainer.bestBatchIteration
+    
+    model.load(layerWiseTraining, endToEndTraining, \
+                    bestL, bestIteration, bestEpoch, bestBatch, label = 'Best')
+        
     print("\tComputing learned time synchronisation for best model...",
           end = ' ', flush = True)
 
@@ -29,19 +37,19 @@ def evaluate(model, data, **kwargs):
                  commGraphTestBest=commGraphTestBest)    
     print("OK")
 
-    model.load(label = 'Last')
+    # model.load(label = 'Last')
 
-    print("\tComputing learned time synchronisation for last model...",
-          end = ' ', flush = True)
+    # print("\tComputing learned time synchronisation for last model...",
+    #       end = ' ', flush = True)
 
-    offsetTestLast, \
-    skewTestLast, \
-    adjTestLast, \
-    stateTestLast, \
-    commGraphTestLast = \
-        data.computeTrajectory(initPosTest, initVelTest,\
-                               measurementNoiseTest, processingNoiseTest, clockNoiseTest, \
-                               graphTest, data.duration,
-                               archit = model.archit)
+    # offsetTestLast, \
+    # skewTestLast, \
+    # adjTestLast, \
+    # stateTestLast, \
+    # commGraphTestLast = \
+    #     data.computeTrajectory(initPosTest, initVelTest,\
+    #                            measurementNoiseTest, processingNoiseTest, clockNoiseTest, \
+    #                            graphTest, data.duration,
+    #                            archit = model.archit)
 
     print("OK")
