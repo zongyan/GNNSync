@@ -63,6 +63,7 @@ evaluator = evaluation.evaluate
 nEpochs = 30 # number of epochs
 batchSize = 20 # batch size
 validationInterval = 5 # how many training steps to do the validation
+nDAggersValues = [1, 10, 20, 30, 40, 50]
 nDAggers = 1 # 1 means no DAgger
 expertProb = 0.9
 aggregationSize = nDAgger
@@ -164,9 +165,11 @@ for thisModel in modelList:
 #%%
 for thisModel in modelsGNN.keys():
     print("Training model %s..." % thisModel)
-        
+
+    # for nDAggersVal in nDAggersValues: 
+    nDAggersVal = nDAggers
     thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
-                                               nDAggers, expertProb, aggregationSize, paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, **trainingOptions)
+                                               nDAggersVal, expertProb, aggregationSize, paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, **trainingOptions)
 
 #%%
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,

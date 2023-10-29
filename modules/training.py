@@ -94,8 +94,6 @@ class Trainer:
                 
         nTrain = self.data.nTrain
         thisArchit = self.model.archit
-        thisLoss = self.model.loss
-        thisOptim = self.model.optim
         thisDevice = self.model.device
         
         epoch = 0 # epoch counter
@@ -110,11 +108,7 @@ class Trainer:
         
         adjStep = [*range(0, int(self.data.duration/self.data.updateTime), \
                 int(self.data.adjustTime/self.data.updateTime))]
-        
-        xTrainAll = xTrainOrig[:,adjStep,:,:]
-        yTrainAll = yTrainOrig[:,adjStep,:,:]
-        sTrainAll = StrainOrig[:,adjStep,:,:]      
-        
+                
         modules = [name for name, _ in thisArchit.named_parameters()]
         layers = [name[0:3] for name in modules if len(name)<=13]
         layers = layers + [name[0:7] for name in modules if len(name)>13]  
@@ -138,8 +132,8 @@ class Trainer:
         historicalReadout = []
         
         if maximumLayerWiseNum != 0:
-            self.lossTrain = np.zeros((maximumLayerWiseNum , nDAggers, nEpochs, nBatches))
-            self.accValid = np.zeros((maximumLayerWiseNum , nDAggers, nEpochs, np.int64(nBatches/validationInterval)))        
+            self.lossTrain = np.zeros(((maximumLayerWiseNum+1), nDAggers, nEpochs, nBatches))
+            self.accValid = np.zeros(((maximumLayerWiseNum+1), nDAggers, nEpochs, np.int64(nBatches/validationInterval)))        
         else:
             self.lossTrain = np.zeros((nDAggers, nEpochs, nBatches))
             self.accValid = np.zeros((nDAggers, nEpochs, np.int64(nBatches/validationInterval)))                    
@@ -151,7 +145,14 @@ class Trainer:
                 str(list(thisArchit.F)), str(list(thisArchit.K)), str(list(np.int64(thisArchit.dimReadout)))
                 ), end = ' ')
             print("")
+
+            xTrainAll = xTrainOrig[:,adjStep,:,:]
+            yTrainAll = yTrainOrig[:,adjStep,:,:]
+            sTrainAll = StrainOrig[:,adjStep,:,:]    
             
+            thisLoss = self.model.loss
+            thisOptim = self.model.optim            
+                        
             iteration = 0 # DAgger counter
             while iteration < nDAggers:
                 
@@ -245,7 +246,7 @@ class Trainer:
                             if epoch == 0 and batch == 0:
                                 bestScore = accValid
                                 bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
-                                self.model.save(layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = 'Best')
+                                self.model.save(layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
                             else:
                                 thisValidScore = accValid
                                 if thisValidScore < bestScore:
@@ -253,7 +254,7 @@ class Trainer:
                                     bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
                                     print("\t=> New best achieved: %.4f" % \
                                               (bestScore))
-                                    self.model.save(layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = 'Best')
+                                    self.model.save(layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
                                     # initialBest = False
         
                             del initThetaValid
@@ -270,15 +271,15 @@ class Trainer:
                         
                     epoch += 1 # end of epoch, increase epoch count
         
-                self.model.save(layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = 'Last') # training over, save the last model
+                self.model.save(layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = 'Last') # training over, save the last model
         
                 if nEpochs == 0:
                     bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
-                    self.model.save(layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = 'Best')
-                    self.model.save(layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = 'Last')
+                    self.model.save(layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
+                    self.model.save(layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = 'Last')
                     print("\nWARNING: No training. Best and Last models are the same.\n")
         
-                self.model.load(layerWiseTraining, endToEndTraining, bestL, bestIteration, bestEpoch, bestBatch, label = 'Best') # reload best model for evaluation
+                self.model.load(layerWiseTraining, endToEndTraining, nDAggers, bestL, bestIteration, bestEpoch, bestBatch, label = 'Best') # reload best model for evaluation
         
                 if nEpochs > 0:
                     print("\t=> Best validation achieved (E: %d, B: %d): %.4f" % (
@@ -464,6 +465,9 @@ class Trainer:
                 
                 thisArchit.dimReadout = np.append(np.append(np.append(thisArchit.dimReadout[0], thisArchit.dimReadout[1:-1]), layerWiseTraindimReadout[l]), thisArchit.dimReadout[-1])                                                
                 architTime.LocalGNN_DB.readoutLayerWiseInit(thisArchit, layerWiseFC) # readout layer for layer-wise training  
+
+            del thisLoss
+            del thisOptim
             
             thisArchit.to(self.model.device)
             
@@ -472,9 +476,9 @@ class Trainer:
                 os.makedirs(saveArchitDir)
 
             if layerWiseTraining == True:
-                saveFile = os.path.join(saveArchitDir, 'LayerWise-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))
+                saveFile = os.path.join(saveArchitDir, 'nDAggers-' + str(nDAggers) + '-LayerWise-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))
             elif endToEndTraining == True:
-                saveFile = os.path.join(saveArchitDir, 'EndToEnd-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))                                
+                saveFile = os.path.join(saveArchitDir, 'nDAggers-' + str(nDAggers) + '-EndToEnd-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))                                
 
             np.savez(saveFile+'.npz', historicalL=lastL, historicalF=lastF, \
                      historicalK=lastK, historicalE=lastE, \

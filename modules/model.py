@@ -38,7 +38,7 @@ class Model:
     def evaluate(self, data, **kwargs):        
         return self.evaluator(self, self.trainer, data, **kwargs)        
     
-    def save(self, layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = '', **kwargs):        
+    def save(self, layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = '', **kwargs):        
         assert layerWiseTraining == (not endToEndTraining)
         
         if 'saveDir' in kwargs.keys():
@@ -57,14 +57,14 @@ class Model:
             os.makedirs(saveModelDir)
 
         if layerWiseTraining == True:
-            saveFile = os.path.join(saveModelDir, self.name + '-LayerWise-' + str(l) + '-DAgger-' + str(iteration) + '-Epoch-' + str(epoch) + '-Batch-' + str(batch))
+            saveFile = os.path.join(saveModelDir, self.name + '-LayerWise-' + str(l) + '-DAgger-' + str(iteration) + '-' + str(nDAggers) + '-Epoch-' + str(epoch) + '-Batch-' + str(batch))
         elif endToEndTraining == True:
-            saveFile = os.path.join(saveModelDir, self.name + '-EndToEnd-' + str(l) + '-DAgger-' + str(iteration) + '-Epoch-' + str(epoch) + '-Batch-' + str(batch))
+            saveFile = os.path.join(saveModelDir, self.name + '-EndToEnd-' + str(l) + '-DAgger-' + str(iteration) + '-' + str(nDAggers) + '-Epoch-' + str(epoch) + '-Batch-' + str(batch))
                     
         torch.save(self.archit.state_dict(), saveFile+'-Archit-'+ label+'.ckpt')
         torch.save(self.optim.state_dict(), saveFile+'-Optim-'+label+'.ckpt')
 
-    def load(self, layerWiseTraining, endToEndTraining, l, iteration, epoch, batch, label = '', **kwargs):
+    def load(self, layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = '', **kwargs):
         assert layerWiseTraining == (not endToEndTraining)
         
         if 'loadFiles' in kwargs.keys():
@@ -78,9 +78,9 @@ class Model:
                 saveModelDir = os.path.join(saveModelDir,'endToEndTraining')
 
             if layerWiseTraining == True:
-                saveFile = os.path.join(saveModelDir, self.name + '-LayerWise-' + str(l) + '-DAgger-' + str(iteration) + '-Epoch-' + str(epoch) + '-Batch-' + str(batch))
+                saveFile = os.path.join(saveModelDir, self.name + '-LayerWise-' + str(l) + '-DAgger-' + str(iteration) + '-' + str(nDAggers) + '-Epoch-' + str(epoch) + '-Batch-' + str(batch))
             elif endToEndTraining == True:
-                saveFile = os.path.join(saveModelDir, self.name + '-EndToEnd-' + str(l) + '-DAgger-' + str(iteration) + '-Epoch-' + str(epoch) + '-Batch-' + str(batch))
+                saveFile = os.path.join(saveModelDir, self.name + '-EndToEnd-' + str(l) + '-DAgger-' + str(iteration) + '-' + str(nDAggers) + '-Epoch-' + str(epoch) + '-Batch-' + str(batch))
             
             architLoadFile = saveFile + '-Archit-' + label +'.ckpt'
             optimLoadFile = saveFile + '-Optim-' + label + '.ckpt'
