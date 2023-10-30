@@ -282,8 +282,8 @@ class Trainer:
                 self.model.load(layerWiseTraining, endToEndTraining, nDAggers, bestL, bestIteration, bestEpoch, bestBatch, label = 'Best') # reload best model for evaluation
         
                 if nEpochs > 0:
-                    print("\t=> Best validation achieved (E: %d, B: %d): %.4f" % (
-                            bestEpoch, bestBatch, bestScore))
+                    print("\t=> Best validation achieved (LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d): %.4f" % (
+                            bestL, bestIteration, bestEpoch, bestBatch, bestScore))
                 
                 '''ToDo: if the 'adjustTime' is not the same as the 'updateTime', 
                          we may need to re-write the DAgger part'''
