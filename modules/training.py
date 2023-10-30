@@ -57,11 +57,7 @@ class Trainer:
         self.trainingOptions['aggSize'] = aggregationSize
         self.trainingOptions['paramsLayerWiseTrain'] = paramsLayerWiseTrain
         self.trainingOptions['layerWiseTraining'] = layerWiseTraining
-        self.trainingOptions['endToEndTraining'] = endToEndTraining        
-        self.bestLayerWiseIteration = 0
-        self.bestDAggerIteration = 0 
-        self.bestEpochIteration = 0
-        self.bestBatchIteration = 0
+        self.trainingOptions['endToEndTraining'] = endToEndTraining
         
     def train(self):        
         printInterval = self.trainingOptions['printInterval']
@@ -130,6 +126,12 @@ class Trainer:
         historicalBias = []
         historicalSigma = []
         historicalReadout = []
+        
+        # store the layer-wise, DAgger, epoch, and batch iteration for each best GNN model
+        historicalBestL = []
+        historicalBestIteration = []
+        historicalBestEpoch = []
+        historicalBestBatch = []        
         
         if maximumLayerWiseNum != 0:
             self.lossTrain = np.zeros(((maximumLayerWiseNum+1), nDAggers, nEpochs, nBatches))
@@ -243,7 +245,7 @@ class Trainer:
                                     l, iteration, epoch, batch, accValid), end = ' ')
                             print("")
         
-                            if epoch == 0 and batch == 0:
+                            if iteration == 0 and epoch == 0 and batch == 0:
                                 bestScore = accValid
                                 bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
                                 self.model.save(layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
@@ -278,9 +280,7 @@ class Trainer:
                     self.model.save(layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
                     self.model.save(layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = 'Last')
                     print("\nWARNING: No training. Best and Last models are the same.\n")
-        
-                self.model.load(layerWiseTraining, endToEndTraining, nDAggers, bestL, bestIteration, bestEpoch, bestBatch, label = 'Best') # reload best model for evaluation
-        
+                
                 if nEpochs > 0:
                     print("\t=> Best validation achieved (LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d): %.4f" % (
                             bestL, bestIteration, bestEpoch, bestBatch, bestScore))
@@ -367,6 +367,15 @@ class Trainer:
                 
                 iteration = iteration + 1 # end of DAgger, increase iteration count
 
+            # reload best model for layer-wise training
+            self.model.load(layerWiseTraining, endToEndTraining, nDAggers, bestL, bestIteration, bestEpoch, bestBatch, label = 'Best')
+            
+            # store the layer-wise, DAgger, epoch, and batch iteration for each best GNN model
+            historicalBestL = np.append(historicalBestL, bestL)
+            historicalBestIteration = np.append(historicalBestIteration, bestIteration)
+            historicalBestEpoch = np.append(historicalBestEpoch, bestEpoch)
+            historicalBestBatch = np.append(historicalBestBatch, bestBatch)
+            
             # store the gnn architecture in the layer-wise training                             
             historicalL = np.append(historicalL, thisArchit.L)
             historicalF = np.append(historicalF, thisArchit.F)
@@ -478,22 +487,24 @@ class Trainer:
             if layerWiseTraining == True:
                 saveFile = os.path.join(saveArchitDir, 'nDAggers-' + str(nDAggers) + '-LayerWise-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))
             elif endToEndTraining == True:
-                saveFile = os.path.join(saveArchitDir, 'nDAggers-' + str(nDAggers) + '-EndToEnd-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))                                
+                saveFile = os.path.join(saveArchitDir, 'nDAggers-' + str(nDAggers) + '-EndToEnd-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))
 
-            np.savez(saveFile+'.npz', historicalL=lastL, historicalF=lastF, \
-                     historicalK=lastK, historicalE=lastE, \
-                         historicalBias=lastBias, historicalSigma=lastSigma, \
-                             historicalReadout=lastReadout)
-            
+            np.savez(saveFile+'.npz', lastL=lastL, lastF=lastF, \
+                     lastK=lastK, lastE=lastE, \
+                         lastBias=lastBias, lastSigma=lastSigma, \
+                             lastReadout=lastReadout)               
+                
             l = l + 1
-
-        self.bestLayerWiseIteration = bestL
-        self.bestDAggerIteration = bestIteration 
-        self.bestEpochIteration = bestEpoch
-        self.bestBatchIteration = bestBatch
-
-        saveFile = os.path.join(saveArchitDir, 'LayerWiseTraining')            
+            
+        if layerWiseTraining == True:
+            saveFile = os.path.join(saveArchitDir, 'LayerWiseTraining')
+        elif endToEndTraining == True:
+            saveFile = os.path.join(saveArchitDir, 'endToEndTraining')
+        
         np.savez(saveFile+'.npz', historicalL=historicalL, historicalF=historicalF, \
                  historicalK=historicalK, historicalE=historicalE, \
                      historicalBias=historicalBias, historicalSigma=historicalSigma, \
-                         historicalReadout=historicalReadout)            
+                         historicalReadout=historicalReadout, \
+                             historicalBestL = historicalBestL, historicalBestIteration = historicalBestIteration, \
+                                 historicalBestEpoch = historicalBestEpoch, historicalBestBatch = historicalBestBatch)
+
