@@ -423,13 +423,13 @@ class Trainer:
                         if (i % 2) == 0:
                             layerWiseGFL.append(gml.GraphFilter_DB(thisArchit.F[np.int64(i/2)], thisArchit.F[np.int64((i/2) + 1)], thisArchit.K[np.int64(i/2)], thisArchit.E, thisArchit.bias))
                         else:
-                            layerWiseGFL.append(nn.Tanh)                            
+                            layerWiseGFL.append(nn.Tanh())                            
                     else:
                         print("\nWARNING: no training method is found.\n")  
         
                 # append the layer-wise training layer
                 layerWiseGFL.append(gml.GraphFilter_DB(thisArchit.F[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias))
-                layerWiseGFL.append(nn.Tanh)
+                layerWiseGFL.append(nn.Tanh())
                  
                 # add the original final output layer
                 layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], thisArchit.F[-1], thisArchit.K[-1], thisArchit.E, thisArchit.bias))
@@ -462,7 +462,7 @@ class Trainer:
                     elif endToEndTraining == True:
 
                         if (i % 2) == 0:
-                            layerWiseFC.append(nn.Tanh)  
+                            layerWiseFC.append(nn.Tanh())  
                         else:
                             layerWiseFC.append(nn.Linear(origLayer.in_features, origLayer.out_features, bias = thisArchit.bias))
                             
@@ -471,7 +471,7 @@ class Trainer:
     
                 # append the original layer
                 layerWiseFC.append(nn.Linear(lastReadoutLayer.in_features, layerWiseTraindimReadout[l], bias = layerWiseTrainBias))            
-                layerWiseFC.append(nn.Tanh)
+                layerWiseFC.append(nn.Tanh())
                 
                 # add the original final output layer
                 layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], lastReadoutLayer.out_features, bias = thisArchit.bias))

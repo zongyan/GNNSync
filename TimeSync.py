@@ -72,7 +72,7 @@ nonlinearityHidden = torch.tanh
 nonlinearityOutput = torch.tanh
 nonlinearity = nn.Tanh
 
-layerWiseTraining = True
+layerWiseTraining = False
 endToEndTraining = not layerWiseTraining
 
 printInterval = 1 # after how many training steps, print the partial results
