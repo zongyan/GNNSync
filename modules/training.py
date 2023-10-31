@@ -89,7 +89,6 @@ class Trainer:
         layerWiseTraindimReadout = paramsLayerWiseTrain[paramsNameLayerWiseTrain[4]]
                 
         nTrain = self.data.nTrain
-        thisArchit = self.model.archit
         thisDevice = self.model.device
         
         epoch = 0 # epoch counter
@@ -105,7 +104,7 @@ class Trainer:
         adjStep = [*range(0, int(self.data.duration/self.data.updateTime), \
                 int(self.data.adjustTime/self.data.updateTime))]
                 
-        modules = [name for name, _ in thisArchit.named_parameters()]
+        modules = [name for name, _ in self.model.archit.named_parameters()]
         layers = [name[0:3] for name in modules if len(name)<=13]
         layers = layers + [name[0:7] for name in modules if len(name)>13]  
         
@@ -114,7 +113,7 @@ class Trainer:
         in graph filter layers will raise bugs, (see the first 'append the 
         layer-wise training layer' thisArchit.F[-2] part)
         """
-        assert len(thisArchit.K) >= 2
+        assert len(self.model.archit.K) >= 2
         
         maximumLayerWiseNum = max(np.array((layerWiseTrainL, len(layerWiseTraindimReadout))))
 
@@ -126,6 +125,7 @@ class Trainer:
         historicalBias = []
         historicalSigma = []
         historicalReadout = []
+        historicalNumReadoutLayer = []        
         
         # store the layer-wise, DAgger, epoch, and batch iteration for each best GNN model
         historicalBestL = []
@@ -144,7 +144,7 @@ class Trainer:
         while l < maximumLayerWiseNum + 1:
             
             print("\tdimGFL: % 2s, numTap: % 2s, dimReadout: %2s " % (
-                str(list(thisArchit.F)), str(list(thisArchit.K)), str(list(np.int64(thisArchit.dimReadout)))
+                str(list(self.model.archit.F)), str(list(self.model.archit.K)), str(list(np.int64(self.model.archit.dimReadout)))
                 ), end = ' ')
             print("")
 
@@ -183,9 +183,9 @@ class Trainer:
         
                         startTime = datetime.datetime.now()
         
-                        thisArchit.zero_grad()
+                        self.model.archit.zero_grad()
         
-                        yHatTrain = thisArchit(xTrain, Strain)
+                        yHatTrain = self.model.archit(xTrain, Strain)
         
                         lossValueTrain = thisLoss(yHatTrain, yTrain)
         
@@ -227,7 +227,7 @@ class Trainer:
                             offsetTestValid, skewTestValid, _, _, _ = self.data.computeTrajectory(
                                     initThetaValid, initGammaValid, measurementNoiseValid, 
                                     processingNoiseValid, clockNoiseValid, graphValid, self.data.duration,
-                                    archit = thisArchit, doPrint = False)
+                                    archit = self.model.archit, doPrint = False)
                             
                             accValid = self.data.evaluate(thetaOffset=offsetTestValid, 
                                                           gammaSkew=skewTestValid)
@@ -329,11 +329,11 @@ class Trainer:
                         aggTheta, aggGamma, aggAdjust, aggState = \
                             self.data.computeSingleStepTrajectory(aggTheta, aggGamma, aggAdjust, aggState, \
                                                                   measurementNoiseDAgger, processingNoiseDAgger, clockNoiseDAgger, \
-                                                                      graphDAgger, t, self.data.duration, archit = thisArchit)                    
+                                                                      graphDAgger, t, self.data.duration, archit = self.model.archit)                    
                                 
                         _, _, _, aggInput = self.data.computeSingleStepTrajectory(aggTheta, aggGamma, aggAdjust, aggState, \
                                                                   measurementNoiseDAgger, processingNoiseDAgger, clockNoiseDAgger, \
-                                                                      graphDAgger, t+1, self.data.duration, archit = thisArchit)
+                                                                      graphDAgger, t+1, self.data.duration, archit = self.model.archit)
     
                         _, _, aggOutput = self.data.computeSingleStepOptimalTrajectory(aggTheta[:,t,:,:], aggGamma[:,t,:,:], \
                                                                          measurementNoiseDAgger[:,t,:,:], processingNoiseDAgger[:,t,:,:], clockNoiseDAgger[:,t,:,:], \
@@ -382,25 +382,26 @@ class Trainer:
             historicalBestBatch = np.append(historicalBestBatch, bestBatch)
             
             # store the gnn architecture in the layer-wise training                             
-            historicalL = np.append(historicalL, thisArchit.L)
-            historicalF = np.append(historicalF, thisArchit.F)
-            historicalK = np.append(historicalK, thisArchit.K)
-            historicalE = np.append(historicalE, thisArchit.E)
-            historicalBias = np.append(historicalBias, thisArchit.bias)
-            historicalSigma = np.append(historicalSigma, thisArchit.sigma)
-            historicalReadout = np.append(historicalReadout, thisArchit.dimReadout)
+            historicalL = np.append(historicalL, self.model.archit.L)
+            historicalF = np.append(historicalF, self.model.archit.F)
+            historicalK = np.append(historicalK, self.model.archit.K)
+            historicalE = np.append(historicalE, self.model.archit.E)
+            historicalBias = np.append(historicalBias, self.model.archit.bias)
+            historicalSigma = np.append(historicalSigma, self.model.archit.sigma)
+            historicalReadout = np.append(historicalReadout, self.model.archit.dimReadout)
+            historicalNumReadoutLayer = np.append(historicalNumReadoutLayer, len(self.model.archit.dimReadout))
             
-            lastL = thisArchit.L
-            lastF = thisArchit.F
-            lastK = thisArchit.K
-            lastE = thisArchit.E
-            lastBias = thisArchit.bias
-            lastSigma = thisArchit.sigma
-            lastReadout = thisArchit.dimReadout
+            lastL = self.model.archit.L
+            lastF = self.model.archit.F
+            lastK = self.model.archit.K
+            lastE = self.model.archit.E
+            lastBias = self.model.archit.bias
+            lastSigma = self.model.archit.sigma
+            lastReadout = self.model.archit.dimReadout
             
             if ("GFL" in layers) and (l < layerWiseTrainL):
                 
-                thisGraphFilterLayers = thisArchit.GFL
+                thisGraphFilterLayers = self.model.archit.GFL
                 # preserve the output layer
                 lastGraphFilterLayer = thisGraphFilterLayers[-1]
                 
@@ -421,27 +422,27 @@ class Trainer:
                     elif endToEndTraining == True:
 
                         if (i % 2) == 0:
-                            layerWiseGFL.append(gml.GraphFilter_DB(thisArchit.F[np.int64(i/2)], thisArchit.F[np.int64((i/2) + 1)], thisArchit.K[np.int64(i/2)], thisArchit.E, thisArchit.bias))
+                            layerWiseGFL.append(gml.GraphFilter_DB(self.model.archit.F[np.int64(i/2)], self.model.archit.F[np.int64((i/2) + 1)], self.model.archit.K[np.int64(i/2)], self.model.archit.E, self.model.archit.bias))
                         else:
                             layerWiseGFL.append(nn.Tanh())                            
                     else:
                         print("\nWARNING: no training method is found.\n")  
         
                 # append the layer-wise training layer
-                layerWiseGFL.append(gml.GraphFilter_DB(thisArchit.F[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias))
+                layerWiseGFL.append(gml.GraphFilter_DB(self.model.archit.F[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias))
                 layerWiseGFL.append(nn.Tanh())
                  
                 # add the original final output layer
-                layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], thisArchit.F[-1], thisArchit.K[-1], thisArchit.E, thisArchit.bias))
+                layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], self.model.archit.F[-1], self.model.archit.K[-1], self.model.archit.E, self.model.archit.bias))
                 
-                thisArchit.F = np.append(np.append(thisArchit.F[0:-1], layerWiseTrainF[l]), thisArchit.F[-1])
-                thisArchit.K = np.append(thisArchit.K, layerWiseTrainK[l])
-                thisArchit.L = len(thisArchit.K)
-                architTime.LocalGNN_DB.gflLayerWiseInit(thisArchit, layerWiseGFL) # graph filtering layers for layer-wise training            
+                self.model.archit.F = np.append(np.append(self.model.archit.F[0:-1], layerWiseTrainF[l]), self.model.archit.F[-1])
+                self.model.archit.K = np.append(self.model.archit.K, layerWiseTrainK[l])
+                self.model.archit.L = len(self.model.archit.K)
+                architTime.LocalGNN_DB.gflLayerWiseInit(self.model.archit, layerWiseGFL) # graph filtering layers for layer-wise training            
             
             if ("Readout" in layers) and (l < len(layerWiseTraindimReadout)):
                 
-                thisReadoutLayers = thisArchit.Readout
+                thisReadoutLayers = self.model.archit.Readout
                 # preserve the output layer
                 lastReadoutLayer = thisReadoutLayers[-1]
                 
@@ -464,7 +465,7 @@ class Trainer:
                         if (i % 2) == 0:
                             layerWiseFC.append(nn.Tanh())  
                         else:
-                            layerWiseFC.append(nn.Linear(origLayer.in_features, origLayer.out_features, bias = thisArchit.bias))
+                            layerWiseFC.append(nn.Linear(origLayer.in_features, origLayer.out_features, bias = self.model.archit.bias))
                             
                     else:
                         print("\nWARNING: no training method is found.\n")                             
@@ -474,15 +475,15 @@ class Trainer:
                 layerWiseFC.append(nn.Tanh())
                 
                 # add the original final output layer
-                layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], lastReadoutLayer.out_features, bias = thisArchit.bias))
+                layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], lastReadoutLayer.out_features, bias = self.model.archit.bias))
                 
-                thisArchit.dimReadout = np.append(np.append(np.append(thisArchit.dimReadout[0], thisArchit.dimReadout[1:-1]), layerWiseTraindimReadout[l]), thisArchit.dimReadout[-1])                                                
-                architTime.LocalGNN_DB.readoutLayerWiseInit(thisArchit, layerWiseFC) # readout layer for layer-wise training  
+                self.model.archit.dimReadout = np.append(np.append(np.append(self.model.archit.dimReadout[0], self.model.archit.dimReadout[1:-1]), layerWiseTraindimReadout[l]), self.model.archit.dimReadout[-1])                                                
+                architTime.LocalGNN_DB.readoutLayerWiseInit(self.model.archit, layerWiseFC) # readout layer for layer-wise training  
 
             del thisLoss
             del thisOptim
             
-            thisArchit.to(self.model.device)
+            self.model.archit.to(self.model.device)
             
             saveArchitDir = os.path.join(self.model.saveDir,'savedArchits')
             if not os.path.exists(saveArchitDir):
@@ -508,7 +509,7 @@ class Trainer:
         np.savez(saveFile+'.npz', historicalL=historicalL, historicalF=historicalF, \
                  historicalK=historicalK, historicalE=historicalE, \
                      historicalBias=historicalBias, historicalSigma=historicalSigma, \
-                         historicalReadout=historicalReadout, \
+                         historicalReadout=historicalReadout, historicalNumReadoutLayer=historicalNumReadoutLayer, \
                              historicalBestL = historicalBestL, historicalBestIteration = historicalBestIteration, \
                                  historicalBestEpoch = historicalBestEpoch, historicalBestBatch = historicalBestBatch)
 

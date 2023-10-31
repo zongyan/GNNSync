@@ -88,7 +88,7 @@ hParamsbaseGNN['dimNodeSignals'] = [2, 16, 2] # features per layer
 hParamsbaseGNN['nFilterTaps'] = [1, 1] # number of filter taps
 hParamsbaseGNN['bias'] = True
 hParamsbaseGNN['nonlinearity'] = nonlinearity
-hParamsbaseGNN['dimReadout'] = [2] 
+hParamsbaseGNN['dimReadout'] = [ ] 
 hParamsbaseGNN['dimEdgeFeatures'] = 1 # scalar edge weights
 modelList += [hParamsbaseGNN['name']]
 
@@ -226,10 +226,10 @@ for thisModel in modelsGNN.keys():
 
     bestTraining = np.load(saveArchitFile + '.npz') # the data file loaded from the example folder
 
-    historicalBestL = bestTraining['historicalBestL']
-    historicalBestIteration = bestTraining['historicalBestIteration']
-    historicalBestEpoch = bestTraining['historicalBestEpoch']
-    historicalBestBatch = bestTraining['historicalBestBatch']
+    historicalBestL = np.int64(bestTraining['historicalBestL'])
+    historicalBestIteration = np.int64(bestTraining['historicalBestIteration'])
+    historicalBestEpoch = np.int64(bestTraining['historicalBestEpoch'])
+    historicalBestBatch = np.int64(bestTraining['historicalBestBatch'])
     
     maximumLayerWiseNum = max(np.array((layerWiseTrainL, len(layerWiseTraindimReadout))))     
 
@@ -321,4 +321,4 @@ for thisModel in modelsGNN.keys():
                 plt.rcParams["figure.figsize"] = (6.4,4.8)            
                 plt.plot(np.reshape(accValid[i, j, :, :], (accValid.shape[2] * accValid.shape[3])))
             
-    l = l + 1
+        l = l + 1
