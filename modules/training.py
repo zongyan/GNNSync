@@ -405,6 +405,14 @@ class Trainer:
                 # preserve the output layer
                 lastGraphFilterLayer = thisGraphFilterLayers[-1]
                 
+                originalArchitF = self.model.archit.F
+                originalArchitK = self.model.archit.K
+                originalArchitL = self.model.archit.L
+                
+                self.model.archit.F = np.append(np.append(self.model.archit.F[0:-1], layerWiseTrainF[l]), self.model.archit.F[-1])
+                self.model.archit.K = np.append(self.model.archit.K, layerWiseTrainK[l])
+                self.model.archit.L = len(self.model.archit.K)
+                
                 layerWiseGFL = [] 
                 for i in range(len(thisGraphFilterLayers) - 1):                
 
@@ -422,22 +430,19 @@ class Trainer:
                     elif endToEndTraining == True:
 
                         if (i % 2) == 0:
-                            layerWiseGFL.append(gml.GraphFilter_DB(self.model.archit.F[np.int64(i/2)], self.model.archit.F[np.int64((i/2) + 1)], self.model.archit.K[np.int64(i/2)], self.model.archit.E, self.model.archit.bias))
+                            layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i/2)], originalArchitF[np.int64((i/2) + 1)], originalArchitK[np.int64(i/2)], self.model.archit.E, self.model.archit.bias))
                         else:
                             layerWiseGFL.append(nn.Tanh())                            
                     else:
                         print("\nWARNING: no training method is found.\n")  
         
                 # append the layer-wise training layer
-                layerWiseGFL.append(gml.GraphFilter_DB(self.model.archit.F[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias))
+                layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias))
                 layerWiseGFL.append(nn.Tanh())
                  
                 # add the original final output layer
-                layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], self.model.archit.F[-1], self.model.archit.K[-1], self.model.archit.E, self.model.archit.bias))
+                layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], originalArchitF[-1], originalArchitK[-1], self.model.archit.E, self.model.archit.bias))
                 
-                self.model.archit.F = np.append(np.append(self.model.archit.F[0:-1], layerWiseTrainF[l]), self.model.archit.F[-1])
-                self.model.archit.K = np.append(self.model.archit.K, layerWiseTrainK[l])
-                self.model.archit.L = len(self.model.archit.K)
                 architTime.LocalGNN_DB.gflLayerWiseInit(self.model.archit, layerWiseGFL) # graph filtering layers for layer-wise training            
             
             if ("Readout" in layers) and (l < len(layerWiseTraindimReadout)):
