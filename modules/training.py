@@ -484,7 +484,17 @@ class Trainer:
                 
                 self.model.archit.dimReadout = np.append(np.append(np.append(self.model.archit.dimReadout[0], self.model.archit.dimReadout[1:-1]), layerWiseTraindimReadout[l]), self.model.archit.dimReadout[-1])                                                
                 architTime.LocalGNN_DB.readoutLayerWiseInit(self.model.archit, layerWiseFC) # readout layer for layer-wise training  
-
+                
+                if layerWiseTraining == True:
+                    nn.init.xavier_uniform_(self.Readout[-3].weight)
+                    nn.init.zeros_(self.Readout[-3].bias)
+                    nn.init.xavier_uniform_(self.Readout[-1].weight)
+                    nn.init.zeros_(self.Readout[-1].bias)                    
+                elif endToEndTraining == True:
+                    for i in range(len(self.dimReadout)):
+                        nn.init.xavier_uniform_(self.Readout[np.int64(2*i+1)].weight)
+                        nn.init.zeros_(self.Readout[np.int64(2*i+1)].bias)
+                
             del thisLoss
             del thisOptim
             

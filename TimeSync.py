@@ -309,16 +309,16 @@ for thisModel in modelsGNN.keys():
         cost = np.mean(costPerSample) # scalar
         
         print(cost)  
-        
-        for i in range(lossTrain.shape[0]):
-            for j in range(lossTrain.shape[1]):
-                
-                plt.figure()
-                plt.rcParams["figure.figsize"] = (6.4,4.8)            
-                plt.plot(np.reshape(lossTrain[i, j, :, :], (lossTrain.shape[2] * lossTrain.shape[3])))
-    
-                plt.figure()
-                plt.rcParams["figure.figsize"] = (6.4,4.8)            
-                plt.plot(np.reshape(accValid[i, j, :, :], (accValid.shape[2] * accValid.shape[3])))
-            
+                    
         l = l + 1
+        
+for i in range(lossTrain.shape[0]):
+    for j in range(lossTrain.shape[1]):
+        
+        plt.figure()
+        plt.rcParams["figure.figsize"] = (6.4,4.8)            
+        plt.plot(np.reshape(lossTrain[i, j, :, :], (lossTrain.shape[2] * lossTrain.shape[3])))
+
+        plt.figure()
+        plt.rcParams["figure.figsize"] = (6.4,4.8)            
+        plt.plot(np.reshape(accValid[i, j, :, :], (accValid.shape[2] * accValid.shape[3])))   

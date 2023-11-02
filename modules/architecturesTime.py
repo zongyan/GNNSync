@@ -1,5 +1,5 @@
 import torch.nn as nn
-
+import numpy as np
 import utils.graphML as gml
 
 zeroTolerance = 1e-9 # values below this number are zero
@@ -41,6 +41,10 @@ class LocalGNN_DB(nn.Module):
                 fc.append(nn.Linear(dimReadout[l], dimReadout[l+1], bias = self.bias))
 
             self.Readout = nn.Sequential(*fc) # readout layers
+            
+            for i in range(len(self.dimReadout)):
+                nn.init.xavier_uniform_(self.Readout[np.int64(2*i+1)].weight)
+                nn.init.zeros_(self.Readout[np.int64(2*i+1)].bias)
             
     def gflLayerWiseInit(self, layerWiseStructure):        
         self.GFL = nn.Sequential(*layerWiseStructure)
