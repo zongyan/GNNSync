@@ -169,7 +169,9 @@ for thisModel in modelsGNN.keys():
     # for nDAggersVal in nDAggersValues: 
     nDAggersVal = nDAggers
     thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
-                                               nDAggersVal, expertProb, aggregationSize, paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, **trainingOptions)
+                                               nDAggersVal, expertProb, aggregationSize, \
+                                                   paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, \
+                                                       lossFunction, learningRate, beta1, beta2, **trainingOptions)
 
 #%%
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,

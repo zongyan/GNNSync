@@ -3,12 +3,16 @@ import torch
 import numpy as np
 import datetime
 import torch.nn as nn
+import torch.optim as optim
 
 import utils.graphML as gml
 import modules.architecturesTime as architTime
                     
 class Trainer:   
-    def __init__(self, model, data, nEpochs, batchSize, nDAggers, expertProb, aggregationSize, paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, **kwargs):
+    def __init__(self, model, data, nEpochs, batchSize, \
+                 nDAggers, expertProb, aggregationSize, \
+                     paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, \
+                         lossFunction, learningRate, beta1, beta2, **kwargs):
                 
         self.model = model
         self.data = data
@@ -58,6 +62,10 @@ class Trainer:
         self.trainingOptions['paramsLayerWiseTrain'] = paramsLayerWiseTrain
         self.trainingOptions['layerWiseTraining'] = layerWiseTraining
         self.trainingOptions['endToEndTraining'] = endToEndTraining
+        self.trainingOptions['lossFunction'] = lossFunction
+        self.trainingOptions['learningRate'] = learningRate
+        self.trainingOptions['beta1'] = beta1
+        self.trainingOptions['beta2'] = beta2
         
     def train(self):        
         printInterval = self.trainingOptions['printInterval']
@@ -71,7 +79,11 @@ class Trainer:
         aggSize = self.trainingOptions['aggSize']
         paramsLayerWiseTrain = self.trainingOptions['paramsLayerWiseTrain']        
         layerWiseTraining = self.trainingOptions['layerWiseTraining']
-        endToEndTraining = self.trainingOptions['endToEndTraining']
+        endToEndTraining = self.trainingOptions['endToEndTraining']    
+        lossFunction = self.trainingOptions['lossFunction']
+        learningRate = self.trainingOptions['learningRate']
+        beta1 = self.trainingOptions['beta1']
+        beta2 = self.trainingOptions['beta2']
 
         assert layerWiseTraining == (not endToEndTraining)        
                 
@@ -153,7 +165,7 @@ class Trainer:
             sTrainAll = StrainOrig[:,adjStep,:,:]    
             
             thisLoss = self.model.loss
-            thisOptim = self.model.optim            
+            thisOptim = self.model.optim
                         
             iteration = 0 # DAgger counter
             while iteration < nDAggers:
@@ -494,10 +506,14 @@ class Trainer:
                     for i in range(len(self.dimReadout)):
                         nn.init.xavier_uniform_(self.Readout[np.int64(2*i+1)].weight)
                         nn.init.zeros_(self.Readout[np.int64(2*i+1)].bias)
-                
+               
             del thisLoss
             del thisOptim
             
+            self.model.loss = lossFunction()
+            self.model.optim = optim.Adam(self.model.archit.parameters(),
+                                    lr = learningRate,
+                                    betas = (beta1, beta2))            
             self.model.archit.to(self.model.device)
             
             saveArchitDir = os.path.join(self.model.saveDir,'savedArchits')
