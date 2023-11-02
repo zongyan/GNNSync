@@ -1,8 +1,9 @@
 import numpy as np
 import os
+import torch.nn as nn
+import torch.optim as optim
 
 import utils.graphML as gml
-import torch.nn as nn
 
 def evaluate(model, trainer, data, **kwargs):
     initPosTest = data.getData('initOffset', 'test')
@@ -16,6 +17,9 @@ def evaluate(model, trainer, data, **kwargs):
     layerWiseTraining = trainer.trainingOptions['layerWiseTraining']
     endToEndTraining = trainer.trainingOptions['endToEndTraining']
     nDAggers = trainer.trainingOptions['nDAggers']
+    learningRate = trainer.trainingOptions['learningRate']
+    beta1 = trainer.trainingOptions['beta1']
+    beta2 = trainer.trainingOptions['beta2']
 
     paramsNameLayerWiseTrain = list(paramsLayerWiseTrain)    
     layerWiseTrainL = len(paramsLayerWiseTrain[paramsNameLayerWiseTrain[1]])
@@ -100,6 +104,10 @@ def evaluate(model, trainer, data, **kwargs):
         model.archit.bias = trainedModelBias
         model.archit.sigma = trainedModelSigma
         model.archit.dimReadout = trainedModelReadout
+        
+        model.optim = optim.Adam(model.archit.parameters(),
+                                lr = learningRate,
+                                betas = (beta1, beta2))
         
         model.load(layerWiseTraining, endToEndTraining, \
                nDAggers, historicalBestL[l], historicalBestIteration[l], historicalBestEpoch[l], historicalBestBatch[l], label = 'Best')        
