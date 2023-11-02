@@ -111,10 +111,10 @@ def evaluate(model, trainer, data, **kwargs):
         
         model.load(layerWiseTraining, endToEndTraining, \
                nDAggers, historicalBestL[l], historicalBestIteration[l], historicalBestEpoch[l], historicalBestBatch[l], label = 'Best')        
-                       
-        print("\tComputing learned time synchronisation for best model...",
-              end = ' ', flush = True)
-    
+        
+        print("\tComputing learned time synchronisation for best %s model..." %(model.name), 
+              flush = True)
+        
         offsetTestBest, \
         skewTestBest, \
         adjTestBest, \
