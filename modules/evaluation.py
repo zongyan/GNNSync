@@ -32,8 +32,8 @@ def evaluate(model, trainer, data, **kwargs):
     elif endToEndTraining == True:
         saveFile = os.path.join(saveArchitDir, 'endToEndTraining')
 
-    trainingFile = np.load(saveFile + '.npz', allow_pickle=True) # the data file loaded from the example folder
-        
+    trainingFile = np.load(saveFile + '-nDAggers-' + str(nDAggers) + '.npz', allow_pickle=True) # the data file loaded from the example folder
+    
     historicalL = np.int64(trainingFile['historicalL'])
     historicalF = np.int64(trainingFile['historicalF'])
     historicalK = np.int64(trainingFile['historicalK'])

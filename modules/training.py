@@ -521,9 +521,9 @@ class Trainer:
                 os.makedirs(saveArchitDir)
 
             if layerWiseTraining == True:
-                saveFile = os.path.join(saveArchitDir, 'nDAggers-' + str(nDAggers) + '-LayerWise-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))
+                saveFile = os.path.join(saveArchitDir, 'nDAggers-' + str(iteration) + '-' + str(nDAggers) + '-LayerWise-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))
             elif endToEndTraining == True:
-                saveFile = os.path.join(saveArchitDir, 'nDAggers-' + str(nDAggers) + '-EndToEnd-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))
+                saveFile = os.path.join(saveArchitDir, 'nDAggers-' + str(iteration) + '-' + str(nDAggers) + '-EndToEnd-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))
 
             np.savez(saveFile+'.npz', lastL=lastL, lastF=lastF, \
                      lastK=lastK, lastE=lastE, \
@@ -537,7 +537,7 @@ class Trainer:
         elif endToEndTraining == True:
             saveFile = os.path.join(saveArchitDir, 'endToEndTraining')
         
-        np.savez(saveFile+'.npz', historicalL=historicalL, historicalF=historicalF, \
+        np.savez(saveFile + '-nDAggers-' + str(nDAggers) + '.npz', historicalL=historicalL, historicalF=historicalF, \
                  historicalK=historicalK, historicalE=historicalE, \
                      historicalBias=historicalBias, historicalSigma=historicalSigma, \
                          historicalReadout=historicalReadout, historicalNumReadoutLayer=historicalNumReadoutLayer, \

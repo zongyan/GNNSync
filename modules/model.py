@@ -8,7 +8,7 @@ class Model:
                  optimizer, # optimisation algorithm (nn.optim)
                  trainer, # training algorithm (Modules.training)
                  evaluator, # evaluating algorithm (Modules.evaluation)
-                 device, name, saveDir):
+                 device, name, nDAggersValues, saveDir):
         
         self.archit = architecture
         self.archit.to(device)
@@ -25,7 +25,12 @@ class Model:
               
         self.loss = loss
         self.optim = optimizer
-        self.trainer = trainer
+        self.trainer = []
+        self.nDAggersValues = nDAggersValues
+        
+        for i in range(len(nDAggersValues)):
+            self.trainer.append(trainer)
+        
         self.evaluator = evaluator
         self.device = device
         self.name = name
@@ -34,15 +39,17 @@ class Model:
     def train(self, data, nEpochs, batchSize, \
               nDAggers, expertProb, aggregationSize, \
                   paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, \
-                      lossFunction, learningRate, beta1, beta2, **kwargs):        
-        self.trainer = self.trainer(self, data, nEpochs, batchSize, \
-                                    nDAggers, expertProb, aggregationSize, \
-                                        paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, \
-                                            lossFunction, learningRate, beta1, beta2, **kwargs)        
-        return self.trainer.train()
+                      lossFunction, learningRate, beta1, beta2, **kwargs):
+        
+        self.trainer[self.nDAggersValues.index(nDAggers)] = self.trainer[self.nDAggersValues.index(nDAggers)]\
+                                                            (self, data, nEpochs, batchSize, \
+                                                             nDAggers, expertProb, aggregationSize, \
+                                                                 paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, \
+                                                                     lossFunction, learningRate, beta1, beta2, **kwargs)        
+        return self.trainer[self.nDAggersValues.index(nDAggers)].train()
     
-    def evaluate(self, data, **kwargs):        
-        return self.evaluator(self, self.trainer, data, **kwargs)        
+    def evaluate(self, data, nDAggers, **kwargs):        
+        return self.evaluator(self, self.trainer[self.nDAggersValues.index(nDAggers)], data, **kwargs)
     
     def save(self, layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = '', **kwargs):        
         assert layerWiseTraining == (not endToEndTraining)
