@@ -175,7 +175,7 @@ i = 0
 for thisModel in modelsGNN.keys():
     print("Training model %s..." % thisModel)
     
-    for nDAggersVal in nDAggersValues: 
+    for nDAggersVal in nDAggersValues:
         if nDAggersValues.index(nDAggersVal) == 0:
             thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
                                                         nDAggersVal, expertProb, aggregationSize, \
@@ -190,7 +190,7 @@ for thisModel in modelsGNN.keys():
         
         trainedModelsGNN[i + nDAggersValues.index(nDAggersVal)] = deepcopy(modelsGNN[thisModel])
     
-    i = i + len(nDAggersVal)
+    i = i + len(nDAggersValues)
 #%%
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
                 1, 1, 1, nTest, # no care about training nor validation
@@ -204,10 +204,11 @@ commGraphTest = dataTest.getData('commGraph', 'train')
 dataTest.evaluate(offsetTest, skewTest, 1)
 dataTest.evaluate(offsetTest[:,-1:,:,:], skewTest[:,-1:,:,:], 1)
 
-for thisModel in modelsGNN.keys():
+for thisModel in list(modelsGNN.keys()):
     
     for nDAggersVal in nDAggersValues:
-        modelsGNN[thisModel].evaluate(dataTest, nDAggersVal)             
+        modelsGNN[thisModel] = deepcopy(trainedModelsGNN[list(modelsGNN.keys()).index(thisModel) + nDAggersValues.index(nDAggersVal)])
+        modelsGNN[thisModel].evaluate(dataTest, nDAggersVal)  
     
 #%%
 endRunTime = datetime.datetime.now()
@@ -237,6 +238,8 @@ elif endToEndTraining == True:
 for thisModel in modelsGNN.keys():
     
     for nDAggersVal in nDAggersValues:
+
+        modelsGNN[thisModel] = deepcopy(trainedModelsGNN[list(modelsGNN.keys()).index(thisModel) + nDAggersValues.index(nDAggersVal)])
         
         paramsLayerWiseTrain = modelsGNN[thisModel].trainer[nDAggersValues.index(nDAggersVal)].trainingOptions['paramsLayerWiseTrain']
         layerWiseTraining = modelsGNN[thisModel].trainer[nDAggersValues.index(nDAggersVal)].trainingOptions['layerWiseTraining']
@@ -247,7 +250,7 @@ for thisModel in modelsGNN.keys():
         layerWiseTrainL = len(paramsLayerWiseTrain[paramsNameLayerWiseTrain[1]])
         layerWiseTraindimReadout = paramsLayerWiseTrain[paramsNameLayerWiseTrain[4]]
     
-        bestTraining = np.load(saveArchitFile + '.npz') # the data file loaded from the example folder
+        bestTraining = np.load(saveArchitFile + '-nDAggers-' + str(nDAggers) + '.npz') # the data file loaded from the example folder
     
         historicalBestL = np.int64(bestTraining['historicalBestL'])
         historicalBestIteration = np.int64(bestTraining['historicalBestIteration'])
