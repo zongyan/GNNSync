@@ -163,16 +163,34 @@ for thisModel in modelList:
                                saveDir)
     modelsGNN[thisName] = modelCreated
     print("OK")
+    
+initModelsGNN = deepcopy(modelsGNN)
+
+trainedModelsGNN = [ ]
+for i in range(len(nDAggersValues)):
+    trainedModelsGNN.append(initModelsGNN)
+
 #%%
+i = 0
 for thisModel in modelsGNN.keys():
     print("Training model %s..." % thisModel)
-
+    
     for nDAggersVal in nDAggersValues: 
-        thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
-                                                    nDAggersVal, expertProb, aggregationSize, \
-                                                        paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, \
-                                                            lossFunction, learningRate, beta1, beta2, **trainingOptions)
-
+        if nDAggersValues.index(nDAggersVal) == 0:
+            thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
+                                                        nDAggersVal, expertProb, aggregationSize, \
+                                                            paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, \
+                                                                lossFunction, learningRate, beta1, beta2, **trainingOptions)
+        else:
+            modelsGNN[thisModel] = deepcopy(initModelsGNN[thisModel])
+            thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
+                                                        nDAggersVal, expertProb, aggregationSize, \
+                                                            paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, \
+                                                                lossFunction, learningRate, beta1, beta2, **trainingOptions)            
+        
+        trainedModelsGNN[i + nDAggersValues.index(nDAggersVal)] = deepcopy(modelsGNN[thisModel])
+    
+    i = i + len(nDAggersVal)
 #%%
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
                 1, 1, 1, nTest, # no care about training nor validation
