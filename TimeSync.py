@@ -185,8 +185,7 @@ print("...", flush = True)
 data = dataTools.AerialSwarm(nAgents, commRadius,repelDist,
             nTrain, nDAgger, nValid, 1, # no care about testing, re-generating the dataset for testing
             duration, updateTime, adjustTime, 
-            initVelValue, initMinDist, accelMax,
-            normalizeGraph)
+            initVelValue, initMinDist, accelMax)
 
 print("Preview data", end = '')
 print("...", flush = True)
