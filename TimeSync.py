@@ -61,7 +61,7 @@ trainer = training.Trainer
 evaluator = evaluation.evaluate
 
 nEpochs = 30 # number of epochs
-batchSize = 32 # batch size
+batchSize = 20 # batch size
 validationInterval = 5 # how many training steps to do the validation
 nDAggersValues = [1, 20, 30]
 nDAggers = 1 # 1 means no DAgger
