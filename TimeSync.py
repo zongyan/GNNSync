@@ -235,7 +235,8 @@ trainedModelsGNN = [[initModelsGNN for k in range(len(nDAggersValues))] for j in
 for thisModel in modelsGNN.keys():
     print("Training model %s..." % thisModel)
     
-    paramsLayerWiseTrain = deepcopy(eval('paramsLayerWiseTrain' + thisModel))
+    paramsLayerWiseTrain = deepcopy(eval('paramsLayerWiseTrain' + thisModel))    
+    paramsLayerWiseTrain.pop('name')
     
     for nDAggersVal in nDAggersValues:
         
