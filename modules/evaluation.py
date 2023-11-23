@@ -15,7 +15,6 @@ def evaluate(model, trainer, data, **kwargs):
     
     paramsLayerWiseTrain = trainer.trainingOptions['paramsLayerWiseTrain']
     layerWiseTraining = trainer.trainingOptions['layerWiseTraining']
-    endToEndTraining = trainer.trainingOptions['endToEndTraining']
     nDAggers = trainer.trainingOptions['nDAggers']
     learningRate = trainer.trainingOptions['learningRate']
     beta1 = trainer.trainingOptions['beta1']
@@ -29,10 +28,10 @@ def evaluate(model, trainer, data, **kwargs):
 
     if layerWiseTraining == True:
         saveFile = os.path.join(saveArchitDir, 'LayerWiseTraining')
-    elif endToEndTraining == True:
+    else:
         saveFile = os.path.join(saveArchitDir, 'endToEndTraining')
 
-    trainingFile = np.load(saveFile + '-nDAggers-' + str(nDAggers) + '.npz', allow_pickle=True) # the data file loaded from the example folder
+    trainingFile = np.load(saveFile + '-' + str(model.name) + '-nDAggers-' + str(nDAggers) + '.npz', allow_pickle=True) # the data file loaded from the example folder
     
     historicalL = np.int64(trainingFile['historicalL'])
     historicalF = np.int64(trainingFile['historicalF'])
@@ -48,7 +47,7 @@ def evaluate(model, trainer, data, **kwargs):
     historicalBestEpoch = np.int64(trainingFile['historicalBestEpoch'])
     historicalBestBatch = np.int64(trainingFile['historicalBestBatch'])
     
-    assert len(historicalBestL) == layerWiseTrainL + 1    
+    assert len(historicalBestL) == layerWiseTrainL + 1  
     assert len(historicalBestL) == len(historicalBestIteration)
     assert len(historicalBestL) == len(historicalBestEpoch)
     assert len(historicalBestL) == len(historicalBestBatch) 
@@ -109,7 +108,7 @@ def evaluate(model, trainer, data, **kwargs):
                                 lr = learningRate,
                                 betas = (beta1, beta2))
         
-        model.load(layerWiseTraining, endToEndTraining, \
+        model.load(layerWiseTraining, \
                nDAggers, historicalBestL[l], historicalBestIteration[l], historicalBestEpoch[l], historicalBestBatch[l], label = 'Best')        
         
         print("\tComputing learned time synchronisation for best %s model..." %(model.name), 
@@ -131,14 +130,14 @@ def evaluate(model, trainer, data, **kwargs):
     
         if layerWiseTraining == True:
             saveDataDir = os.path.join(saveDataDir,'layerWiseTraining')
-        elif endToEndTraining == True:
+        else:
             saveDataDir = os.path.join(saveDataDir,'endToEndTraining')        
         if not os.path.exists(saveDataDir):
             os.makedirs(saveDataDir)        
     
         if layerWiseTraining == True:
             saveFile = os.path.join(saveDataDir, model.name + '-LayerWise-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
-        elif endToEndTraining == True:
+        else:
             saveFile = os.path.join(saveDataDir, model.name + '-EndToEnd-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
         
         saveFile = saveFile + '.npz'

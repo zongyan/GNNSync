@@ -271,7 +271,7 @@ for thisModel in list(modelsGNN.keys()):
             
         for val in layerWise:
             modelsGNN[thisModel] = copy.deepcopy(trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel])
-            modelsGNN[thisModel].evaluate(dataTest, nDAggersVal)  
+            modelsGNN[thisModel].evaluate(dataTest, nDAggersVal, val)
 
 #%%
 endRunTime = datetime.datetime.now()
@@ -306,16 +306,15 @@ for thisModel in modelsGNN.keys():
             
             modelsGNN[thisModel] = copy.deepcopy(trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel])
         
-            paramsLayerWiseTrain = modelsGNN[thisModel].trainer[nDAggersValues.index(nDAggersVal)].trainingOptions['paramsLayerWiseTrain']
-            layerWiseTraining = modelsGNN[thisModel].trainer[nDAggersValues.index(nDAggersVal)].trainingOptions['layerWiseTraining']
-            endToEndTraining = modelsGNN[thisModel].trainer[nDAggersValues.index(nDAggersVal)].trainingOptions['endToEndTraining']
-            nDAggers = modelsGNN[thisModel].trainer[nDAggersValues.index(nDAggersVal)].trainingOptions['nDAggers']
+            paramsLayerWiseTrain = modelsGNN[thisModel].trainer[layerWise.index(val)][nDAggersValues.index(nDAggersVal)].trainingOptions['paramsLayerWiseTrain']
+            layerWiseTraining = modelsGNN[thisModel].trainer[layerWise.index(val)][nDAggersValues.index(nDAggersVal)].trainingOptions['layerWiseTraining']
+            nDAggers = modelsGNN[thisModel].trainer[layerWise.index(val)][nDAggersValues.index(nDAggersVal)].trainingOptions['nDAggers']
         
             paramsNameLayerWiseTrain = list(paramsLayerWiseTrain)    
             layerWiseTrainL = len(paramsLayerWiseTrain[paramsNameLayerWiseTrain[1]])
             layerWiseTraindimReadout = paramsLayerWiseTrain[paramsNameLayerWiseTrain[4]]
         
-            bestTraining = np.load(saveArchitFile + '-nDAggers-' + str(nDAggers) + '.npz') # the data file loaded from the example folder
+            bestTraining = np.load(saveArchitFile + '-' + str(modelsGNN[thisModel].name) + '-nDAggers-' + str(nDAggers) + '.npz') # the data file loaded from the example folder
         
             historicalBestL = np.int64(bestTraining['historicalBestL'])
             historicalBestIteration = np.int64(bestTraining['historicalBestIteration'])

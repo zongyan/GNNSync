@@ -51,8 +51,8 @@ class Model:
 
         return self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)].train()
     
-    def evaluate(self, data, nDAggers, **kwargs):        
-        return self.evaluator(self, self.trainer[self.nDAggersValues.index(nDAggers)], data, **kwargs)
+    def evaluate(self, data, nDAggers, layerWiseTraining, **kwargs):        
+        return self.evaluator(self, self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)], data, **kwargs)
     
     def save(self, layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = '', **kwargs):        
         
