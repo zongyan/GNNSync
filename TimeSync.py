@@ -129,6 +129,54 @@ hParamsbaseGNNFour['dimReadout'] = [ ]
 hParamsbaseGNNFour['dimEdgeFeatures'] = 1 # scalar edge weights
 modelList += [hParamsbaseGNNFour['name']]
 
+hParamsbaseGNNFive = {}
+hParamsbaseGNNFive['name'] = 'baseGNNFive'
+hParamsbaseGNNFive['archit'] = architTime.LocalGNN_DB
+hParamsbaseGNNFive['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsbaseGNNFive['dimNodeSignals'] = [2, 64, 2] # features per layer
+hParamsbaseGNNFive['nFilterTaps'] = [1, 1] # number of filter taps
+hParamsbaseGNNFive['bias'] = True
+hParamsbaseGNNFive['nonlinearity'] = nonlinearity
+hParamsbaseGNNFive['dimReadout'] = [ ] 
+hParamsbaseGNNFive['dimEdgeFeatures'] = 1 # scalar edge weights
+modelList += [hParamsbaseGNNFive['name']]
+
+hParamsbaseGNNSix = {}
+hParamsbaseGNNSix['name'] = 'baseGNNSix'
+hParamsbaseGNNSix['archit'] = architTime.LocalGNN_DB
+hParamsbaseGNNSix['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsbaseGNNSix['dimNodeSignals'] = [2, 64, 2] # features per layer
+hParamsbaseGNNSix['nFilterTaps'] = [2, 2] # number of filter taps
+hParamsbaseGNNSix['bias'] = True
+hParamsbaseGNNSix['nonlinearity'] = nonlinearity
+hParamsbaseGNNSix['dimReadout'] = [ ] 
+hParamsbaseGNNSix['dimEdgeFeatures'] = 1 # scalar edge weights
+modelList += [hParamsbaseGNNSix['name']]
+
+hParamsbaseGNNSeven = {}
+hParamsbaseGNNSeven['name'] = 'baseGNNSeven'
+hParamsbaseGNNSeven['archit'] = architTime.LocalGNN_DB
+hParamsbaseGNNSeven['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsbaseGNNSeven['dimNodeSignals'] = [2, 64, 2] # features per layer
+hParamsbaseGNNSeven['nFilterTaps'] = [3, 3] # number of filter taps
+hParamsbaseGNNSeven['bias'] = True
+hParamsbaseGNNSeven['nonlinearity'] = nonlinearity
+hParamsbaseGNNSeven['dimReadout'] = [ ] 
+hParamsbaseGNNSeven['dimEdgeFeatures'] = 1 # scalar edge weights
+modelList += [hParamsbaseGNNSeven['name']]
+
+hParamsbaseGNNEight = {}
+hParamsbaseGNNEight['name'] = 'baseGNNEight'
+hParamsbaseGNNEight['archit'] = architTime.LocalGNN_DB
+hParamsbaseGNNEight['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsbaseGNNEight['dimNodeSignals'] = [2, 64, 2] # features per layer
+hParamsbaseGNNEight['nFilterTaps'] = [4, 4] # number of filter taps
+hParamsbaseGNNEight['bias'] = True
+hParamsbaseGNNEight['nonlinearity'] = nonlinearity
+hParamsbaseGNNEight['dimReadout'] = [ ] 
+hParamsbaseGNNEight['dimEdgeFeatures'] = 1 # scalar edge weights
+modelList += [hParamsbaseGNNEight['name']]
+
 trainingOptions = {}
 trainingOptions['printInterval'] = printInterval
 trainingOptions['validationInterval'] = validationInterval
@@ -169,6 +217,42 @@ paramsLayerWiseTrainbaseGNNFour['bias'] = True
 paramsLayerWiseTrainbaseGNNFour['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
 paramsLayerWiseTrainbaseGNNFour['dimReadout'] = [ ]
 paramsLayerWiseTrainbaseGNNFour['dimEdgeFeatures'] = 1 # scalar edge weights
+
+paramsLayerWiseTrainbaseGNNFive = {}
+paramsLayerWiseTrainbaseGNNFive['name'] = 'baseGNNFive'
+paramsLayerWiseTrainbaseGNNFive['dimNodeSignals'] = [64, 64, 64, 64, 64, 64, 64, 64, 64] # features per hidden layer
+paramsLayerWiseTrainbaseGNNFive['nFilterTaps'] = [1, 1, 1, 1, 1, 1, 1, 1, 1] # number of filter taps for each hidden layer
+paramsLayerWiseTrainbaseGNNFive['bias'] = True
+paramsLayerWiseTrainbaseGNNFive['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
+paramsLayerWiseTrainbaseGNNFive['dimReadout'] = [ ]
+paramsLayerWiseTrainbaseGNNFive['dimEdgeFeatures'] = 1 # scalar edge weights
+
+paramsLayerWiseTrainbaseGNNSix = {}
+paramsLayerWiseTrainbaseGNNSix['name'] = 'baseGNNSix'
+paramsLayerWiseTrainbaseGNNSix['dimNodeSignals'] = [64, 64, 64, 64] # features per hidden layer
+paramsLayerWiseTrainbaseGNNSix['nFilterTaps'] = [2, 2, 2, 2] # number of filter taps for each hidden layer
+paramsLayerWiseTrainbaseGNNSix['bias'] = True
+paramsLayerWiseTrainbaseGNNSix['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
+paramsLayerWiseTrainbaseGNNSix['dimReadout'] = [ ]
+paramsLayerWiseTrainbaseGNNSix['dimEdgeFeatures'] = 1 # scalar edge weights
+
+paramsLayerWiseTrainbaseGNNSeven = {}
+paramsLayerWiseTrainbaseGNNSeven['name'] = 'baseGNNSeven'
+paramsLayerWiseTrainbaseGNNSeven['dimNodeSignals'] = [64, 64, 64, 64] # features per hidden layer
+paramsLayerWiseTrainbaseGNNSeven['nFilterTaps'] = [3, 3, 3, 3] # number of filter taps for each hidden layer
+paramsLayerWiseTrainbaseGNNSeven['bias'] = True
+paramsLayerWiseTrainbaseGNNSeven['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
+paramsLayerWiseTrainbaseGNNSeven['dimReadout'] = [ ]
+paramsLayerWiseTrainbaseGNNSeven['dimEdgeFeatures'] = 1 # scalar edge weights
+
+paramsLayerWiseTrainbaseGNNEight = {}
+paramsLayerWiseTrainbaseGNNEight['name'] = 'baseGNNEight'
+paramsLayerWiseTrainbaseGNNEight['dimNodeSignals'] = [64, 64, 64, 64] # features per hidden layer
+paramsLayerWiseTrainbaseGNNEight['nFilterTaps'] = [4, 4, 4, 4] # number of filter taps for each hidden layer
+paramsLayerWiseTrainbaseGNNEight['bias'] = True
+paramsLayerWiseTrainbaseGNNEight['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
+paramsLayerWiseTrainbaseGNNEight['dimReadout'] = [ ]
+paramsLayerWiseTrainbaseGNNEight['dimEdgeFeatures'] = 1 # scalar edge weights
 
 #%%
 if useGPU and torch.cuda.is_available():
