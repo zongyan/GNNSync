@@ -1,5 +1,6 @@
 import os
 import torch
+import copy
 
 class Model:    
     def __init__(self,
@@ -8,7 +9,7 @@ class Model:
                  optimizer, # optimisation algorithm (nn.optim)
                  trainer, # training algorithm (Modules.training)
                  evaluator, # evaluating algorithm (Modules.evaluation)
-                 device, name, nDAggersValues, saveDir):
+                 device, name, nDAggersValues, layerWise, saveDir):
         
         self.archit = architecture
         self.archit.to(device)
@@ -27,9 +28,9 @@ class Model:
         self.optim = optimizer
         self.trainer = []
         self.nDAggersValues = nDAggersValues
-        
-        for i in range(len(nDAggersValues)):
-            self.trainer.append(trainer)
+        self.layerWise = layerWise 
+                    
+        self.trainer = [copy.deepcopy([copy.deepcopy(trainer) for k in range(len(nDAggersValues))]) for j in range(len(layerWise))]            
         
         self.evaluator = evaluator
         self.device = device
@@ -38,21 +39,22 @@ class Model:
  
     def train(self, data, nEpochs, batchSize, \
               nDAggers, expertProb, aggregationSize, \
-                  paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, \
+                  paramsLayerWiseTrain, layerWiseTraining, \
                       lossFunction, learningRate, beta1, beta2, **kwargs):
         
-        self.trainer[self.nDAggersValues.index(nDAggers)] = self.trainer[self.nDAggersValues.index(nDAggers)]\
-                                                            (self, data, nEpochs, batchSize, \
-                                                             nDAggers, expertProb, aggregationSize, \
-                                                                 paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, \
-                                                                     lossFunction, learningRate, beta1, beta2, **kwargs)        
-        return self.trainer[self.nDAggersValues.index(nDAggers)].train()
+        self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)] = \
+            self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)]\
+                (self, data, nEpochs, batchSize, \
+                 nDAggers, expertProb, aggregationSize, \
+                     paramsLayerWiseTrain, layerWiseTraining, \
+                         lossFunction, learningRate, beta1, beta2, **kwargs)        
+
+        return self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)].train()
     
     def evaluate(self, data, nDAggers, **kwargs):        
         return self.evaluator(self, self.trainer[self.nDAggersValues.index(nDAggers)], data, **kwargs)
     
-    def save(self, layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = '', **kwargs):        
-        assert layerWiseTraining == (not endToEndTraining)
+    def save(self, layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = '', **kwargs):        
         
         if 'saveDir' in kwargs.keys():
             saveDir = kwargs['saveDir']
@@ -63,7 +65,7 @@ class Model:
         
         if layerWiseTraining == True:
             saveModelDir = os.path.join(saveModelDir,'layerWiseTraining')
-        elif endToEndTraining == True:
+        else:
             saveModelDir = os.path.join(saveModelDir,'endToEndTraining')
 
         if not os.path.exists(saveModelDir):
@@ -71,14 +73,13 @@ class Model:
 
         if layerWiseTraining == True:
             saveFile = os.path.join(saveModelDir, self.name + '-LayerWise-' + str(l) + '-DAgger-' + str(iteration) + '-' + str(nDAggers) + '-Epoch-' + str(epoch) + '-Batch-' + str(batch))
-        elif endToEndTraining == True:
+        else:
             saveFile = os.path.join(saveModelDir, self.name + '-EndToEnd-' + str(l) + '-DAgger-' + str(iteration) + '-' + str(nDAggers) + '-Epoch-' + str(epoch) + '-Batch-' + str(batch))
                     
         torch.save(self.archit.state_dict(), saveFile+'-Archit-'+ label+'.ckpt')
         torch.save(self.optim.state_dict(), saveFile+'-Optim-'+label+'.ckpt')
 
-    def load(self, layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = '', **kwargs):
-        assert layerWiseTraining == (not endToEndTraining)
+    def load(self, layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = '', **kwargs):
         
         if 'loadFiles' in kwargs.keys():
             (architLoadFile, optimLoadFile) = kwargs['loadFiles']
@@ -87,12 +88,12 @@ class Model:
             
             if layerWiseTraining == True:
                 saveModelDir = os.path.join(saveModelDir,'layerWiseTraining')
-            elif endToEndTraining == True:
+            else:
                 saveModelDir = os.path.join(saveModelDir,'endToEndTraining')
 
             if layerWiseTraining == True:
                 saveFile = os.path.join(saveModelDir, self.name + '-LayerWise-' + str(l) + '-DAgger-' + str(iteration) + '-' + str(nDAggers) + '-Epoch-' + str(epoch) + '-Batch-' + str(batch))
-            elif endToEndTraining == True:
+            else:
                 saveFile = os.path.join(saveModelDir, self.name + '-EndToEnd-' + str(l) + '-DAgger-' + str(iteration) + '-' + str(nDAggers) + '-Epoch-' + str(epoch) + '-Batch-' + str(batch))
             
             architLoadFile = saveFile + '-Archit-' + label +'.ckpt'

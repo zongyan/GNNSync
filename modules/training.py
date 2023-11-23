@@ -11,7 +11,7 @@ import modules.architecturesTime as architTime
 class Trainer:   
     def __init__(self, model, data, nEpochs, batchSize, \
                  nDAggers, expertProb, aggregationSize, \
-                     paramsLayerWiseTrain, layerWiseTraining, endToEndTraining, \
+                     paramsLayerWiseTrain, layerWiseTraining, \
                          lossFunction, learningRate, beta1, beta2, **kwargs):
                 
         self.model = model
@@ -61,7 +61,6 @@ class Trainer:
         self.trainingOptions['aggSize'] = aggregationSize
         self.trainingOptions['paramsLayerWiseTrain'] = paramsLayerWiseTrain
         self.trainingOptions['layerWiseTraining'] = layerWiseTraining
-        self.trainingOptions['endToEndTraining'] = endToEndTraining
         self.trainingOptions['lossFunction'] = lossFunction
         self.trainingOptions['learningRate'] = learningRate
         self.trainingOptions['beta1'] = beta1
@@ -79,13 +78,10 @@ class Trainer:
         aggSize = self.trainingOptions['aggSize']
         paramsLayerWiseTrain = self.trainingOptions['paramsLayerWiseTrain']        
         layerWiseTraining = self.trainingOptions['layerWiseTraining']
-        endToEndTraining = self.trainingOptions['endToEndTraining']    
         lossFunction = self.trainingOptions['lossFunction']
         learningRate = self.trainingOptions['learningRate']
         beta1 = self.trainingOptions['beta1']
         beta2 = self.trainingOptions['beta2']
-
-        assert layerWiseTraining == (not endToEndTraining)        
                 
         paramsNameLayerWiseTrain = list(paramsLayerWiseTrain)
         
@@ -260,7 +256,7 @@ class Trainer:
                             if iteration == 0 and epoch == 0 and batch == 0:
                                 bestScore = accValid
                                 bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
-                                self.model.save(layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
+                                self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
                             else:
                                 thisValidScore = accValid
                                 if thisValidScore < bestScore:
@@ -268,7 +264,7 @@ class Trainer:
                                     bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
                                     print("\t=> New best achieved: %.4f" % \
                                               (bestScore))
-                                    self.model.save(layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
+                                    self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
                                     # initialBest = False
         
                             del initThetaValid
@@ -285,12 +281,12 @@ class Trainer:
                         
                     epoch += 1 # end of epoch, increase epoch count
         
-                self.model.save(layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = 'Last') # training over, save the last model
+                self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Last') # training over, save the last model
         
                 if nEpochs == 0:
                     bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
-                    self.model.save(layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
-                    self.model.save(layerWiseTraining, endToEndTraining, nDAggers, l, iteration, epoch, batch, label = 'Last')
+                    self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
+                    self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Last')
                     print("\nWARNING: No training. Best and Last models are the same.\n")
                 
                 if nEpochs > 0:
@@ -381,11 +377,9 @@ class Trainer:
 
             if layerWiseTraining == True:                          
                 # reload best model for layer-wise training
-                self.model.load(layerWiseTraining, endToEndTraining, nDAggers, bestL, bestIteration, bestEpoch, bestBatch, label = 'Best')
-            elif endToEndTraining == True:
-                pass
+                self.model.load(layerWiseTraining, nDAggers, bestL, bestIteration, bestEpoch, bestBatch, label = 'Best')
             else:
-                print("\nWARNING: no training method is found.\n")  
+                pass
             
             # store the layer-wise, DAgger, epoch, and batch iteration for each best GNN model
             historicalBestL = np.append(historicalBestL, bestL)
@@ -439,14 +433,12 @@ class Trainer:
                         # append the original layer
                         layerWiseGFL.append(origLayer)
 
-                    elif endToEndTraining == True:
+                    else:
 
                         if (i % 2) == 0:
                             layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i/2)], originalArchitF[np.int64((i/2) + 1)], originalArchitK[np.int64(i/2)], self.model.archit.E, self.model.archit.bias))
                         else:
-                            layerWiseGFL.append(nn.Tanh())                            
-                    else:
-                        print("\nWARNING: no training method is found.\n")  
+                            layerWiseGFL.append(nn.Tanh())
         
                 # append the layer-wise training layer
                 layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias))
@@ -477,15 +469,12 @@ class Trainer:
                         # append the original layer
                         layerWiseFC.append(origLayer)
 
-                    elif endToEndTraining == True:
+                    else:
 
                         if (i % 2) == 0:
                             layerWiseFC.append(nn.Tanh())  
                         else:
                             layerWiseFC.append(nn.Linear(origLayer.in_features, origLayer.out_features, bias = self.model.archit.bias))
-                            
-                    else:
-                        print("\nWARNING: no training method is found.\n")                             
     
                 # append the original layer
                 layerWiseFC.append(nn.Linear(lastReadoutLayer.in_features, layerWiseTraindimReadout[l], bias = layerWiseTrainBias))            
@@ -502,7 +491,7 @@ class Trainer:
                     nn.init.zeros_(self.Readout[-3].bias)
                     nn.init.xavier_uniform_(self.Readout[-1].weight)
                     nn.init.zeros_(self.Readout[-1].bias)                    
-                elif endToEndTraining == True:
+                else:
                     for i in range(len(self.dimReadout)):
                         nn.init.xavier_uniform_(self.Readout[np.int64(2*i+1)].weight)
                         nn.init.zeros_(self.Readout[np.int64(2*i+1)].bias)
@@ -522,7 +511,7 @@ class Trainer:
 
             if layerWiseTraining == True:
                 saveFile = os.path.join(saveArchitDir, 'nDAggers-' + str(iteration) + '-' + str(nDAggers) + '-LayerWise-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))
-            elif endToEndTraining == True:
+            else:
                 saveFile = os.path.join(saveArchitDir, 'nDAggers-' + str(iteration) + '-' + str(nDAggers) + '-EndToEnd-' + str(l) + '-GSO-' + str(list(lastF)) + '-Readout-' + str(list(np.int64(lastReadout))))
 
             np.savez(saveFile+'.npz', lastL=lastL, lastF=lastF, \
@@ -534,7 +523,7 @@ class Trainer:
             
         if layerWiseTraining == True:
             saveFile = os.path.join(saveArchitDir, 'LayerWiseTraining')
-        elif endToEndTraining == True:
+        else:
             saveFile = os.path.join(saveArchitDir, 'endToEndTraining')
         
         np.savez(saveFile + '-nDAggers-' + str(nDAggers) + '.npz', historicalL=historicalL, historicalF=historicalF, \

@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import datetime
-from copy import deepcopy
+import copy
 
 import torch; torch.set_default_dtype(torch.float64)
 import torch.nn as nn
@@ -195,7 +195,7 @@ modelsGNN = {}
 print("Model initialisation...", flush = True)
 
 for thisModel in modelList:
-    hParamsDict = deepcopy(eval('hParams' + thisModel))
+    hParamsDict = copy.deepcopy(eval('hParams' + thisModel))
     thisName = hParamsDict.pop('name')
     callArchit = hParamsDict.pop('archit')
     thisDevice = hParamsDict.pop('device')
@@ -224,37 +224,33 @@ for thisModel in modelList:
                                thisDevice,
                                thisName,
                                nDAggersValues,
+                               layerWise,
                                saveDir)
+        
     modelsGNN[thisName] = modelCreated
     print("OK")
-    
-initModelsGNN = deepcopy(modelsGNN)
-trainedModelsGNN = [[initModelsGNN for k in range(len(nDAggersValues))] for j in range(len(layerWise))]
+
+initModelsGNN = copy.deepcopy(modelsGNN)    
+trainedModelsGNN = [copy.deepcopy([copy.deepcopy(initModelsGNN) for k in range(len(nDAggersValues))]) for j in range(len(layerWise))]
 
 #%%
 for thisModel in modelsGNN.keys():
     print("Training model %s..." % thisModel)
     
-    paramsLayerWiseTrain = deepcopy(eval('paramsLayerWiseTrain' + thisModel))    
+    paramsLayerWiseTrain = copy.deepcopy(eval('paramsLayerWiseTrain' + thisModel))    
     paramsLayerWiseTrain.pop('name')
     
     for nDAggersVal in nDAggersValues:
         
         for val in layerWise:
             
-            if nDAggersValues.index(nDAggersVal) == 0:
-                thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
-                                                            nDAggersVal, expertProb, aggregationSize, \
-                                                                paramsLayerWiseTrain, val, endToEndTraining, \
-                                                                    lossFunction, learningRate, beta1, beta2, **trainingOptions)
-            else:
-                modelsGNN[thisModel] = deepcopy(initModelsGNN[thisModel])
-                thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
-                                                            nDAggersVal, expertProb, aggregationSize, \
-                                                                paramsLayerWiseTrain, val, endToEndTraining, \
-                                                                    lossFunction, learningRate, beta1, beta2, **trainingOptions)
-            
-            trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel] = deepcopy(modelsGNN[thisModel])
+            modelsGNN[thisModel] = copy.deepcopy(initModelsGNN[thisModel])
+            thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
+                                                        nDAggersVal, expertProb, aggregationSize, \
+                                                            paramsLayerWiseTrain, val, \
+                                                                lossFunction, learningRate, beta1, beta2, **trainingOptions)
+
+            trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel] = copy.deepcopy(modelsGNN[thisModel])
 
 #%%
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
@@ -274,7 +270,7 @@ for thisModel in list(modelsGNN.keys()):
     for nDAggersVal in nDAggersValues:
             
         for val in layerWise:
-            modelsGNN[thisModel] = deepcopy(trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel])
+            modelsGNN[thisModel] = copy.deepcopy(trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel])
             modelsGNN[thisModel].evaluate(dataTest, nDAggersVal)  
 
 #%%
@@ -308,7 +304,7 @@ for thisModel in modelsGNN.keys():
         
         for val in layerWise:
             
-            modelsGNN[thisModel] = deepcopy(trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel])
+            modelsGNN[thisModel] = copy.deepcopy(trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel])
         
             paramsLayerWiseTrain = modelsGNN[thisModel].trainer[nDAggersValues.index(nDAggersVal)].trainingOptions['paramsLayerWiseTrain']
             layerWiseTraining = modelsGNN[thisModel].trainer[nDAggersValues.index(nDAggersVal)].trainingOptions['layerWiseTraining']
