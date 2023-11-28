@@ -23,6 +23,9 @@ import modules.model as model
 import modules.training as training
 import modules.evaluation as evaluation
 
+from utils.miscTools import saveSeed
+from utils.miscTools import loadSeed
+    
 # Start measuring time
 startRunTime = datetime.datetime.now()
 
@@ -36,6 +39,27 @@ today = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
 saveDir = saveDir + '-%03d-' % nAgents + today
 if not os.path.exists(saveDir):
     os.makedirs(saveDir)
+
+savingSeeds = True
+loadingSeeds = not savingSeeds
+
+if savingSeeds:
+    torchState = torch.get_rng_state() # PyTorch seeds
+    torchSeed = torch.initial_seed() # PyTorch seeds
+    numpyState = np.random.RandomState().get_state() # Numpy seeds
+    
+    randomStates = []
+    randomStates.append({})
+    randomStates[0]['module'] = 'numpy'
+    randomStates[0]['state'] = numpyState
+    randomStates.append({})
+    randomStates[1]['module'] = 'torch'
+    randomStates[1]['state'] = torchState
+    randomStates[1]['seed'] = torchSeed
+    
+    saveSeed(randomStates, saveDirRoot)
+else:    
+    loadSeed(saveDirRoot)
 
 useGPU = True
 commRadius = 2. # communication radius
