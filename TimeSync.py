@@ -293,7 +293,7 @@ print("...", flush = True)
 data = dataTools.AerialSwarm(nAgents, commRadius,repelDist,
             nTrain, nDAgger, nValid, 1, # no care about testing, re-generating the dataset for testing
             duration, updateTime, adjustTime, 
-            initVelValue, initMinDist, accelMax)
+            initVelValue, initMinDist, accelMax, savingSeeds)
 
 print("Preview data", end = '')
 print("...", flush = True)
@@ -364,7 +364,7 @@ for thisModel in modelsGNN.keys():
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
                 1, 1, 1, nTest, # no care about training nor validation
                 duration, updateTime, adjustTime,
-                initVelValue, initMinDist, accelMax)
+                initVelValue, initMinDist, accelMax, savingSeeds)
 
 offsetTest = dataTest.getData('offset', 'train')
 skewTest = dataTest.getData('skew', 'train')

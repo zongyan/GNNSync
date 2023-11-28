@@ -1,3 +1,4 @@
+import os
 import torch
 import numpy as np
 from numpy.random import default_rng
@@ -116,7 +117,7 @@ class AerialSwarm(_data):
                  nTrain, nDAgger, nValid, nTest,
                  duration, updateTime, adjustTime,
                  initVelValue=3.,initMinDist=0.1,
-                 accelMax=10.,
+                 accelMax=10., savingSeeds=True, 
                  initOffsetValue=1., initSkewValue=0.,
                  meanOffsetValue=0., stdOffsetValue=0.5,
                  meanSkewValue=0., stdSkewValue=5.,
@@ -171,20 +172,60 @@ class AerialSwarm(_data):
         self.adj = None
         self.commGraph = None
         self.state = None
-         
-        if self.doPrint:
-            print("\tComputing initial conditions...", end = ' ', flush = True)
         
-        initPosAll, initVelAll, \
-            initOffsetAll, initSkewAll = self.computeInitialConditions(
-                                          self.nAgents, nSamples, 
-                                          self.commRadius, self.initMinDist,                                                                                           
-                                          self.initOffsetValue, self.initSkewValue,
-                                          self.meanOffsetValue, self.stdOffsetValue,
-                                          self.meanSkewValue, self.stdSkewValue,
-                                          xMaxInitVel=self.initVelValue,
-                                          yMaxInitVel=self.initVelValue)
-        
+        if savingSeeds:
+            if self.doPrint:
+                print("\tComputing initial conditions...", end = ' ', flush = True)
+            
+            if nTrain == 400:            
+                initPosAll, initVelAll, \
+                    initOffsetAll, initSkewAll = self.computeInitialConditions(
+                                                  self.nAgents, nSamples, 
+                                                  self.commRadius, self.initMinDist,                                                                                           
+                                                  self.initOffsetValue, self.initSkewValue,
+                                                  self.meanOffsetValue, self.stdOffsetValue,
+                                                  self.meanSkewValue, self.stdSkewValue,
+                                                  xMaxInitVel=self.initVelValue,
+                                                  yMaxInitVel=self.initVelValue)            
+                
+                np.savez(os.path.join('experiments', 'flockingGNN') + 'initTrainValues' + '.npz', \
+                         initPosAll=initPosAll, initVelAll=initVelAll, \
+                             initOffsetAll=initOffsetAll, initSkewAll=initSkewAll)            
+            else:
+                initPosAll, initVelAll, \
+                    initOffsetAll, initSkewAll = self.computeInitialConditions(
+                                                  self.nAgents, nSamples, 
+                                                  self.commRadius, self.initMinDist,                                                                                           
+                                                  self.initOffsetValue, self.initSkewValue,
+                                                  self.meanOffsetValue, self.stdOffsetValue,
+                                                  self.meanSkewValue, self.stdSkewValue,
+                                                  xMaxInitVel=self.initVelValue,
+                                                  yMaxInitVel=self.initVelValue)            
+                
+                np.savez(os.path.join('experiments', 'flockingGNN') + 'initTestValues' + '.npz', \
+                         initPosAll=initPosAll, initVelAll=initVelAll, \
+                             initOffsetAll=initOffsetAll, initSkewAll=initSkewAll)                    
+                
+        else:
+
+            if self.doPrint:
+                print("\tLoading initial conditions...", end = ' ', flush = True)            
+            
+            if nTrain == 400:
+                initValuesFile = np.load(os.path.join('experiments', 'flockingGNN') + 'initTrainValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
+                
+                initPosAll = initValuesFile['initPosAll']
+                initVelAll = initValuesFile['initVelAll']
+                initOffsetAll = initValuesFile['initOffsetAll']
+                initSkewAll = initValuesFile['initSkewAll']
+            else:
+                initValuesFile = np.load(os.path.join('experiments', 'flockingGNN') + 'initTestValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
+                
+                initPosAll = initValuesFile['initPosAll']
+                initVelAll = initValuesFile['initVelAll']
+                initOffsetAll = initValuesFile['initOffsetAll']
+                initSkewAll = initValuesFile['initSkewAll']
+                
         self.initOffset = {}
         self.initSkew = {}
 
