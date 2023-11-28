@@ -366,9 +366,9 @@ dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
                 duration, updateTime, adjustTime,
                 initVelValue, initMinDist, accelMax, savingSeeds)
 
-offsetTest = dataTest.getData('offset', 'train')
-skewTest = dataTest.getData('skew', 'train')
-commGraphTest = dataTest.getData('commGraph', 'train')
+offsetTest = dataTest.getData('offset', 'test')
+skewTest = dataTest.getData('skew', 'test')
+commGraphTest = dataTest.getData('commGraph', 'test')
 
 dataTest.evaluate(offsetTest, skewTest, 1)
 dataTest.evaluate(offsetTest[:,-1:,:,:], skewTest[:,-1:,:,:], 1)
