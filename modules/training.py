@@ -487,14 +487,14 @@ class Trainer:
                 architTime.LocalGNN_DB.readoutLayerWiseInit(self.model.archit, layerWiseFC) # readout layer for layer-wise training  
                 
                 if layerWiseTraining == True:
-                    nn.init.xavier_uniform_(self.Readout[-3].weight)
-                    nn.init.zeros_(self.Readout[-3].bias)
-                    nn.init.xavier_uniform_(self.Readout[-1].weight)
-                    nn.init.zeros_(self.Readout[-1].bias)                    
+                    nn.init.xavier_uniform_(self.model.archit.Readout[-3].weight)
+                    nn.init.zeros_(self.model.archit.Readout[-3].bias)
+                    nn.init.xavier_uniform_(self.model.archit.Readout[-1].weight)
+                    nn.init.zeros_(self.model.archit.Readout[-1].bias)                    
                 else:
-                    for i in range(len(self.dimReadout)):
-                        nn.init.xavier_uniform_(self.Readout[np.int64(2*i+1)].weight)
-                        nn.init.zeros_(self.Readout[np.int64(2*i+1)].bias)
+                    for i in range(len(self.model.archit.dimReadout)):
+                        nn.init.xavier_uniform_(self.model.archit.Readout[np.int64(2*i+1)].weight)
+                        nn.init.zeros_(self.model.archit.Readout[np.int64(2*i+1)].bias)
                
             del thisLoss
             del thisOptim
