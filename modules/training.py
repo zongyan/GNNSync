@@ -212,9 +212,13 @@ class Trainer:
                         timeTrain += [timeElapsed]
         
                         if printInterval > 0:
-                            if (epoch * nBatches + batch) % printInterval == 0:
-                                print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) Loss: %7.4f" % (
-                                        l, iteration, epoch, batch, lossValueTrain.item()), end = ' ')
+                            if (epoch * nBatches + batch) % printInterval == 0:                                
+                                if layerWiseTraining == True:                          
+                                    print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) Loss: %7.4f" % (
+                                            l, iteration, epoch, batch, lossValueTrain.item()), end = ' ')
+                                else:
+                                    print("\t(EndToEnd: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) Loss: %7.4f" % (
+                                            l, iteration, epoch, batch, lossValueTrain.item()), end = ' ')
                                 print("")
         
                         del xTrain
@@ -248,9 +252,13 @@ class Trainer:
                             # Save values
                             evalValid += [accValid]
                             timeValid += [timeElapsed]
-        
-                            print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) Valid Accuracy: %8.4f" % (
-                                    l, iteration, epoch, batch, accValid), end = ' ')
+                            
+                            if layerWiseTraining == True:                          
+                                print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) Valid Accuracy: %8.4f" % (
+                                        l, iteration, epoch, batch, accValid), end = ' ')
+                            else:
+                                print("\t(EndToEnd: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) Valid Accuracy: %8.4f" % (
+                                        l, iteration, epoch, batch, accValid), end = ' ')
                             print("")
         
                             if iteration == 0 and epoch == 0 and batch == 0:
@@ -290,8 +298,12 @@ class Trainer:
                     print("\nWARNING: No training. Best and Last models are the same.\n")
                 
                 if nEpochs > 0:
-                    print("\t=> Best validation achieved (LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d): %.4f" % (
-                            bestL, bestIteration, bestEpoch, bestBatch, bestScore))
+                    if layerWiseTraining == True:                          
+                        print("\t=> Best validation achieved (LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d): %.4f" % (
+                                bestL, bestIteration, bestEpoch, bestBatch, bestScore))
+                    else:
+                        print("\t=> Best validation achieved (EndToEnd: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d): %.4f" % (
+                                bestL, bestIteration, bestEpoch, bestBatch, bestScore))
                 
                 '''ToDo: if the 'adjustTime' is not the same as the 'updateTime', 
                          we may need to re-write the DAgger part'''
@@ -492,7 +504,7 @@ class Trainer:
                     nn.init.xavier_uniform_(self.model.archit.Readout[-1].weight)
                     nn.init.zeros_(self.model.archit.Readout[-1].bias)                    
                 else:
-                    for i in range(len(self.model.archit.dimReadout)):
+                    for i in range(np.int64(len(self.model.archit.dimReadout)/2)):
                         nn.init.xavier_uniform_(self.model.archit.Readout[np.int64(2*i+1)].weight)
                         nn.init.zeros_(self.model.archit.Readout[np.int64(2*i+1)].bias)
                
