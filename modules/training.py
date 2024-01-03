@@ -504,7 +504,7 @@ class Trainer:
                     nn.init.xavier_uniform_(self.model.archit.Readout[-1].weight)
                     nn.init.zeros_(self.model.archit.Readout[-1].bias)                    
                 else:
-                    for i in range(np.int64(len(self.model.archit.dimReadout)/2)):
+                    for i in range(np.int64((len(self.model.archit.Readout) + 1)/2)):
                         nn.init.xavier_uniform_(self.model.archit.Readout[np.int64(2*i+1)].weight)
                         nn.init.zeros_(self.model.archit.Readout[np.int64(2*i+1)].bias)
                
