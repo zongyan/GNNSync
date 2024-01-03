@@ -47,7 +47,8 @@ def evaluate(model, trainer, data, **kwargs):
     historicalBestEpoch = np.int64(trainingFile['historicalBestEpoch'])
     historicalBestBatch = np.int64(trainingFile['historicalBestBatch'])
     
-    assert len(historicalBestL) == layerWiseTrainL + 1  
+    if (len(historicalBestL) == layerWiseTrainL + 1):        
+        assert len(historicalBestL) == len(layerWiseTraindimReadout) + 1
     assert len(historicalBestL) == len(historicalBestIteration)
     assert len(historicalBestL) == len(historicalBestEpoch)
     assert len(historicalBestL) == len(historicalBestBatch) 
@@ -91,7 +92,7 @@ def evaluate(model, trainer, data, **kwargs):
             evaluationFC.append(trainedModelSigma())            
             evaluationFC.append(nn.Linear(trainedModelF[-1], trainedModelReadout[0], bias = trainedModelBias))
             for i in range(trainedModelNumReadoutLayer-1):
-                evaluationFC.append(trainedModelSigma)
+                evaluationFC.append(trainedModelSigma())
                 evaluationFC.append(nn.Linear(trainedModelReadout[i], trainedModelReadout[i+1], bias = trainedModelBias))
 
             model.archit.Readout = nn.Sequential(*evaluationFC) # readout layers        
