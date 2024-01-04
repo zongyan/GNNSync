@@ -6,7 +6,6 @@ Created on Wed Jan  3 19:28:24 2024
 """
 import os
 import numpy as np
-from pathlib import Path
 import matplotlib.pyplot as plt
 import copy
 
@@ -317,7 +316,7 @@ for i in range(len(dataFolder)-3):
                                                             nDAggersVal, 1, 1, \
                                                                 paramsLayerWiseTrain, val, \
                                                                     lossFunction, learningRate, beta1, beta2, True, **trainingOptions)
-    
+
                 trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel] = copy.deepcopy(modelsGNN[thisModel])
 
     print("Generating testing data", end = '')

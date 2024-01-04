@@ -2,6 +2,7 @@ import os
 import torch
 import numpy as np
 import datetime
+from pathlib import Path
 import torch.nn as nn
 import torch.optim as optim
 
@@ -580,11 +581,55 @@ class Trainer:
         
         l = 0 # layer wise training counter
         while l < maximumLayerWiseNum + 1:
-            
-            print("\tdimGFL: % 2s, numTap: % 2s, dimReadout: %2s " % (
-                str(list(self.model.archit.F)), str(list(self.model.archit.K)), str(list(np.int64(self.model.archit.dimReadout)))
-                ), end = ' ')
-            print("")
+                        
+            saveDir = os.path.join(self.model.saveDir, 'savedModels')
+            if (self.trainingOptions['layerWiseTraining'] == True):
+                    
+                print("\tLoading best layer-wise training model parameters...")                
+                
+                saveDir = os.path.join(saveDir, 'layerWiseTraining')
+                
+                historicalModels = sorted(Path(saveDir).iterdir(), key=os.path.getmtime)
+                                        
+                thisHistoricalModels = []
+                
+                for element in historicalModels:            
+                    if np.int64(str(element)[91]) == l:
+                        thisHistoricalModels.append(str(element)[70:])
+                
+                for i in range(len(thisHistoricalModels)):
+                    if list(reversed(thisHistoricalModels))[i][-9:-5] == 'Best':
+                        # thisBestModelOptim = list(reversed(thisHistoricalModels))[i]
+                        thisBestModelArchit = list(reversed(thisHistoricalModels))[i+1]                    
+                        break                    
+                
+                architLoadFile = os.path.join(saveDir, thisBestModelArchit) 
+                # optimLoadFile = os.path.join(saveDir, thisBestModelOptim)
+                self.model.archit.load_state_dict(torch.load(architLoadFile))
+                # self.model.optim.load_state_dict(torch.load(optimLoadFile))                        
+            else:
+                print("\tLoading best end-to-end training model parameters...")                                
+                
+                saveDir = os.path.join(saveDir, 'endToEndTraining')                    
+
+                historicalModels = sorted(Path(saveDir).iterdir(), key=os.path.getmtime)
+                                        
+                thisHistoricalModels = []
+                
+                for element in historicalModels:            
+                    if np.int64(str(element)[89]) == l:
+                        thisHistoricalModels.append(str(element)[69:])
+                
+                for i in range(len(thisHistoricalModels)):
+                    if list(reversed(thisHistoricalModels))[i][-9:-5] == 'Best':
+                        # thisBestModelOptim = list(reversed(thisHistoricalModels))[i]
+                        thisBestModelArchit = list(reversed(thisHistoricalModels))[i+1]   
+                        break
+                
+                architLoadFile = os.path.join(saveDir, thisBestModelArchit) 
+                # optimLoadFile = os.path.join(saveDir, thisBestModelOptim)
+                self.model.archit.load_state_dict(torch.load(architLoadFile))
+                # self.model.optim.load_state_dict(torch.load(optimLoadFile))
             
             if ("GFL" in layers) and (l < layerWiseTrainL):
                 
