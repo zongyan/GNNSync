@@ -545,3 +545,138 @@ class Trainer:
                              historicalBestL = historicalBestL, historicalBestIteration = historicalBestIteration, \
                                  historicalBestEpoch = historicalBestEpoch, historicalBestBatch = historicalBestBatch)
 
+#%%
+    def configuration(self):        
+        paramsLayerWiseTrain = self.trainingOptions['paramsLayerWiseTrain']        
+        layerWiseTraining = self.trainingOptions['layerWiseTraining']
+                
+        paramsNameLayerWiseTrain = list(paramsLayerWiseTrain)
+        
+        layerWiseTrainL = len(paramsLayerWiseTrain[paramsNameLayerWiseTrain[1]])
+
+        assert len(paramsLayerWiseTrain[paramsNameLayerWiseTrain[0]]) == len(paramsLayerWiseTrain[paramsNameLayerWiseTrain[1]])        
+                        
+        layerWiseTrainF = paramsLayerWiseTrain[paramsNameLayerWiseTrain[0]]
+        layerWiseTrainK = paramsLayerWiseTrain[paramsNameLayerWiseTrain[1]]
+        layerWiseTrainE = paramsLayerWiseTrain[paramsNameLayerWiseTrain[5]]
+        layerWiseTrainBias = paramsLayerWiseTrain[paramsNameLayerWiseTrain[2]]
+        layerWiseTrainSigma = paramsLayerWiseTrain[paramsNameLayerWiseTrain[3]]
+        layerWiseTraindimReadout = paramsLayerWiseTrain[paramsNameLayerWiseTrain[4]]
+        
+        l = 0 # adding layer counter
+                      
+        modules = [name for name, _ in self.model.archit.named_parameters()]
+        layers = [name[0:3] for name in modules if len(name)<=13]
+        layers = layers + [name[0:7] for name in modules if len(name)>13]  
+        
+        """
+        if the number of graph filter layers is less than 2, layer-wise training
+        in graph filter layers will raise bugs, (see the first 'append the 
+        layer-wise training layer' thisArchit.F[-2] part)
+        """
+        assert len(self.model.archit.K) >= 2
+        
+        maximumLayerWiseNum = max(np.array((layerWiseTrainL, len(layerWiseTraindimReadout))))
+        
+        l = 0 # layer wise training counter
+        while l < maximumLayerWiseNum + 1:
+            
+            print("\tdimGFL: % 2s, numTap: % 2s, dimReadout: %2s " % (
+                str(list(self.model.archit.F)), str(list(self.model.archit.K)), str(list(np.int64(self.model.archit.dimReadout)))
+                ), end = ' ')
+            print("")
+            
+            if ("GFL" in layers) and (l < layerWiseTrainL):
+                
+                thisGraphFilterLayers = self.model.archit.GFL
+                # preserve the output layer
+                lastGraphFilterLayer = thisGraphFilterLayers[-1]
+                
+                originalArchitF = self.model.archit.F
+                originalArchitK = self.model.archit.K
+                originalArchitL = self.model.archit.L
+                
+                self.model.archit.F = np.append(np.append(self.model.archit.F[0:-1], layerWiseTrainF[l]), self.model.archit.F[-1])
+                self.model.archit.K = np.append(self.model.archit.K, layerWiseTrainK[l])
+                self.model.archit.L = len(self.model.archit.K)
+                
+                layerWiseGFL = [] 
+                for i in range(len(thisGraphFilterLayers) - 1):                
+
+                    # set parameters of all layers except the output layer to non-trainable
+                    origLayer = thisGraphFilterLayers[i]
+                    
+                    if layerWiseTraining == True:
+                    
+                        for param in origLayer.parameters():
+                            param.requires_grad = False
+            
+                        # append the original layer
+                        layerWiseGFL.append(origLayer)
+
+                    else:
+
+                        if (i % 2) == 0:
+                            layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i/2)], originalArchitF[np.int64((i/2) + 1)], originalArchitK[np.int64(i/2)], self.model.archit.E, self.model.archit.bias))
+                        else:
+                            layerWiseGFL.append(nn.Tanh())
+        
+                # append the layer-wise training layer
+                layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias))
+                layerWiseGFL.append(nn.Tanh())
+                 
+                # add the original final output layer
+                layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], originalArchitF[-1], originalArchitK[-1], self.model.archit.E, self.model.archit.bias))
+                
+                architTime.LocalGNN_DB.gflLayerWiseInit(self.model.archit, layerWiseGFL) # graph filtering layers for layer-wise training            
+            
+            if ("Readout" in layers) and (l < len(layerWiseTraindimReadout)):
+                
+                thisReadoutLayers = self.model.archit.Readout
+                # preserve the output layer
+                lastReadoutLayer = thisReadoutLayers[-1]
+                
+                layerWiseFC = []
+                for i in range(len(thisReadoutLayers) - 1): 
+
+                    # set parameters of all layers except the output layer to non-trainable
+                    origLayer = thisReadoutLayers[i]
+                        
+                    if layerWiseTraining == True:              
+                    
+                        for param in origLayer.parameters():
+                            param.requires_grad = False
+                        
+                        # append the original layer
+                        layerWiseFC.append(origLayer)
+
+                    else:
+
+                        if (i % 2) == 0:
+                            layerWiseFC.append(nn.Tanh())  
+                        else:
+                            layerWiseFC.append(nn.Linear(origLayer.in_features, origLayer.out_features, bias = self.model.archit.bias))
+    
+                # append the original layer
+                layerWiseFC.append(nn.Linear(lastReadoutLayer.in_features, layerWiseTraindimReadout[l], bias = layerWiseTrainBias))            
+                layerWiseFC.append(nn.Tanh())
+                
+                # add the original final output layer
+                layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], lastReadoutLayer.out_features, bias = self.model.archit.bias))
+                
+                self.model.archit.dimReadout = np.append(layerWiseTraindimReadout[0:l+1], self.model.archit.dimReadout[-1])
+                architTime.LocalGNN_DB.readoutLayerWiseInit(self.model.archit, layerWiseFC) # readout layer for layer-wise training  
+                
+                if layerWiseTraining == True:
+                    nn.init.xavier_uniform_(self.model.archit.Readout[-3].weight)
+                    nn.init.zeros_(self.model.archit.Readout[-3].bias)
+                    nn.init.xavier_uniform_(self.model.archit.Readout[-1].weight)
+                    nn.init.zeros_(self.model.archit.Readout[-1].bias)                    
+                else:
+                    for i in range(np.int64((len(self.model.archit.Readout) + 1)/2)):
+                        nn.init.xavier_uniform_(self.model.archit.Readout[np.int64(2*i+1)].weight)
+                        nn.init.zeros_(self.model.archit.Readout[np.int64(2*i+1)].bias)
+               
+            self.model.archit.to(self.model.device)
+                
+            l = l + 1

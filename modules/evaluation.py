@@ -5,7 +5,7 @@ import torch.optim as optim
 
 import utils.graphML as gml
 
-def evaluate(model, trainer, data, **kwargs):
+def evaluate(model, trainer, data, evalModel, **kwargs):
     initPosTest = data.getData('initOffset', 'test')
     initVelTest = data.getData('initSkew', 'test')
     graphTest = data.getData('commGraph','test')   
@@ -47,7 +47,7 @@ def evaluate(model, trainer, data, **kwargs):
     historicalBestEpoch = np.int64(trainingFile['historicalBestEpoch'])
     historicalBestBatch = np.int64(trainingFile['historicalBestBatch'])
     
-    if (len(historicalBestL) == layerWiseTrainL + 1):        
+    if (len(historicalBestL) != layerWiseTrainL + 1):        
         assert len(historicalBestL) == len(layerWiseTraindimReadout) + 1
     assert len(historicalBestL) == len(historicalBestIteration)
     assert len(historicalBestL) == len(historicalBestEpoch)
@@ -124,29 +124,30 @@ def evaluate(model, trainer, data, **kwargs):
                                    measurementNoiseTest, processingNoiseTest, clockNoiseTest, 
                                    graphTest, data.duration,
                                    archit = model.archit)    
-    
-        saveDataDir = os.path.join(model.saveDir,'savedData')
-        if not os.path.exists(saveDataDir):
-            os.makedirs(saveDataDir)
-    
-        if layerWiseTraining == True:
-            saveDataDir = os.path.join(saveDataDir,'layerWiseTraining')
-        else:
-            saveDataDir = os.path.join(saveDataDir,'endToEndTraining')        
-        if not os.path.exists(saveDataDir):
-            os.makedirs(saveDataDir)        
-    
-        if layerWiseTraining == True:
-            saveFile = os.path.join(saveDataDir, model.name + '-LayerWise-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
-        else:
-            saveFile = os.path.join(saveDataDir, model.name + '-EndToEnd-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
         
-        saveFile = saveFile + '.npz'
-        np.savez(saveFile, offsetTestBest=offsetTestBest, skewTestBest=skewTestBest, \
-                 adjTestBest=adjTestBest, stateTestBest=stateTestBest, \
-                     commGraphTestBest=commGraphTestBest, \
-                         bestL = historicalBestL[l], bestIteration = historicalBestIteration[l], bestEpoch = historicalBestEpoch[l], bestBatch = historicalBestBatch[l], \
-                             lossTrain = trainer.lossTrain, accValid = trainer.accValid)
+        if (evalModel == False):
+            saveDataDir = os.path.join(model.saveDir,'savedData')
+            if not os.path.exists(saveDataDir):
+                os.makedirs(saveDataDir)
+        
+            if layerWiseTraining == True:
+                saveDataDir = os.path.join(saveDataDir,'layerWiseTraining')
+            else:
+                saveDataDir = os.path.join(saveDataDir,'endToEndTraining')        
+            if not os.path.exists(saveDataDir):
+                os.makedirs(saveDataDir)        
+        
+            if layerWiseTraining == True:
+                saveFile = os.path.join(saveDataDir, model.name + '-LayerWise-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+            else:
+                saveFile = os.path.join(saveDataDir, model.name + '-EndToEnd-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+            
+            saveFile = saveFile + '.npz'
+            np.savez(saveFile, offsetTestBest=offsetTestBest, skewTestBest=skewTestBest, \
+                      adjTestBest=adjTestBest, stateTestBest=stateTestBest, \
+                          commGraphTestBest=commGraphTestBest, \
+                              bestL = historicalBestL[l], bestIteration = historicalBestIteration[l], bestEpoch = historicalBestEpoch[l], bestBatch = historicalBestBatch[l], \
+                                  lossTrain = trainer.lossTrain, accValid = trainer.accValid)
             
         l = l + 1
     

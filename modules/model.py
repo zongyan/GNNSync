@@ -31,6 +31,7 @@ class Model:
         self.layerWise = layerWise 
                     
         self.trainer = [copy.deepcopy([copy.deepcopy(trainer) for k in range(len(nDAggersValues))]) for j in range(len(layerWise))]            
+        self.config = [copy.deepcopy([copy.deepcopy(trainer) for k in range(len(nDAggersValues))]) for j in range(len(layerWise))]                    
         
         self.evaluator = evaluator
         self.device = device
@@ -50,9 +51,28 @@ class Model:
                          lossFunction, learningRate, beta1, beta2, **kwargs)        
 
         return self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)].train()
+
+    def configure(self, data, nEpochs, batchSize, \
+              nDAggers, expertProb, aggregationSize, \
+                  paramsLayerWiseTrain, layerWiseTraining, \
+                      lossFunction, learningRate, beta1, beta2, evalModel, **kwargs):
+        
+        self.evalModel = evalModel
+        
+        self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)] = \
+            self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)]\
+                (self, data, nEpochs, batchSize, \
+                 nDAggers, expertProb, aggregationSize, \
+                     paramsLayerWiseTrain, layerWiseTraining, \
+                         lossFunction, learningRate, beta1, beta2, **kwargs)
+
+        return self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)].configuration()    
     
     def evaluate(self, data, nDAggers, layerWiseTraining, **kwargs):        
-        return self.evaluator(self, self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)], data, **kwargs)
+        if (self.evalModel == False): 
+            return self.evaluator(self, self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)], data, self.evalModel, **kwargs)
+        else:
+            return self.evaluator(self, self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)], data, self.evalModel, **kwargs)    
     
     def save(self, layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = '', **kwargs):        
         

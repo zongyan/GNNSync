@@ -177,7 +177,7 @@ class AerialSwarm(_data):
             if self.doPrint:
                 print("\tComputing initial conditions...", end = ' ', flush = True)
             
-            if nTrain == 400:            
+            if nTrain == 400 or nTrain == 20:            
                 initPosAll, initVelAll, \
                     initOffsetAll, initSkewAll = self.computeInitialConditions(
                                                   self.nAgents, nSamples, 
@@ -211,7 +211,7 @@ class AerialSwarm(_data):
             if self.doPrint:
                 print("\tLoading initial conditions...", end = ' ', flush = True)            
             
-            if nTrain == 400:
+            if nTrain == 400 or nTrain == 20:
                 initValuesFile = np.load(os.path.join('experiments', 'flockingGNN') + 'initTrainValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
                 
                 initPosAll = initValuesFile['initPosAll']
