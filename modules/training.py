@@ -599,14 +599,11 @@ class Trainer:
                 
                 for i in range(len(thisHistoricalModels)):
                     if list(reversed(thisHistoricalModels))[i][-9:-5] == 'Best':
-                        # thisBestModelOptim = list(reversed(thisHistoricalModels))[i]
                         thisBestModelArchit = list(reversed(thisHistoricalModels))[i+1]                    
                         break                    
                 
                 architLoadFile = os.path.join(saveDir, thisBestModelArchit) 
-                # optimLoadFile = os.path.join(saveDir, thisBestModelOptim)
-                self.model.archit.load_state_dict(torch.load(architLoadFile))
-                # self.model.optim.load_state_dict(torch.load(optimLoadFile))                        
+                self.model.archit.load_state_dict(torch.load(architLoadFile))                        
             else:
                 print("\tLoading best end-to-end training model parameters...")                                
                 
@@ -622,14 +619,11 @@ class Trainer:
                 
                 for i in range(len(thisHistoricalModels)):
                     if list(reversed(thisHistoricalModels))[i][-9:-5] == 'Best':
-                        # thisBestModelOptim = list(reversed(thisHistoricalModels))[i]
                         thisBestModelArchit = list(reversed(thisHistoricalModels))[i+1]   
                         break
                 
                 architLoadFile = os.path.join(saveDir, thisBestModelArchit) 
-                # optimLoadFile = os.path.join(saveDir, thisBestModelOptim)
                 self.model.archit.load_state_dict(torch.load(architLoadFile))
-                # self.model.optim.load_state_dict(torch.load(optimLoadFile))
             
             if ("GFL" in layers) and (l < layerWiseTrainL):
                 
