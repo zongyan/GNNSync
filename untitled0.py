@@ -60,6 +60,8 @@ layerWiseTraining = True
 endToEndTraining = not layerWiseTraining
 layerWise = [layerWiseTraining, endToEndTraining]
 
+evalModel = True
+
 #%%
 modelList = []
 
@@ -315,7 +317,7 @@ for i in range(len(dataFolder)-3):
                 thisTrainVars = modelsGNN[thisModel].configure(data, 1, 1, \
                                                             nDAggersVal, 1, 1, \
                                                                 paramsLayerWiseTrain, val, \
-                                                                    lossFunction, learningRate, beta1, beta2, True, **trainingOptions)
+                                                                    lossFunction, learningRate, beta1, beta2, evalModel, **trainingOptions)
 
                 trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel] = copy.deepcopy(modelsGNN[thisModel])
 

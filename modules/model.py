@@ -58,6 +58,7 @@ class Model:
                       lossFunction, learningRate, beta1, beta2, evalModel, **kwargs):
         
         self.evalModel = evalModel
+        self.archit.evalModel = evalModel
         
         self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)] = \
             self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)]\

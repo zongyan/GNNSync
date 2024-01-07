@@ -781,6 +781,9 @@ class AerialSwarm(_data):
         gamma = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float64)
         adjust = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float64)
         state = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float64)
+        
+        mm = []
+        nn = []        
             
         if useTorch:
             theta[:,0,:,:] = initTheta.cpu().numpy()
@@ -792,7 +795,8 @@ class AerialSwarm(_data):
         if doPrint:
             percentageCount = int(100/tSamples)
             print("%3d%%" % percentageCount, end = '', flush = True)            
-
+        
+        tSamples = 100
         for t in range(1, tSamples):
             thisOffset = np.expand_dims(theta[:,t-1,:,:], 1) \
                          + np.expand_dims(measureNoise[:,t-1,0,:], (1, 2))
@@ -809,7 +813,11 @@ class AerialSwarm(_data):
                 thisAdjust = archit(x, S)
             thisAdjust = thisAdjust.cpu().numpy()[:,-1,:,:]
             adjust[:,t-1,:,:] = thisAdjust
-
+            
+            if archit.evalModel == True:
+                mm.append(archit.xx) # values before the activation function
+                nn.append(archit.yy) # values from the activation function
+            
             if self.updateTime == self.adjustTime:                            
                 theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
                                                   + (1/nAgents) * np.expand_dims(adjust[:,t-1,0,:], 1) \
@@ -859,6 +867,71 @@ class AerialSwarm(_data):
             theta = torch.tensor(theta).to(device)
             gamma = torch.tensor(gamma).to(device)
             adjust = torch.tensor(adjust).to(device)
+            
+        if archit.evalModel == True:
+            #%% calculating the values in the spectral domain
+            
+            laplacianMatrix = np.zeros((graph.shape[0], tSamples, nAgents, nAgents), dtype = np.float64)
+            eigValues = np.zeros((graph.shape[0], tSamples, nAgents), dtype = np.float64)
+            eigVectors = np.zeros((graph.shape[0],tSamples, nAgents, nAgents), dtype = np.float64)
+            xxx = np.zeros((graph.shape[0],tSamples, mm[0][0].shape[1]), dtype = np.float64)
+            yyy = np.zeros((graph.shape[0],tSamples, nn[0][0].shape[1]), dtype = np.float64)            
+            for t in range(1, tSamples-1):
+                thisxxx = mm[t][0] # values before the activation function
+                thisyyy = nn[t][0] # values after the activation function    
+                
+                thisGraph = graph[:,t,:,:]                
+                thisAdjacencyMatrix = thisGraph
+                thisDegreeMatrix = np.sum(thisGraph, axis=1)  
+                
+                for i in range(thisDegreeMatrix.shape[0]): # in the experiment instant dimension                    
+                    laplacianMatrix[i, t, :, :] = np.diag(thisDegreeMatrix[i, :]) - thisAdjacencyMatrix[i, :, :]  # Non-Normalized laplacian matrix                    
+                    eigValues[i, t, :], eigVectors[i, t, :, :] = np.linalg.eigh(laplacianMatrix[i, t, :, :])
+                    
+                    for j in range(thisxxx.shape[1]): # in the feature dimension
+                        xxx[i, t, j] = np.float64(np.matmul(eigVectors[i, t, :, j], thisxxx[i, j, :])) # values before the activation function
+                        yyy[i, t, j] = np.float64(np.matmul(eigVectors[i, t, :, j], thisyyy[i, j, :])) # values after the activation function                      
+
+
+                    # xxx = np.matmul(np.repeat(np.expand_dims(eigVectors[i, t, :, :], 0), thisxxx.shape[1], axis=0), \
+                    #                 thisxxx[i, :, :]) # values before the activation function
+                    # yyy = np.matmul(np.repeat(np.expand_dims(eigVectors[i, t, :, :], 0), thisyyy.shape[1], axis=0), \
+                    #                 thisyyy[i, :, :]) # values after the activation function                      
+            
+            # np.matmul(eigVectors[i, t, :, 0], thisxxx[0,0,:])
+            
+            # eigVectors[i, t, :, :]
+            
+            # thisGraph = 
+            
+            
+            # ccc = np.repeat(np.expand_dims(eigVectors[i, t, :, :], 0), thisxxx.shape[1], axis=0)
+            
+            # ddd = thisxxx[i, :, :]
+            
+            
+            
+            # thisyyy.shape[1]
+            
+            # A = [[0,1,0,1,0]
+            #     ,[1,0,1,0,0]
+            #     ,[0,1,0,1,0]
+            #     ,[1,0,1,0,1]
+            #     ,[0,0,0,1,0]]
+            
+            # yyy = np.array([1, 2, 3, 4, 5])
+            
+            # A = np.array(A)
+            # D = np.sum(A,axis=1)
+            # L = np.diag(D) - A  # Non-Normalized Laplacian
+            
+            # eigen_values, eigen_vectors = np.linalg.eigh(L)
+            
+            # zzz = np.matmul(eigen_vectors, yyy)
+            
+            # plt.figure()
+            # plt.rcParams["figure.figsize"] = (6.4,4.8)            
+            # plt.plot(zzz, linestyle='--', marker='o', color='b', label='line with marker')
             
         return theta, gamma, adjust, state, graph     
 

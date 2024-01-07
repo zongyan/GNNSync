@@ -23,6 +23,8 @@ class LocalGNN_DB(nn.Module):
         self.sigma = nonlinearity
         self.dimReadout = dimReadout
         
+        self.evalModel = False
+        
         gfl = []
         gfl.append(gml.GraphFilter_DB(self.F[0], self.F[1], self.K[0], self.E, self.bias))
             
@@ -57,6 +59,9 @@ class LocalGNN_DB(nn.Module):
         # x: B x T x F[0] x N        
         # S: B x T (x E) x N x N
         
+        self.xx = []
+        self.yy = []        
+        
         assert len(S.shape) == 4 or len(S.shape) == 5
         if len(S.shape) == 4:
             S = S.unsqueeze(2)
@@ -74,9 +79,21 @@ class LocalGNN_DB(nn.Module):
         
         for l in range(self.L):
             self.GFL[2*l].addGSO(S)
-
-        yGFL = self.GFL(x)
-        y = yGFL.permute(0, 1, 3, 2) # B x T x N x F[-1]
+        
+        if self.evalModel == False:            
+            yGFL = self.GFL(x)
+            y = yGFL.permute(0, 1, 3, 2) # B x T x N x F[-1]
+        else:            
+            z = x
+            for l in range(len(self.GFL)):
+                if l % 2 == 0: # GSO function
+                    z = self.GFL[l](z)
+                else: # non-linear activation function
+                    self.xx.append(z[:,-1,:,:]) # storing the values before the activation function
+                    z = self.GFL[l](z)
+                    self.yy.append(z[:,-1,:,:]) # storing the values from the activation function
+            yGFL = z
+            y = yGFL.permute(0, 1, 3, 2) # B x T x N x F[-1]
         
         if len(self.dimReadout) > 0:
             y = self.Readout(y) # B x T x N x dimReadout[-1]
