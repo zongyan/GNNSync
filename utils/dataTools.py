@@ -797,7 +797,6 @@ class AerialSwarm(_data):
             percentageCount = int(100/tSamples)
             print("%3d%%" % percentageCount, end = '', flush = True)            
         
-        tSamples = 250
         for t in range(1, tSamples):
             thisOffset = np.expand_dims(theta[:,t-1,:,:], 1) \
                          + np.expand_dims(measureNoise[:,t-1,0,:], (1, 2))
@@ -874,15 +873,15 @@ class AerialSwarm(_data):
             laplacianMatrix = np.zeros((graph.shape[0], tSamples, nAgents, nAgents), dtype = np.float64)
             eigenValues = np.zeros((graph.shape[0], tSamples, nAgents), dtype = np.float64)
             eigenVectors = np.zeros((graph.shape[0], tSamples, nAgents, nAgents), dtype = np.float64)
-            xxx = np.zeros((graph.shape[0], tSamples, mm[0][0].shape[1], nAgents), dtype = np.float64)
-            yyy = np.zeros((graph.shape[0], tSamples, nn[0][0].shape[1], nAgents), dtype = np.float64)            
+            xxx = np.zeros((graph.shape[0], tSamples, mm[0][0].shape[1], nAgents), dtype = np.float64) # values before the activation function
+            yyy = np.zeros((graph.shape[0], tSamples, nn[0][0].shape[1], nAgents), dtype = np.float64) # values after the activation function
 
             for t in range(1, tSamples-1):
                 thisxxx = mm[t][0] # values before the activation function
                 thisyyy = nn[t][0] # values after the activation function    
                 
                 thisGraph = graph[:,t,:,:]
-                thisGraph[thisGraph > zeroTolerance] = 1. # reset the normalised graph to the normal graph matrix
+                thisGraph[thisGraph > zeroTolerance] = 1. # reset the normalised adjacency matrix to the normal graph matrix
                 thisAdjacencyMatrix = thisGraph
                 thisDegreeMatrix = np.sum(thisAdjacencyMatrix, axis=2)
                 
@@ -896,78 +895,15 @@ class AerialSwarm(_data):
                         xxx[i, t, j, :] = np.matmul(np.transpose(eigenVectors[i, t, :, :]), np.float64(thisxxx[i, j, :])) # values before the activation function
                         yyy[i, t, j, :] = np.matmul(np.transpose(eigenVectors[i, t, :, :]), np.float64(thisyyy[i, j, :])) # values after the activation function
 
-            for i in range(0, 1): #thisxxx.shape[1]):
+            for i in range(0, thisxxx.shape[1]):
                 plt.figure()
-                plt.rcParams["figure.figsize"] = (6.4,4.8)                 
-                # fig, axs = plt.subplots(2, figsize=(6.4,4.8))
+                plt.rcParams["figure.figsize"] = (6.4,4.8)
                 for t in range(0, tSamples-1):
                     plt.vlines(eigenValues[0, t, :], 0, xxx[0, t, i, :], color='#D3D3D3', alpha=0.4)            
-                    plt.scatter(eigenValues[0, t, :], xxx[0, t, i, :], color='#D3D3D3', alpha=0.4)            
+                    plt.scatter(eigenValues[0, t, :], xxx[0, t, i, :], color='#D3D3D3', alpha=0.4)    
+                    
                     plt.vlines(eigenValues[0, t, :], 0, yyy[0, t, i, :], color='#7BC8F6', alpha=0.4)            
                     plt.scatter(eigenValues[0, t, :], yyy[0, t, i, :], color='#7BC8F6', alpha=0.4)
-
-            # fig, axs = plt.subplots(2, figsize=(6.4,4.8))
-            # axs[0].plot(xxx[0,:, 0], xxx[0,:, 0], marker='o')
-            # axs[1].plot(yyy[0,:, 0], yyy[0,:, 0], marker='o')            
-
-            # fig, axs = plt.subplots(2, figsize=(6.4,4.8))
-            # axs[0].plot(xxx[0,:, 1], xxx[0,:, 1], marker='o')
-            # axs[1].plot(yyy[0,:, 1], yyy[0,:, 1], marker='o')            
-
-            # fig, axs = plt.subplots(2, figsize=(6.4,4.8))
-            # axs[0].plot(xxx[0,:, 30], xxx[0,:, 30], marker='o')
-            # axs[1].plot(yyy[0,:, 30], yyy[0,:, 30], marker='o')            
-
-    
-            # for i in range(thisDegreeMatrix.shape[0]): # in the experiment instant dimension                    
-            #     laplacianMatrix[i, t, :, :] = np.diag(thisDegreeMatrix[i, :]) - thisAdjacencyMatrix[i, :, :]  # Non-Normalized laplacian matrix
-            #     # The column eigenvectors[:, i] is the normalized eigenvector corresponding to the eigenvalue eigenvalues[i]
-            #     eigenValues[i, t, :], eigenVectors[i, t, :, :] = np.linalg.eigh(laplacianMatrix[i, t, :, :])
-                                    
-            #     assert thisxxx.shape[1] == thisyyy.shape[1]
-            #     for j in range(thisxxx.shape[1]): # in the feature dimension
-            #         xxx[i, t, j] = np.matmul(eigenVectors[i, t, :, j], np.float64(thisxxx[i, j, :])) # values before the activation function
-            #         yyy[i, t, j] = np.matmul(eigenVectors[i, t, :, j], np.float64(thisyyy[i, j, :])) # values after the activation function                      
-
-
-
-
-            # 再核对一下整体的计算思路是否符合要求即可
-            # 是不是需要用正常的adj矩阵做训练，试试看
-            # np.matmul(eigVectors[i, t, :, 0], thisxxx[0,0,:])
-            
-            # eigVectors[i, t, :, :]
-            
-            # thisGraph = 
-            
-            
-            # ccc = np.repeat(np.expand_dims(eigVectors[i, t, :, :], 0), thisxxx.shape[1], axis=0)
-            
-            # ddd = thisxxx[i, :, :]
-            
-            
-            
-            # thisyyy.shape[1]
-            
-            A = [[0,1,0,1,0]
-                ,[1,0,1,0,0]
-                ,[0,1,0,1,0]
-                ,[1,0,1,0,1]
-                ,[0,0,0,1,0]]
-            
-            # yyy = np.array([1, 2, 3, 4, 5])
-            
-            A = np.array(A)
-            # D = np.sum(A,axis=1)
-            # L = np.diag(D) - A  # Non-Normalized Laplacian
-            
-            # eigen_values, eigen_vectors = np.linalg.eigh(L)
-            
-            # zzz = np.matmul(eigen_vectors, yyy)
-            
-            # plt.figure()
-            # plt.rcParams["figure.figsize"] = (6.4,4.8)            
-            # plt.plot(zzz, linestyle='--', marker='o', color='b', label='line with marker')
             
         return theta, gamma, adjust, state, graph     
 
