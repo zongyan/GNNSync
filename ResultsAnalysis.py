@@ -74,13 +74,13 @@ for j in range(len(dataFolder)-numSavedFiles-1):
     plt.rcParams["figure.figsize"] = (6.4,4.8)            
     for i in range(lossTrain.shape[0]):
         plt.plot(trainLoss[i,:])               
-    plt.legend(['1 layer', '2 layers', '3 layers', '4 layers', '5 layers', '6 layers', '7 layers', '8 layers', '9 layers'])
+    plt.legend(['0 layer', '1 layer', '2 layers', '3 layers', '4 layers', '5 layers', '6 layers', '7 layers', '8 layers', '9 layers'])
     
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)            
     for i in range(lossTrain.shape[0]):
         plt.plot(validAcc[i,:])               
-    plt.legend(['1 layer', '2 layers', '3 layers', '4 layers', '5 layers', '6 layers', '7 layers', '8 layers', '9 layers'])
+    plt.legend(['0 layer', '1 layer', '2 layers', '3 layers', '4 layers', '5 layers', '6 layers', '7 layers', '8 layers', '9 layers'])
 
     #%%
     print("Computing the cost of each best %s model in the end-to-end training..." %(gnnName[j]))
@@ -126,12 +126,12 @@ for j in range(len(dataFolder)-numSavedFiles-1):
     plt.rcParams["figure.figsize"] = (6.4,4.8)            
     for i in range(lossTrain.shape[0]):
         plt.plot(trainLoss[i,:])               
-    plt.legend(['1 layer', '2 layers', '3 layers', '4 layers', '5 layers', '6 layers', '7 layers', '8 layers', '9 layers'])
+    plt.legend(['0 layer', '1 layer', '2 layers', '3 layers', '4 layers', '5 layers', '6 layers', '7 layers', '8 layers', '9 layers'])
     
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)            
     for i in range(lossTrain.shape[0]):
         plt.plot(validAcc[i,:])               
-    plt.legend(['1 layer', '2 layers', '3 layers', '4 layers', '5 layers', '6 layers', '7 layers', '8 layers', '9 layers'])
+    plt.legend(['0 layer', '1 layer', '2 layers', '3 layers', '4 layers', '5 layers', '6 layers', '7 layers', '8 layers', '9 layers'])
     
     print("\n")
