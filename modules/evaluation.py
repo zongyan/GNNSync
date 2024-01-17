@@ -125,6 +125,25 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                                    graphTest, data.duration,
                                    archit = model.archit)    
         
+        offset = offsetTestBest[:, :, :, :]
+        skew = skewTestBest[:, :, :, :]
+        avgOffset = np.mean(offset, axis = 3) # nSamples x tSamples x 1
+        avgSkew = np.mean(skew/10, axis= 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
+        
+        diffOffset = offset - np.tile(np.expand_dims(avgOffset, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
+        diffSkew = skew/10 - np.tile(np.expand_dims(avgSkew, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
+        
+        diffOffset = np.sum(diffOffset**2, 2) # nSamples x tSamples x nAgents
+        diffSkew = np.sum(diffSkew**2, 2) # nSamples x tSamples x nAgents
+        
+        diffOffsetAvg = np.mean(diffOffset, axis = 2) # nSamples x tSamples
+        diffSkewAvg = np.mean(diffSkew, axis = 2) # nSamples x tSamples
+        
+        costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*0.01 # nSamples
+        
+        cost = np.mean(costPerSample) # scalar
+        print("\tThe cost of time sync for best model: %.4f" %(cost), flush = True)
+        
         if (evalModel == False):
             saveDataDir = os.path.join(model.saveDir,'savedData')
             if not os.path.exists(saveDataDir):
