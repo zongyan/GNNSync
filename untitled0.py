@@ -278,6 +278,8 @@ for thisModel in modelsGNN.keys():
                                                                 lossFunction, learningRate, beta1, beta2, evalModel, **trainingOptions)
 
             trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel] = copy.deepcopy(modelsGNN[thisModel])
+            
+    print(" ")
 
 print("Generating testing data", end = '')
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,

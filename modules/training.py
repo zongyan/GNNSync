@@ -584,8 +584,8 @@ class Trainer:
                         
             saveDir = os.path.join(self.model.saveDir, 'savedModels')
             if (self.trainingOptions['layerWiseTraining'] == True):
-                    
-                print("\tLoading best layer-wise training model parameters...")                
+                                    
+                print("\tLoading best layer-wise training %s model parameters..." % self.model.name) 
                 
                 saveDir = os.path.join(saveDir, 'layerWiseTraining')
                 
@@ -605,7 +605,7 @@ class Trainer:
                 architLoadFile = os.path.join(saveDir, thisBestModelArchit) 
                 self.model.archit.load_state_dict(torch.load(architLoadFile))                        
             else:
-                print("\tLoading best end-to-end training model parameters...")                                
+                print("\tLoading best end-to-end training %s model parameters..." % self.model.name)
                 
                 saveDir = os.path.join(saveDir, 'endToEndTraining')                    
 
