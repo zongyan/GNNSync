@@ -27,10 +27,12 @@ addedLayerNum = np.array([9, 4, 4, 4, 9, 4, 4, 4])
 saveDirRoot = 'experiments'
 dataFolder = os.listdir(saveDirRoot)
 
+testName = "TimeSync-050-20240103162844"
+
 #%%
 nAgents = 50  # number of UAVs during training 
 
-loadSeed('./') # loading the states and seed
+loadSeed('./experiments/test1') # loading the states and seed in Test 2
 
 useGPU = True
 commRadius = 2. # communication radius
@@ -65,176 +67,134 @@ evalModel = True
 #%%
 modelList = []
 
-hParamsbaseGNNOne = {}
-hParamsbaseGNNOne['name'] = 'baseGNNOne'
-hParamsbaseGNNOne['archit'] = architTime.LocalGNN_DB
-hParamsbaseGNNOne['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-hParamsbaseGNNOne['dimNodeSignals'] = [2, 32, 2] # features per layer
-hParamsbaseGNNOne['nFilterTaps'] = [1, 1] # number of filter taps
-hParamsbaseGNNOne['bias'] = True
-hParamsbaseGNNOne['nonlinearity'] = nonlinearity
-hParamsbaseGNNOne['dimReadout'] = [ ] 
-hParamsbaseGNNOne['dimEdgeFeatures'] = 1 # scalar edge weights
-modelList += [hParamsbaseGNNOne['name']]
+hParamsGNNOne = {}
+hParamsGNNOne['name'] = 'GNNOne'
+hParamsGNNOne['archit'] = architTime.LocalGNN_DB
+hParamsGNNOne['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsGNNOne['dimNodeSignals'] = [2, 32, 32, 32, 2] # features per layer
+hParamsGNNOne['nFilterTaps'] = [1, 1, 1, 1] # number of filter taps
+hParamsGNNOne['bias'] = True
+hParamsGNNOne['nonlinearity'] = nonlinearity
+hParamsGNNOne['dimReadout'] = [ ] 
+hParamsGNNOne['dimEdgeFeatures'] = 1 # scalar edge weights
+modelList += [hParamsGNNOne['name']]
 
-# hParamsbaseGNNTwo = {}
-# hParamsbaseGNNTwo['name'] = 'baseGNNTwo'
-# hParamsbaseGNNTwo['archit'] = architTime.LocalGNN_DB
-# hParamsbaseGNNTwo['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-# hParamsbaseGNNTwo['dimNodeSignals'] = [2, 32, 2] # features per layer
-# hParamsbaseGNNTwo['nFilterTaps'] = [2, 2] # number of filter taps
-# hParamsbaseGNNTwo['bias'] = True
-# hParamsbaseGNNTwo['nonlinearity'] = nonlinearity
-# hParamsbaseGNNTwo['dimReadout'] = [ ] 
-# hParamsbaseGNNTwo['dimEdgeFeatures'] = 1 # scalar edge weights
-# modelList += [hParamsbaseGNNTwo['name']]
+hParamsGNNTwo = {}
+hParamsGNNTwo['name'] = 'GNNTwo'
+hParamsGNNTwo['archit'] = architTime.LocalGNN_DB
+hParamsGNNTwo['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsGNNTwo['dimNodeSignals'] = [2, 32, 32, 32, 2] # features per layer
+hParamsGNNTwo['nFilterTaps'] = [1, 1, 1, 1] # number of filter taps
+hParamsGNNTwo['bias'] = True
+hParamsGNNTwo['nonlinearity'] = nonlinearity
+hParamsGNNTwo['dimReadout'] = [2] 
+hParamsGNNTwo['dimEdgeFeatures'] = 1 # scalar edge weights
+modelList += [hParamsGNNTwo['name']]
 
-# hParamsbaseGNNThree = {}
-# hParamsbaseGNNThree['name'] = 'baseGNNThree'
-# hParamsbaseGNNThree['archit'] = architTime.LocalGNN_DB
-# hParamsbaseGNNThree['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-# hParamsbaseGNNThree['dimNodeSignals'] = [2, 32, 2] # features per layer
-# hParamsbaseGNNThree['nFilterTaps'] = [3, 3] # number of filter taps
-# hParamsbaseGNNThree['bias'] = True
-# hParamsbaseGNNThree['nonlinearity'] = nonlinearity
-# hParamsbaseGNNThree['dimReadout'] = [ ] 
-# hParamsbaseGNNThree['dimEdgeFeatures'] = 1 # scalar edge weights
-# modelList += [hParamsbaseGNNThree['name']]
+hParamsGNNThree = {}
+hParamsGNNThree['name'] = 'GNNThree'
+hParamsGNNThree['archit'] = architTime.LocalGNN_DB
+hParamsGNNThree['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsGNNThree['dimNodeSignals'] = [2, 32, 32, 32] # features per layer
+hParamsGNNThree['nFilterTaps'] = [1, 1, 1] # number of filter taps
+hParamsGNNThree['bias'] = True
+hParamsGNNThree['nonlinearity'] = nonlinearity
+hParamsGNNThree['dimReadout'] = [2] 
+hParamsGNNThree['dimEdgeFeatures'] = 1 # scalar edge weights
+modelList += [hParamsGNNThree['name']]
 
-# hParamsbaseGNNFour = {}
-# hParamsbaseGNNFour['name'] = 'baseGNNFour'
-# hParamsbaseGNNFour['archit'] = architTime.LocalGNN_DB
-# hParamsbaseGNNFour['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-# hParamsbaseGNNFour['dimNodeSignals'] = [2, 32, 2] # features per layer
-# hParamsbaseGNNFour['nFilterTaps'] = [4, 4] # number of filter taps
-# hParamsbaseGNNFour['bias'] = True
-# hParamsbaseGNNFour['nonlinearity'] = nonlinearity
-# hParamsbaseGNNFour['dimReadout'] = [ ] 
-# hParamsbaseGNNFour['dimEdgeFeatures'] = 1 # scalar edge weights
-# modelList += [hParamsbaseGNNFour['name']]
+hParamsGNNFour = {}
+hParamsGNNFour['name'] = 'GNNFour'
+hParamsGNNFour['archit'] = architTime.LocalGNN_DB
+hParamsGNNFour['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsGNNFour['dimNodeSignals'] = [2, 32, 32, 2] # features per layer
+hParamsGNNFour['nFilterTaps'] = [1, 1, 1] # number of filter taps
+hParamsGNNFour['bias'] = True
+hParamsGNNFour['nonlinearity'] = nonlinearity
+hParamsGNNFour['dimReadout'] = [ ] 
+hParamsGNNFour['dimEdgeFeatures'] = 1 # scalar edge weights
+modelList += [hParamsGNNFour['name']]
 
-# hParamsbaseGNNFive = {}
-# hParamsbaseGNNFive['name'] = 'baseGNNFive'
-# hParamsbaseGNNFive['archit'] = architTime.LocalGNN_DB
-# hParamsbaseGNNFive['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-# hParamsbaseGNNFive['dimNodeSignals'] = [2, 64, 2] # features per layer
-# hParamsbaseGNNFive['nFilterTaps'] = [1, 1] # number of filter taps
-# hParamsbaseGNNFive['bias'] = True
-# hParamsbaseGNNFive['nonlinearity'] = nonlinearity
-# hParamsbaseGNNFive['dimReadout'] = [ ] 
-# hParamsbaseGNNFive['dimEdgeFeatures'] = 1 # scalar edge weights
-# modelList += [hParamsbaseGNNFive['name']]
+hParamsGNNFive = {}
+hParamsGNNFive['name'] = 'GNNFive'
+hParamsGNNFive['archit'] = architTime.LocalGNN_DB
+hParamsGNNFive['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsGNNFive['dimNodeSignals'] = [2, 32, 32, 2] # features per layer
+hParamsGNNFive['nFilterTaps'] = [1, 1, 1] # number of filter taps
+hParamsGNNFive['bias'] = True
+hParamsGNNFive['nonlinearity'] = nonlinearity
+hParamsGNNFive['dimReadout'] = [2] 
+hParamsGNNFive['dimEdgeFeatures'] = 1 # scalar edge weights
+modelList += [hParamsGNNFive['name']]
 
-# hParamsbaseGNNSix = {}
-# hParamsbaseGNNSix['name'] = 'baseGNNSix'
-# hParamsbaseGNNSix['archit'] = architTime.LocalGNN_DB
-# hParamsbaseGNNSix['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-# hParamsbaseGNNSix['dimNodeSignals'] = [2, 64, 2] # features per layer
-# hParamsbaseGNNSix['nFilterTaps'] = [2, 2] # number of filter taps
-# hParamsbaseGNNSix['bias'] = True
-# hParamsbaseGNNSix['nonlinearity'] = nonlinearity
-# hParamsbaseGNNSix['dimReadout'] = [ ] 
-# hParamsbaseGNNSix['dimEdgeFeatures'] = 1 # scalar edge weights
-# modelList += [hParamsbaseGNNSix['name']]
-
-# hParamsbaseGNNSeven = {}
-# hParamsbaseGNNSeven['name'] = 'baseGNNSeven'
-# hParamsbaseGNNSeven['archit'] = architTime.LocalGNN_DB
-# hParamsbaseGNNSeven['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-# hParamsbaseGNNSeven['dimNodeSignals'] = [2, 64, 2] # features per layer
-# hParamsbaseGNNSeven['nFilterTaps'] = [3, 3] # number of filter taps
-# hParamsbaseGNNSeven['bias'] = True
-# hParamsbaseGNNSeven['nonlinearity'] = nonlinearity
-# hParamsbaseGNNSeven['dimReadout'] = [ ] 
-# hParamsbaseGNNSeven['dimEdgeFeatures'] = 1 # scalar edge weights
-# modelList += [hParamsbaseGNNSeven['name']]
-
-# hParamsbaseGNNEight = {}
-# hParamsbaseGNNEight['name'] = 'baseGNNEight'
-# hParamsbaseGNNEight['archit'] = architTime.LocalGNN_DB
-# hParamsbaseGNNEight['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-# hParamsbaseGNNEight['dimNodeSignals'] = [2, 64, 2] # features per layer
-# hParamsbaseGNNEight['nFilterTaps'] = [4, 4] # number of filter taps
-# hParamsbaseGNNEight['bias'] = True
-# hParamsbaseGNNEight['nonlinearity'] = nonlinearity
-# hParamsbaseGNNEight['dimReadout'] = [ ] 
-# hParamsbaseGNNEight['dimEdgeFeatures'] = 1 # scalar edge weights
-# modelList += [hParamsbaseGNNEight['name']]
+hParamsGNNSix = {}
+hParamsGNNSix['name'] = 'GNNSix'
+hParamsGNNSix['archit'] = architTime.LocalGNN_DB
+hParamsGNNSix['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsGNNSix['dimNodeSignals'] = [2, 32, 32] # features per layer
+hParamsGNNSix['nFilterTaps'] = [1, 1] # number of filter taps
+hParamsGNNSix['bias'] = True
+hParamsGNNSix['nonlinearity'] = nonlinearity
+hParamsGNNSix['dimReadout'] = [2] 
+hParamsGNNSix['dimEdgeFeatures'] = 1 # scalar edge weights
+modelList += [hParamsGNNSix['name']]
 
 trainingOptions = {}
 
 '''ONLY for hidden layer parameters [at the layer-wise training] '''
-paramsLayerWiseTrainbaseGNNOne = {}
-paramsLayerWiseTrainbaseGNNOne['name'] = 'baseGNNOne'
-paramsLayerWiseTrainbaseGNNOne['dimNodeSignals'] = [32, 32, 32, 32, 32, 32, 32, 32, 32] # features per hidden layer
-paramsLayerWiseTrainbaseGNNOne['nFilterTaps'] = [1, 1, 1, 1, 1, 1, 1, 1, 1] # number of filter taps for each hidden layer
-paramsLayerWiseTrainbaseGNNOne['bias'] = True
-paramsLayerWiseTrainbaseGNNOne['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
-paramsLayerWiseTrainbaseGNNOne['dimReadout'] = [ ]
-paramsLayerWiseTrainbaseGNNOne['dimEdgeFeatures'] = 1 # scalar edge weights
+paramsLayerWiseTrainGNNOne = {}
+paramsLayerWiseTrainGNNOne['name'] = 'GNNOne'
+paramsLayerWiseTrainGNNOne['dimNodeSignals'] = [ ] # features per hidden layer
+paramsLayerWiseTrainGNNOne['nFilterTaps'] = [ ] # number of filter taps for each hidden layer
+paramsLayerWiseTrainGNNOne['bias'] = True
+paramsLayerWiseTrainGNNOne['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
+paramsLayerWiseTrainGNNOne['dimReadout'] = [ ]
+paramsLayerWiseTrainGNNOne['dimEdgeFeatures'] = 1 # scalar edge weights
 
-# paramsLayerWiseTrainbaseGNNTwo = {}
-# paramsLayerWiseTrainbaseGNNTwo['name'] = 'baseGNNTwo'
-# paramsLayerWiseTrainbaseGNNTwo['dimNodeSignals'] = [32, 32, 32, 32] # features per hidden layer
-# paramsLayerWiseTrainbaseGNNTwo['nFilterTaps'] = [2, 2, 2, 2] # number of filter taps for each hidden layer
-# paramsLayerWiseTrainbaseGNNTwo['bias'] = True
-# paramsLayerWiseTrainbaseGNNTwo['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
-# paramsLayerWiseTrainbaseGNNTwo['dimReadout'] = [ ]
-# paramsLayerWiseTrainbaseGNNTwo['dimEdgeFeatures'] = 1 # scalar edge weights
+paramsLayerWiseTrainGNNTwo = {}
+paramsLayerWiseTrainGNNTwo['name'] = 'GNNTwo'
+paramsLayerWiseTrainGNNTwo['dimNodeSignals'] = [ ] # features per hidden layer
+paramsLayerWiseTrainGNNTwo['nFilterTaps'] = [ ] # number of filter taps for each hidden layer
+paramsLayerWiseTrainGNNTwo['bias'] = True
+paramsLayerWiseTrainGNNTwo['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
+paramsLayerWiseTrainGNNTwo['dimReadout'] = [32, 32, 32, 32, 32, 32]
+paramsLayerWiseTrainGNNTwo['dimEdgeFeatures'] = 1 # scalar edge weights
 
-# paramsLayerWiseTrainbaseGNNThree = {}
-# paramsLayerWiseTrainbaseGNNThree['name'] = 'baseGNNThree'
-# paramsLayerWiseTrainbaseGNNThree['dimNodeSignals'] = [32, 32, 32, 32] # features per hidden layer
-# paramsLayerWiseTrainbaseGNNThree['nFilterTaps'] = [3, 3, 3, 3] # number of filter taps for each hidden layer
-# paramsLayerWiseTrainbaseGNNThree['bias'] = True
-# paramsLayerWiseTrainbaseGNNThree['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
-# paramsLayerWiseTrainbaseGNNThree['dimReadout'] = [ ]
-# paramsLayerWiseTrainbaseGNNThree['dimEdgeFeatures'] = 1 # scalar edge weights
+paramsLayerWiseTrainGNNThree = {}
+paramsLayerWiseTrainGNNThree['name'] = 'GNNThree'
+paramsLayerWiseTrainGNNThree['dimNodeSignals'] = [ ] # features per hidden layer
+paramsLayerWiseTrainGNNThree['nFilterTaps'] = [ ] # number of filter taps for each hidden layer
+paramsLayerWiseTrainGNNThree['bias'] = True
+paramsLayerWiseTrainGNNThree['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
+paramsLayerWiseTrainGNNThree['dimReadout'] = [32, 32, 32, 32, 32, 32]
+paramsLayerWiseTrainGNNThree['dimEdgeFeatures'] = 1 # scalar edge weights
 
-# paramsLayerWiseTrainbaseGNNFour = {}
-# paramsLayerWiseTrainbaseGNNFour['name'] = 'baseGNNFour'
-# paramsLayerWiseTrainbaseGNNFour['dimNodeSignals'] = [32, 32, 32, 32] # features per hidden layer
-# paramsLayerWiseTrainbaseGNNFour['nFilterTaps'] = [4, 4, 4, 4] # number of filter taps for each hidden layer
-# paramsLayerWiseTrainbaseGNNFour['bias'] = True
-# paramsLayerWiseTrainbaseGNNFour['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
-# paramsLayerWiseTrainbaseGNNFour['dimReadout'] = [ ]
-# paramsLayerWiseTrainbaseGNNFour['dimEdgeFeatures'] = 1 # scalar edge weights
+paramsLayerWiseTrainGNNFour = {}
+paramsLayerWiseTrainGNNFour['name'] = 'GNNFour'
+paramsLayerWiseTrainGNNFour['dimNodeSignals'] = [ ] # features per hidden layer
+paramsLayerWiseTrainGNNFour['nFilterTaps'] = [ ] # number of filter taps for each hidden layer
+paramsLayerWiseTrainGNNFour['bias'] = True
+paramsLayerWiseTrainGNNFour['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
+paramsLayerWiseTrainGNNFour['dimReadout'] = [ ]
+paramsLayerWiseTrainGNNFour['dimEdgeFeatures'] = 1 # scalar edge weights
 
-# paramsLayerWiseTrainbaseGNNFive = {}
-# paramsLayerWiseTrainbaseGNNFive['name'] = 'baseGNNFive'
-# paramsLayerWiseTrainbaseGNNFive['dimNodeSignals'] = [64, 64, 64, 64, 64, 64, 64, 64, 64] # features per hidden layer
-# paramsLayerWiseTrainbaseGNNFive['nFilterTaps'] = [1, 1, 1, 1, 1, 1, 1, 1, 1] # number of filter taps for each hidden layer
-# paramsLayerWiseTrainbaseGNNFive['bias'] = True
-# paramsLayerWiseTrainbaseGNNFive['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
-# paramsLayerWiseTrainbaseGNNFive['dimReadout'] = [ ]
-# paramsLayerWiseTrainbaseGNNFive['dimEdgeFeatures'] = 1 # scalar edge weights
+paramsLayerWiseTrainGNNFive = {}
+paramsLayerWiseTrainGNNFive['name'] = 'GNNFive'
+paramsLayerWiseTrainGNNFive['dimNodeSignals'] = [ ] # features per hidden layer
+paramsLayerWiseTrainGNNFive['nFilterTaps'] = [ ] # number of filter taps for each hidden layer
+paramsLayerWiseTrainGNNFive['bias'] = True
+paramsLayerWiseTrainGNNFive['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
+paramsLayerWiseTrainGNNFive['dimReadout'] = [32, 32, 32, 32, 32, 32]
+paramsLayerWiseTrainGNNFive['dimEdgeFeatures'] = 1 # scalar edge weights
 
-# paramsLayerWiseTrainbaseGNNSix = {}
-# paramsLayerWiseTrainbaseGNNSix['name'] = 'baseGNNSix'
-# paramsLayerWiseTrainbaseGNNSix['dimNodeSignals'] = [64, 64, 64, 64] # features per hidden layer
-# paramsLayerWiseTrainbaseGNNSix['nFilterTaps'] = [2, 2, 2, 2] # number of filter taps for each hidden layer
-# paramsLayerWiseTrainbaseGNNSix['bias'] = True
-# paramsLayerWiseTrainbaseGNNSix['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
-# paramsLayerWiseTrainbaseGNNSix['dimReadout'] = [ ]
-# paramsLayerWiseTrainbaseGNNSix['dimEdgeFeatures'] = 1 # scalar edge weights
-
-# paramsLayerWiseTrainbaseGNNSeven = {}
-# paramsLayerWiseTrainbaseGNNSeven['name'] = 'baseGNNSeven'
-# paramsLayerWiseTrainbaseGNNSeven['dimNodeSignals'] = [64, 64, 64, 64] # features per hidden layer
-# paramsLayerWiseTrainbaseGNNSeven['nFilterTaps'] = [3, 3, 3, 3] # number of filter taps for each hidden layer
-# paramsLayerWiseTrainbaseGNNSeven['bias'] = True
-# paramsLayerWiseTrainbaseGNNSeven['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
-# paramsLayerWiseTrainbaseGNNSeven['dimReadout'] = [ ]
-# paramsLayerWiseTrainbaseGNNSeven['dimEdgeFeatures'] = 1 # scalar edge weights
-
-# paramsLayerWiseTrainbaseGNNEight = {}
-# paramsLayerWiseTrainbaseGNNEight['name'] = 'baseGNNEight'
-# paramsLayerWiseTrainbaseGNNEight['dimNodeSignals'] = [64, 64, 64, 64] # features per hidden layer
-# paramsLayerWiseTrainbaseGNNEight['nFilterTaps'] = [4, 4, 4, 4] # number of filter taps for each hidden layer
-# paramsLayerWiseTrainbaseGNNEight['bias'] = True
-# paramsLayerWiseTrainbaseGNNEight['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
-# paramsLayerWiseTrainbaseGNNEight['dimReadout'] = [ ]
-# paramsLayerWiseTrainbaseGNNEight['dimEdgeFeatures'] = 1 # scalar edge weights
+paramsLayerWiseTrainGNNSix = {}
+paramsLayerWiseTrainGNNSix['name'] = 'GNNSix'
+paramsLayerWiseTrainGNNSix['dimNodeSignals'] = [ ] # features per hidden layer
+paramsLayerWiseTrainGNNSix['nFilterTaps'] = [ ] # number of filter taps for each hidden layer
+paramsLayerWiseTrainGNNSix['bias'] = True
+paramsLayerWiseTrainGNNSix['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
+paramsLayerWiseTrainGNNSix['dimReadout'] = [32, 32, 32, 32, 32, 32]
+paramsLayerWiseTrainGNNSix['dimEdgeFeatures'] = 1 # scalar edge weights
 
 #%%
 if useGPU and torch.cuda.is_available():
@@ -257,84 +217,82 @@ savingSeeds = False
 
 #%%
 modelsGNN = {}
+    
+saveDir = os.path.join(saveDirRoot, testName)
 
-for i in range(len(dataFolder)-3):
-    
-    saveDir = os.path.join(saveDirRoot, os.listdir(saveDirRoot)[i+3])
+print("Model initialisation...", flush = True)    
 
-    print("Model initialisation...", flush = True)    
+for thisModel in modelList:
+    hParamsDict = copy.deepcopy(eval('hParams' + thisModel))
+    thisName = hParamsDict.pop('name')
+    callArchit = hParamsDict.pop('archit')
+    thisDevice = hParamsDict.pop('device')
+    print("\tInitialising %s..." % thisName, end = ' ',flush = True)
+
+    thisOptimAlg = optimAlg
+    thisLearningRate = learningRate
+    thisBeta1 = beta1
+    thisBeta2 = beta2
+
+    thisArchit = callArchit(**hParamsDict) # initialise the GNN structure
+    thisArchit.to(thisDevice)
+
+    thisOptim = optim.Adam(thisArchit.parameters(),
+                           lr = learningRate,
+                           betas = (beta1, beta2))
+
+    thisLossFunction = lossFunction()
+    thisTrainer = trainer
+    thisEvaluator = evaluator
+    modelCreated = model.Model(thisArchit,
+                               thisLossFunction,
+                               thisOptim,
+                               thisTrainer,
+                               thisEvaluator,
+                               thisDevice,
+                               thisName,
+                               nDAggersValues,
+                               layerWise,
+                               saveDir)
+        
+    modelsGNN[thisName] = modelCreated
+    print("OK")
+
+initModelsGNN = copy.deepcopy(modelsGNN)    
+trainedModelsGNN = [copy.deepcopy([copy.deepcopy(initModelsGNN) for k in range(len(nDAggersValues))]) for j in range(len(layerWise))]
+
+print("Configuring and loading the trained model parameters%s..." % thisModel)
+for thisModel in modelsGNN.keys():
     
-    for thisModel in modelList:
-        hParamsDict = copy.deepcopy(eval('hParams' + thisModel))
-        thisName = hParamsDict.pop('name')
-        callArchit = hParamsDict.pop('archit')
-        thisDevice = hParamsDict.pop('device')
-        print("\tInitialising %s..." % thisName, end = ' ',flush = True)
+    paramsLayerWiseTrain = copy.deepcopy(eval('paramsLayerWiseTrain' + thisModel))    
+    paramsLayerWiseTrain.pop('name')
     
-        thisOptimAlg = optimAlg
-        thisLearningRate = learningRate
-        thisBeta1 = beta1
-        thisBeta2 = beta2
-    
-        thisArchit = callArchit(**hParamsDict) # initialise the GNN structure
-        thisArchit.to(thisDevice)
-    
-        thisOptim = optim.Adam(thisArchit.parameters(),
-                               lr = learningRate,
-                               betas = (beta1, beta2))
-    
-        thisLossFunction = lossFunction()
-        thisTrainer = trainer
-        thisEvaluator = evaluator
-        modelCreated = model.Model(thisArchit,
-                                   thisLossFunction,
-                                   thisOptim,
-                                   thisTrainer,
-                                   thisEvaluator,
-                                   thisDevice,
-                                   thisName,
-                                   nDAggersValues,
-                                   layerWise,
-                                   saveDir)
+    for nDAggersVal in nDAggersValues:
+        
+        for val in layerWise:
             
-        modelsGNN[thisName] = modelCreated
-        print("OK")
+            modelsGNN[thisModel] = copy.deepcopy(initModelsGNN[thisModel])                
+            thisTrainVars = modelsGNN[thisModel].configure(data, 1, 1, \
+                                                        nDAggersVal, 1, 1, \
+                                                            paramsLayerWiseTrain, val, \
+                                                                lossFunction, learningRate, beta1, beta2, evalModel, **trainingOptions)
 
-    initModelsGNN = copy.deepcopy(modelsGNN)    
-    trainedModelsGNN = [copy.deepcopy([copy.deepcopy(initModelsGNN) for k in range(len(nDAggersValues))]) for j in range(len(layerWise))]
+            trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel] = copy.deepcopy(modelsGNN[thisModel])
 
-    print("Configuring and loading the trained model parameters%s..." % thisModel)
-    for thisModel in modelsGNN.keys():
-        
-        paramsLayerWiseTrain = copy.deepcopy(eval('paramsLayerWiseTrain' + thisModel))    
-        paramsLayerWiseTrain.pop('name')
-        
-        for nDAggersVal in nDAggersValues:
-            
-            for val in layerWise:
-                
-                modelsGNN[thisModel] = copy.deepcopy(initModelsGNN[thisModel])                
-                thisTrainVars = modelsGNN[thisModel].configure(data, 1, 1, \
-                                                            nDAggersVal, 1, 1, \
-                                                                paramsLayerWiseTrain, val, \
-                                                                    lossFunction, learningRate, beta1, beta2, evalModel, **trainingOptions)
+print("Generating testing data", end = '')
+dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
+                1, 1, 1, nTest,
+                duration, updateTime, adjustTime,
+                initVelValue, initMinDist, accelMax, savingSeeds)
+print("...", flush = True)
 
-                trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel] = copy.deepcopy(modelsGNN[thisModel])
-
-    print("Generating testing data", end = '')
-    dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
-                    1, 1, 1, nTest,
-                    duration, updateTime, adjustTime,
-                    initVelValue, initMinDist, accelMax, savingSeeds)
-    print("...", flush = True)
+for thisModel in list(modelsGNN.keys()):
     
-    for thisModel in list(modelsGNN.keys()):
-        
-        for nDAggersVal in nDAggersValues:
-                
-            for val in layerWise:
-                modelsGNN[thisModel] = copy.deepcopy(trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel]) # 这里的代码是有问题的，按理说这里的model是训练出来的结果，至少框架结构如此
-                modelsGNN[thisModel].evaluate(dataTest, nDAggersVal, val)
+    for nDAggersVal in nDAggersValues:
+            
+        for val in layerWise:
+            modelsGNN[thisModel] = copy.deepcopy(trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel]) # 这里的代码是有问题的，按理说这里的model是训练出来的结果，至少框架结构如此
+            modelsGNN[thisModel].evaluate(dataTest, nDAggersVal, val)
 
 #%%
 

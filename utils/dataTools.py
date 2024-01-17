@@ -220,7 +220,8 @@ class AerialSwarm(_data):
                 initOffsetAll = initValuesFile['initOffsetAll']
                 initSkewAll = initValuesFile['initSkewAll']
             else:
-                initValuesFile = np.load(os.path.join('experiments', 'flockingGNN') + 'initTestValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
+                savedFileFolderName = os.path.join('experiments', 'test2')                
+                initValuesFile = np.load(os.path.join(savedFileFolderName, 'flockingGNN') + 'initTestValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
                 
                 initPosAll = initValuesFile['initPosAll']
                 initVelAll = initValuesFile['initVelAll']
@@ -899,10 +900,10 @@ class AerialSwarm(_data):
                 plt.figure()
                 plt.rcParams["figure.figsize"] = (6.4,4.8)
                 for t in range(0, tSamples-1):
-                    plt.vlines(eigenValues[0, t, :], 0, xxx[0, t, i, :], color='#D3D3D3', alpha=0.4)            
-                    plt.scatter(eigenValues[0, t, :], xxx[0, t, i, :], color='#D3D3D3', alpha=0.4)    
+                    plt.vlines(eigenValues[0, t, :], 0, xxx[0, t, i, :], color='#D3D3D3', alpha=0.4)
+                    plt.scatter(eigenValues[0, t, :], xxx[0, t, i, :], color='#D3D3D3', alpha=0.4)
                     
-                    plt.vlines(eigenValues[0, t, :], 0, yyy[0, t, i, :], color='#7BC8F6', alpha=0.4)            
+                    plt.vlines(eigenValues[0, t, :], 0, yyy[0, t, i, :], color='#7BC8F6', alpha=0.4)
                     plt.scatter(eigenValues[0, t, :], yyy[0, t, i, :], color='#7BC8F6', alpha=0.4)
             
         return theta, gamma, adjust, state, graph     

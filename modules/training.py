@@ -592,9 +592,9 @@ class Trainer:
                 historicalModels = sorted(Path(saveDir).iterdir(), key=os.path.getmtime)
                                         
                 thisHistoricalModels = []
-                
+    
                 for element in historicalModels:            
-                    if np.int64(str(element)[91]) == l:
+                    if self.model.name == str(element)[70:(70+len(self.model.name))] and np.int64(str(element)[70+len(self.model.name)+len('-LayerWise-')]) == l:
                         thisHistoricalModels.append(str(element)[70:])
                 
                 for i in range(len(thisHistoricalModels)):
@@ -613,8 +613,8 @@ class Trainer:
                                         
                 thisHistoricalModels = []
                 
-                for element in historicalModels:            
-                    if np.int64(str(element)[89]) == l:
+                for element in historicalModels:                                    
+                    if self.model.name == str(element)[69:(69+len(self.model.name))] and np.int64(str(element)[69+len(self.model.name)+len('-EndToEnd-')]) == l:                        
                         thisHistoricalModels.append(str(element)[69:])
                 
                 for i in range(len(thisHistoricalModels)):
