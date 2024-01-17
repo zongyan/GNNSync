@@ -784,8 +784,8 @@ class AerialSwarm(_data):
         adjust = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float64)
         state = np.zeros((batchSize, tSamples, 2, nAgents), dtype=np.float64)
         
-        mm = []
-        nn = []        
+        beforeAct = []
+        afterAct = []        
             
         if useTorch:
             theta[:,0,:,:] = initTheta.cpu().numpy()
@@ -816,8 +816,8 @@ class AerialSwarm(_data):
             adjust[:,t-1,:,:] = thisAdjust
             
             if archit.evalModel == True:
-                mm.append(archit.xx) # values before the activation function
-                nn.append(archit.yy) # values from the activation function
+                beforeAct.append(archit.beforeActivation) # values before the activation function
+                afterAct.append(archit.afterActivation) # values from the activation function
             
             if self.updateTime == self.adjustTime:                            
                 theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
@@ -874,12 +874,12 @@ class AerialSwarm(_data):
             laplacianMatrix = np.zeros((graph.shape[0], tSamples, nAgents, nAgents), dtype = np.float64)
             eigenValues = np.zeros((graph.shape[0], tSamples, nAgents), dtype = np.float64)
             eigenVectors = np.zeros((graph.shape[0], tSamples, nAgents, nAgents), dtype = np.float64)
-            xxx = np.zeros((graph.shape[0], tSamples, mm[0][0].shape[1], nAgents), dtype = np.float64) # values before the activation function
-            yyy = np.zeros((graph.shape[0], tSamples, nn[0][0].shape[1], nAgents), dtype = np.float64) # values after the activation function
+            beforeActValues = np.zeros((graph.shape[0], tSamples, beforeAct[0][0].shape[1], nAgents), dtype = np.float64) # values before the activation function
+            afterActValues = np.zeros((graph.shape[0], tSamples, afterAct[0][0].shape[1], nAgents), dtype = np.float64) # values after the activation function
 
             for t in range(1, tSamples-1):
-                thisxxx = mm[t][0] # values before the activation function
-                thisyyy = nn[t][0] # values after the activation function    
+                thisBeforeAct = beforeAct[t][0] # values before the activation function
+                thisAfterAct = afterAct[t][0] # values after the activation function    
                 
                 thisGraph = graph[:,t,:,:]
                 thisGraph[thisGraph > zeroTolerance] = 1. # reset the normalised adjacency matrix to the normal graph matrix
@@ -891,20 +891,20 @@ class AerialSwarm(_data):
                     # The column eigenvectors[:, i] is the normalized eigenvector corresponding to the eigenvalue eigenvalues[i]
                     eigenValues[i, t, :], eigenVectors[i, t, :, :] = np.linalg.eigh(laplacianMatrix[i, t, :, :])
 
-                    assert thisxxx.shape[1] == thisyyy.shape[1]
-                    for j in range(thisxxx.shape[1]): # in the feature dimension                    
-                        xxx[i, t, j, :] = np.matmul(np.transpose(eigenVectors[i, t, :, :]), np.float64(thisxxx[i, j, :])) # values before the activation function
-                        yyy[i, t, j, :] = np.matmul(np.transpose(eigenVectors[i, t, :, :]), np.float64(thisyyy[i, j, :])) # values after the activation function
+                    assert thisBeforeAct.shape[1] == thisAfterAct.shape[1]
+                    for j in range(thisBeforeAct.shape[1]): # in the feature dimension                    
+                        beforeActValues[i, t, j, :] = np.matmul(np.transpose(eigenVectors[i, t, :, :]), np.float64(thisBeforeAct[i, j, :])) # values before the activation function
+                        afterActValues[i, t, j, :] = np.matmul(np.transpose(eigenVectors[i, t, :, :]), np.float64(thisAfterAct[i, j, :])) # values after the activation function
 
-            for i in range(0, thisxxx.shape[1]):
+            for i in range(0, thisBeforeAct.shape[1]):
                 plt.figure()
                 plt.rcParams["figure.figsize"] = (6.4,4.8)
                 for t in range(0, tSamples-1):
-                    plt.vlines(eigenValues[0, t, :], 0, xxx[0, t, i, :], color='#D3D3D3', alpha=0.4)
-                    plt.scatter(eigenValues[0, t, :], xxx[0, t, i, :], color='#D3D3D3', alpha=0.4)
+                    plt.vlines(eigenValues[0, t, :], 0, beforeActValues[0, t, i, :], color='#D3D3D3', alpha=0.4)
+                    plt.scatter(eigenValues[0, t, :], beforeActValues[0, t, i, :], color='#D3D3D3', alpha=0.4)
                     
-                    plt.vlines(eigenValues[0, t, :], 0, yyy[0, t, i, :], color='#7BC8F6', alpha=0.4)
-                    plt.scatter(eigenValues[0, t, :], yyy[0, t, i, :], color='#7BC8F6', alpha=0.4)
+                    plt.vlines(eigenValues[0, t, :], 0, afterActValues[0, t, i, :], color='#7BC8F6', alpha=0.4)
+                    plt.scatter(eigenValues[0, t, :], afterActValues[0, t, i, :], color='#7BC8F6', alpha=0.4)
             
         return theta, gamma, adjust, state, graph     
 

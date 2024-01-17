@@ -59,8 +59,8 @@ class LocalGNN_DB(nn.Module):
         # x: B x T x F[0] x N        
         # S: B x T (x E) x N x N
         
-        self.xx = []
-        self.yy = []        
+        self.beforeActivation = []
+        self.afterActivation = []        
         
         assert len(S.shape) == 4 or len(S.shape) == 5
         if len(S.shape) == 4:
@@ -89,9 +89,9 @@ class LocalGNN_DB(nn.Module):
                 if l % 2 == 0: # GSO function
                     z = self.GFL[l](z)
                 else: # non-linear activation function
-                    self.xx.append(z[:,-1,:,:]) # storing the values before the activation function
+                    self.beforeActivation.append(z[:,-1,:,:]) # storing the values before the activation function
                     z = self.GFL[l](z)
-                    self.yy.append(z[:,-1,:,:]) # storing the values from the activation function
+                    self.afterActivation.append(z[:,-1,:,:]) # storing the values from the activation function
             yGFL = z
             y = yGFL.permute(0, 1, 3, 2) # B x T x N x F[-1]
         
