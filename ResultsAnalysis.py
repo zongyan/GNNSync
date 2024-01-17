@@ -16,14 +16,14 @@ updateTime = 0.01 # clock update time
 addedLayerNum = np.array([9, 4, 4, 4, 9, 4, 4, 4]) + 1
 addedLayerName = np.array(['0 layers', '1 layers', '2 layers', '3 layers', '4 layers', '5 layers', '6 layers', '7 layers', '8 layers', '9 layers'])
 gnnName = np.array(['GNNOne', 'GNNTwo', 'GNNThree', 'GNNFour', 'GNNFive', 'GNNSix', 'GNNSeven', 'GNNEight'])
-numSavedFiles = 6
+numSavedFileFolders = 2
 
 saveDirRoot = 'experiments' 
 dataFolder = os.listdir(saveDirRoot)
 
-for j in range(len(dataFolder)-numSavedFiles-1):
+for j in range(len(dataFolder)-numSavedFileFolders-1):
     
-    saveDir = os.path.join(saveDirRoot, os.listdir(saveDirRoot)[j+numSavedFiles]) 
+    saveDir = os.path.join(saveDirRoot, os.listdir(saveDirRoot)[j+numSavedFileFolders])
     if not os.path.exists(saveDir):
         raise Exception("error in finding data folder!")    
     saveDir = os.path.join(saveDir, "savedData")
