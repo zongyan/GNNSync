@@ -448,14 +448,11 @@ class Trainer:
 
                     else:
 
-                        if (i % 2) == 0:
-                            layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i/2)], originalArchitF[np.int64((i/2) + 1)], originalArchitK[np.int64(i/2)], self.model.archit.E, self.model.archit.bias))
-                        else:
-                            layerWiseGFL.append(nn.Tanh())
+                        layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i)], originalArchitF[np.int64(i + 1)], originalArchitK[np.int64(i)], self.model.archit.E, self.model.archit.bias))
         
                 # append the layer-wise training layer
                 layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias))
-                layerWiseGFL.append(nn.Tanh())
+                # layerWiseGFL.append(nn.Tanh())
                  
                 # add the original final output layer
                 layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], originalArchitF[-1], originalArchitK[-1], self.model.archit.E, self.model.archit.bias))
@@ -484,19 +481,17 @@ class Trainer:
 
                     else:
 
-                        if (i % 2) == 0:
-                            layerWiseFC.append(nn.Tanh())  
-                        else:
-                            layerWiseFC.append(nn.Linear(origLayer.in_features, origLayer.out_features, bias = self.model.archit.bias))
+                        layerWiseFC.append(nn.Linear(origLayer.in_features, origLayer.out_features, bias = self.model.archit.bias))
     
                 # append the original layer
                 layerWiseFC.append(nn.Linear(lastReadoutLayer.in_features, layerWiseTraindimReadout[l], bias = layerWiseTrainBias))            
-                layerWiseFC.append(nn.Tanh())
+                # layerWiseFC.append(nn.Tanh())
                 
                 # add the original final output layer
                 layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], lastReadoutLayer.out_features, bias = self.model.archit.bias))
                 
-                self.model.archit.dimReadout = np.append(layerWiseTraindimReadout[0:l+1], self.model.archit.dimReadout[-1])
+                self.model.archit.dimReadout = np.append(np.append(self.model.archit.dimReadout[0:-1], layerWiseTraindimReadout[0:l+1]), self.model.archit.dimReadout[-1])                
+                # self.model.archit.dimReadout = np.append(layerWiseTraindimReadout[0:l+1], self.model.archit.dimReadout[-1])
                 architTime.LocalGNN_DB.readoutLayerWiseInit(self.model.archit, layerWiseFC) # readout layer for layer-wise training  
                 
                 if layerWiseTraining == True:
@@ -505,9 +500,9 @@ class Trainer:
                     nn.init.xavier_uniform_(self.model.archit.Readout[-1].weight)
                     nn.init.zeros_(self.model.archit.Readout[-1].bias)                    
                 else:
-                    for i in range(np.int64((len(self.model.archit.Readout) + 1)/2)):
-                        nn.init.xavier_uniform_(self.model.archit.Readout[np.int64(2*i+1)].weight)
-                        nn.init.zeros_(self.model.archit.Readout[np.int64(2*i+1)].bias)
+                    for i in range(np.int64(len(self.model.archit.Readout))):
+                        nn.init.xavier_uniform_(self.model.archit.Readout[np.int64(i)].weight)
+                        nn.init.zeros_(self.model.archit.Readout[np.int64(i)].bias)
                
             del thisLoss
             del thisOptim
@@ -703,7 +698,8 @@ class Trainer:
                 # add the original final output layer
                 layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], lastReadoutLayer.out_features, bias = self.model.archit.bias))
                 
-                self.model.archit.dimReadout = np.append(layerWiseTraindimReadout[0:l+1], self.model.archit.dimReadout[-1])
+                self.model.archit.dimReadout = np.append(np.append(self.model.archit.dimReadout[0:-1], layerWiseTraindimReadout[0:l+1]), self.model.archit.dimReadout[-1])                
+                # self.model.archit.dimReadout = np.append(layerWiseTraindimReadout[0:l+1], self.model.archit.dimReadout[-1])
                 architTime.LocalGNN_DB.readoutLayerWiseInit(self.model.archit, layerWiseFC) # readout layer for layer-wise training  
                 
                 if layerWiseTraining == True:

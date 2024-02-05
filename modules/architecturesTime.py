@@ -29,24 +29,24 @@ class LocalGNN_DB(nn.Module):
         gfl.append(gml.GraphFilter_DB(self.F[0], self.F[1], self.K[0], self.E, self.bias))
             
         for l in range(1, self.L):
-            gfl.append(self.sigma())
+            # gfl.append(self.sigma())
             gfl.append(gml.GraphFilter_DB(self.F[l], self.F[l+1], self.K[l], self.E, self.bias))                
 
         self.GFL = nn.Sequential(*gfl) # graph filtering layers
 
         fc = []
         if len(self.dimReadout) > 0:
-            fc.append(self.sigma())            
+            # fc.append(self.sigma())            
             fc.append(nn.Linear(self.F[-1], dimReadout[0], bias = self.bias))
             for l in range(len(dimReadout)-1):
-                fc.append(self.sigma())
+                # fc.append(self.sigma())
                 fc.append(nn.Linear(dimReadout[l], dimReadout[l+1], bias = self.bias))
 
             self.Readout = nn.Sequential(*fc) # readout layers
             
             for i in range(len(self.dimReadout)):
-                nn.init.xavier_uniform_(self.Readout[np.int64(2*i+1)].weight)
-                nn.init.zeros_(self.Readout[np.int64(2*i+1)].bias)
+                nn.init.xavier_uniform_(self.Readout[np.int64(i)].weight)
+                nn.init.zeros_(self.Readout[np.int64(i)].bias)
             
     def gflLayerWiseInit(self, layerWiseStructure):        
         self.GFL = nn.Sequential(*layerWiseStructure)
@@ -78,7 +78,7 @@ class LocalGNN_DB(nn.Module):
         assert x.shape[3] == N
         
         for l in range(self.L):
-            self.GFL[2*l].addGSO(S)
+            self.GFL[l].addGSO(S)
         
         if self.evalModel == False:            
             yGFL = self.GFL(x)
