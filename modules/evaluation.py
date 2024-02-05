@@ -82,7 +82,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         evaluationGFL.append(gml.GraphFilter_DB(trainedModelF[0], trainedModelF[1], trainedModelK[0], trainedModelE, trainedModelBias))        
 
         for i in range(1, trainedModelL):
-            evaluationGFL.append(trainedModelSigma())
+            # evaluationGFL.append(trainedModelSigma())
             evaluationGFL.append(gml.GraphFilter_DB(trainedModelF[i], trainedModelF[i+1], trainedModelK[i], trainedModelE, trainedModelBias))                
 
         model.archit.GFL = nn.Sequential(*evaluationGFL) # graph filtering layers
@@ -92,7 +92,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
             evaluationFC.append(trainedModelSigma())            
             evaluationFC.append(nn.Linear(trainedModelF[-1], trainedModelReadout[0], bias = trainedModelBias))
             for i in range(trainedModelNumReadoutLayer-1):
-                evaluationFC.append(trainedModelSigma())
+                # evaluationFC.append(trainedModelSigma())
                 evaluationFC.append(nn.Linear(trainedModelReadout[i], trainedModelReadout[i+1], bias = trainedModelBias))
 
             model.archit.Readout = nn.Sequential(*evaluationFC) # readout layers        

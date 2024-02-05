@@ -650,14 +650,14 @@ class Trainer:
 
                     else:
 
-                        if (i % 2) == 0:
-                            layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i/2)], originalArchitF[np.int64((i/2) + 1)], originalArchitK[np.int64(i/2)], self.model.archit.E, self.model.archit.bias))
-                        else:
-                            layerWiseGFL.append(nn.Tanh())
+                        # if (i % 2) == 0:
+                        layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i)], originalArchitF[np.int64((i) + 1)], originalArchitK[np.int64(i)], self.model.archit.E, self.model.archit.bias))
+                        # else:
+                        #     layerWiseGFL.append(nn.Tanh())
         
                 # append the layer-wise training layer
                 layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias))
-                layerWiseGFL.append(nn.Tanh())
+                # layerWiseGFL.append(nn.Tanh())
                  
                 # add the original final output layer
                 layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], originalArchitF[-1], originalArchitK[-1], self.model.archit.E, self.model.archit.bias))

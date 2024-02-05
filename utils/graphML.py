@@ -37,8 +37,8 @@ def LSIGF_DB(h, S, x, b=None):
     x = x.reshape([B, T, 1, G, N]).repeat(1, 1, E, 1, 1)
     z = x.reshape([B, T, 1, E, G, N]) # k=0, k is counted in dim = 2
 
-    heatKernel = torch.exp(-S) # convert the normalised laplacian matrix for using heat kernel
-    # heatKernel = S
+    # heatKernel = torch.exp(-S) # convert the normalised laplacian matrix for using heat kernel
+    heatKernel = S
     
     for k in range(1,K):
         x, _ = torch.split(x, [T-1, 1], dim = 1)        
