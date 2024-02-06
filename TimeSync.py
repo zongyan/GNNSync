@@ -292,127 +292,127 @@ print("Total time: %dh %dm %.2fs" % (totalRunTimeH,
                                      totalRunTimeS))    
 
 #%%
-saveDataDir = os.path.join(saveDir,'savedData')
-saveArchitDir = os.path.join(saveDir,'savedArchits')
+# saveDataDir = os.path.join(saveDir,'savedData')
+# saveArchitDir = os.path.join(saveDir,'savedArchits')
     
-if layerWiseTraining == True:
-    saveDataDir = os.path.join(saveDataDir,'layerWiseTraining')
-    saveArchitFile = os.path.join(saveArchitDir, 'LayerWiseTraining')
-elif endToEndTraining == True:
-    saveDataDir = os.path.join(saveDataDir,'endToEndTraining')
-    saveArchitFile = os.path.join(saveArchitDir, 'endToEndTraining')
+# if layerWiseTraining == True:
+#     saveDataDir = os.path.join(saveDataDir,'layerWiseTraining')
+#     saveArchitFile = os.path.join(saveArchitDir, 'LayerWiseTraining')
+# elif endToEndTraining == True:
+#     saveDataDir = os.path.join(saveDataDir,'endToEndTraining')
+#     saveArchitFile = os.path.join(saveArchitDir, 'endToEndTraining')
 
-for thisModel in modelsGNN.keys():
+# for thisModel in modelsGNN.keys():
     
-    for nDAggersVal in nDAggersValues:
+#     for nDAggersVal in nDAggersValues:
         
-        for val in layerWise:
+#         for val in layerWise:
             
-            modelsGNN[thisModel] = copy.deepcopy(trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel])
+#             modelsGNN[thisModel] = copy.deepcopy(trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel])
         
-            paramsLayerWiseTrain = modelsGNN[thisModel].trainer[layerWise.index(val)][nDAggersValues.index(nDAggersVal)].trainingOptions['paramsLayerWiseTrain']
-            layerWiseTraining = modelsGNN[thisModel].trainer[layerWise.index(val)][nDAggersValues.index(nDAggersVal)].trainingOptions['layerWiseTraining']
-            nDAggers = modelsGNN[thisModel].trainer[layerWise.index(val)][nDAggersValues.index(nDAggersVal)].trainingOptions['nDAggers']
+#             paramsLayerWiseTrain = modelsGNN[thisModel].trainer[layerWise.index(val)][nDAggersValues.index(nDAggersVal)].trainingOptions['paramsLayerWiseTrain']
+#             layerWiseTraining = modelsGNN[thisModel].trainer[layerWise.index(val)][nDAggersValues.index(nDAggersVal)].trainingOptions['layerWiseTraining']
+#             nDAggers = modelsGNN[thisModel].trainer[layerWise.index(val)][nDAggersValues.index(nDAggersVal)].trainingOptions['nDAggers']
         
-            paramsNameLayerWiseTrain = list(paramsLayerWiseTrain)    
-            layerWiseTrainL = len(paramsLayerWiseTrain[paramsNameLayerWiseTrain[1]])
-            layerWiseTraindimReadout = paramsLayerWiseTrain[paramsNameLayerWiseTrain[4]]
+#             paramsNameLayerWiseTrain = list(paramsLayerWiseTrain)    
+#             layerWiseTrainL = len(paramsLayerWiseTrain[paramsNameLayerWiseTrain[1]])
+#             layerWiseTraindimReadout = paramsLayerWiseTrain[paramsNameLayerWiseTrain[4]]
         
-            bestTraining = np.load(saveArchitFile + '-' + str(modelsGNN[thisModel].name) + '-nDAggers-' + str(nDAggers) + '.npz') # the data file loaded from the example folder
+#             bestTraining = np.load(saveArchitFile + '-' + str(modelsGNN[thisModel].name) + '-nDAggers-' + str(nDAggers) + '.npz') # the data file loaded from the example folder
         
-            historicalBestL = np.int64(bestTraining['historicalBestL'])
-            historicalBestIteration = np.int64(bestTraining['historicalBestIteration'])
-            historicalBestEpoch = np.int64(bestTraining['historicalBestEpoch'])
-            historicalBestBatch = np.int64(bestTraining['historicalBestBatch'])
+#             historicalBestL = np.int64(bestTraining['historicalBestL'])
+#             historicalBestIteration = np.int64(bestTraining['historicalBestIteration'])
+#             historicalBestEpoch = np.int64(bestTraining['historicalBestEpoch'])
+#             historicalBestBatch = np.int64(bestTraining['historicalBestBatch'])
             
-            maximumLayerWiseNum = max(np.array((layerWiseTrainL, len(layerWiseTraindimReadout))))     
+#             maximumLayerWiseNum = max(np.array((layerWiseTrainL, len(layerWiseTraindimReadout))))     
         
-            l = 0
-            while l < maximumLayerWiseNum + 1:
+#             l = 0
+#             while l < maximumLayerWiseNum + 1:
             
-                if layerWiseTraining == True:
-                    saveDataFile = os.path.join(saveDataDir, modelsGNN[thisModel].name + '-LayerWise-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
-                elif endToEndTraining == True:
-                    saveDataFile = os.path.join(saveDataDir, modelsGNN[thisModel].name + '-EndToEnd-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+#                 if layerWiseTraining == True:
+#                     saveDataFile = os.path.join(saveDataDir, modelsGNN[thisModel].name + '-LayerWise-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+#                 elif endToEndTraining == True:
+#                     saveDataFile = os.path.join(saveDataDir, modelsGNN[thisModel].name + '-EndToEnd-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
             
-                gnn_test = np.load(saveDataFile + '.npz') # the data file loaded from the example folder
+#                 gnn_test = np.load(saveDataFile + '.npz') # the data file loaded from the example folder
             
-                matplotlib.rc('figure', max_open_warning = 0)
+#                 matplotlib.rc('figure', max_open_warning = 0)
                 
-                offsetTest = gnn_test['offsetTestBest']
-                skewTest = gnn_test['skewTestBest']
-                adjlTest = gnn_test['adjTestBest']
-                stateTest = gnn_test['stateTestBest']
-                commGraphTest = gnn_test['commGraphTestBest']
+#                 offsetTest = gnn_test['offsetTestBest']
+#                 skewTest = gnn_test['skewTestBest']
+#                 adjlTest = gnn_test['adjTestBest']
+#                 stateTest = gnn_test['stateTestBest']
+#                 commGraphTest = gnn_test['commGraphTestBest']
             
-                lossTrain = gnn_test['lossTrain']
-                accValid = gnn_test['accValid']    
+#                 lossTrain = gnn_test['lossTrain']
+#                 accValid = gnn_test['accValid']    
                         
-                # plot the velocity of all agents via the GNN method
-                for i in range(0, nTest, 11):
-                    plt.figure()
-                    plt.rcParams["figure.figsize"] = (6.4,4.8)
-                    for j in range(0, nAgents, 1):
-                        # the input and output features are two dimensions, which means that one 
-                        # dimension is for x-axis velocity, the other one is for y-axis velocity 
-                        plt.plot(np.arange(0, np.int32(duration/updateTime), 1), offsetTest[i, :, 0, j]) 
-                        plt.xlim((0, np.int32(duration/updateTime)))
-                        plt.xticks(np.arange(0, np.int32(duration/updateTime)+1, 2/updateTime), np.arange(0, np.int32(duration/adjustTime)+1, 2/adjustTime))
-                    # end for 
-                    plt.xlabel(r'$time (s)$')
-                    plt.ylabel(r'${\bf \theta}_{gnn}$')
-                    plt.title(r'${\bf \theta}_{gnn}$ for ' + str(50)+ ' agents (gnn controller)')
-                    plt.grid()
-                    plt.show()    
-                # end for
+#                 # plot the velocity of all agents via the GNN method
+#                 for i in range(0, nTest, 11):
+#                     plt.figure()
+#                     plt.rcParams["figure.figsize"] = (6.4,4.8)
+#                     for j in range(0, nAgents, 1):
+#                         # the input and output features are two dimensions, which means that one 
+#                         # dimension is for x-axis velocity, the other one is for y-axis velocity 
+#                         plt.plot(np.arange(0, np.int32(duration/updateTime), 1), offsetTest[i, :, 0, j]) 
+#                         plt.xlim((0, np.int32(duration/updateTime)))
+#                         plt.xticks(np.arange(0, np.int32(duration/updateTime)+1, 2/updateTime), np.arange(0, np.int32(duration/adjustTime)+1, 2/adjustTime))
+#                     # end for 
+#                     plt.xlabel(r'$time (s)$')
+#                     plt.ylabel(r'${\bf \theta}_{gnn}$')
+#                     plt.title(r'${\bf \theta}_{gnn}$ for ' + str(50)+ ' agents (gnn controller)')
+#                     plt.grid()
+#                     plt.show()    
+#                 # end for
                 
-                # plot the velocity of all agents via the centralised optimal controller
-                for i in range(0, nTest, 11):
-                    plt.figure()
-                    plt.rcParams["figure.figsize"] = (6.4,4.8)
-                    for j in range(0, nAgents, 1):
-                        # the input and output features are two dimensions, which means that one 
-                        # dimension is for x-axis velocity, the other one is for y-axis velocity 
-                        plt.plot(np.arange(0, np.int32(duration/updateTime), 1), skewTest[i, :, 0, j]) 
-                        plt.xlim((0, np.int32(duration/updateTime)))
-                        plt.xticks(np.arange(0, np.int32(duration/updateTime)+1, 2/updateTime), np.arange(0, np.int32(duration/adjustTime)+1,2/adjustTime))
-                    # end for 
-                    plt.xlabel(r'$time (s)$')
-                    plt.ylabel(r'${\bf \gamma}_{gnn}$')
-                    plt.title(r'$\bf \gamma_{gnn}$ for ' + str(50)+ ' agents (centralised controller)')
-                    plt.grid()
-                    plt.show()    
-                # end for
+#                 # plot the velocity of all agents via the centralised optimal controller
+#                 for i in range(0, nTest, 11):
+#                     plt.figure()
+#                     plt.rcParams["figure.figsize"] = (6.4,4.8)
+#                     for j in range(0, nAgents, 1):
+#                         # the input and output features are two dimensions, which means that one 
+#                         # dimension is for x-axis velocity, the other one is for y-axis velocity 
+#                         plt.plot(np.arange(0, np.int32(duration/updateTime), 1), skewTest[i, :, 0, j]) 
+#                         plt.xlim((0, np.int32(duration/updateTime)))
+#                         plt.xticks(np.arange(0, np.int32(duration/updateTime)+1, 2/updateTime), np.arange(0, np.int32(duration/adjustTime)+1,2/adjustTime))
+#                     # end for 
+#                     plt.xlabel(r'$time (s)$')
+#                     plt.ylabel(r'${\bf \gamma}_{gnn}$')
+#                     plt.title(r'$\bf \gamma_{gnn}$ for ' + str(50)+ ' agents (centralised controller)')
+#                     plt.grid()
+#                     plt.show()    
+#                 # end for
                 
-                offsetTest = offsetTest[:, 350:-1, :, :]
-                skewTest = skewTest[:, 350:-1, :, :]
-                avgOffset = np.mean(offsetTest, axis = 3) # nSamples x tSamples x 1
-                avgSkew = np.mean(skewTest/10, axis= 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
+#                 offsetTest = offsetTest[:, 350:-1, :, :]
+#                 skewTest = skewTest[:, 350:-1, :, :]
+#                 avgOffset = np.mean(offsetTest, axis = 3) # nSamples x tSamples x 1
+#                 avgSkew = np.mean(skewTest/10, axis= 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
                 
-                diffOffset = offsetTest - np.tile(np.expand_dims(avgOffset, 3), (1, 1, 1, nAgents)) # nSamples x tSamples x 1 x nAgents
-                diffSkew = skewTest/10 - np.tile(np.expand_dims(avgSkew, 3), (1, 1, 1, nAgents)) # nSamples x tSamples x 1 x nAgents
+#                 diffOffset = offsetTest - np.tile(np.expand_dims(avgOffset, 3), (1, 1, 1, nAgents)) # nSamples x tSamples x 1 x nAgents
+#                 diffSkew = skewTest/10 - np.tile(np.expand_dims(avgSkew, 3), (1, 1, 1, nAgents)) # nSamples x tSamples x 1 x nAgents
                 
-                diffOffset = np.sum(diffOffset**2, 2) # nSamples x tSamples x nAgents
-                diffSkew = np.sum(diffSkew**2, 2) # nSamples x tSamples x nAgents
+#                 diffOffset = np.sum(diffOffset**2, 2) # nSamples x tSamples x nAgents
+#                 diffSkew = np.sum(diffSkew**2, 2) # nSamples x tSamples x nAgents
                 
-                diffOffsetAvg = np.mean(diffOffset, axis = 2) # nSamples x tSamples
-                diffSkewAvg = np.mean(diffSkew, axis = 2) # nSamples x tSamples
+#                 diffOffsetAvg = np.mean(diffOffset, axis = 2) # nSamples x tSamples
+#                 diffSkewAvg = np.mean(diffSkew, axis = 2) # nSamples x tSamples
                 
-                costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*updateTime # nSamples
+#                 costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*updateTime # nSamples
                 
-                cost = np.mean(costPerSample) # scalar
+#                 cost = np.mean(costPerSample) # scalar
                 
-                print(cost)  
+#                 print(cost)  
                             
-                l = l + 1
+#                 l = l + 1
         
-for i in range(lossTrain.shape[0]):
-    for j in range(lossTrain.shape[1]):
+# for i in range(lossTrain.shape[0]):
+#     for j in range(lossTrain.shape[1]):
         
-        plt.figure()
-        plt.rcParams["figure.figsize"] = (6.4,4.8)            
-        plt.plot(np.reshape(lossTrain[i, j, :, :], (lossTrain.shape[2] * lossTrain.shape[3])))
+#         plt.figure()
+#         plt.rcParams["figure.figsize"] = (6.4,4.8)            
+#         plt.plot(np.reshape(lossTrain[i, j, :, :], (lossTrain.shape[2] * lossTrain.shape[3])))
 
-        plt.figure()
-        plt.rcParams["figure.figsize"] = (6.4,4.8)            
-        plt.plot(np.reshape(accValid[i, j, :, :], (accValid.shape[2] * accValid.shape[3])))   
+#         plt.figure()
+#         plt.rcParams["figure.figsize"] = (6.4,4.8)            
+#         plt.plot(np.reshape(accValid[i, j, :, :], (accValid.shape[2] * accValid.shape[3])))   
