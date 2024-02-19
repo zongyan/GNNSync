@@ -3,6 +3,7 @@ import torch
 import numpy as np
 from numpy.random import default_rng
 import matplotlib.pyplot as plt
+import scipy
 
 import utils.graphTools as graph
 
@@ -558,13 +559,24 @@ class AerialSwarm(_data):
                         isSymmetric = np.allclose(graphMatrixTime,
                                                   np.transpose(graphMatrixTime,
                                                                axes = [0,2,1]))
+                    
+                        adjacencyMatrixTime = graphMatrixTime
+                        degreeMatrixTime = np.sum(graphMatrixTime, axis=2)
                         
+                        laplacianMatrixTime = np.zeros((degreeMatrixTime.shape[0], nAgents, nAgents))
+                        normalisedLaplacianMatrixTime = np.zeros((degreeMatrixTime.shape[0], nAgents, nAgents))
+                        
+                        for i in range(degreeMatrixTime.shape[0]):
+                            laplacianMatrixTime[i, :, :] = np.diag(degreeMatrixTime[i, :]) - adjacencyMatrixTime[i, :, :]  # Non-Normalized laplacian matrix
+    
+                        graphMatrixTime = laplacianMatrixTime
+
                         if isSymmetric:
                             W = np.linalg.eigvalsh(graphMatrixTime)
                         else:
                             W = np.linalg.eigvals(graphMatrixTime)
                         
-                        maxEigenvalue = np.max(np.real(W), axis = 1)
+                        maxEigenvalue = np.max(np.real(W), axis = 1) # Todo: need check axis
                         maxEigenvalue=maxEigenvalue.reshape((batchSize[b],1,1))
 
                         graphMatrixTime = graphMatrixTime / maxEigenvalue
@@ -599,15 +611,27 @@ class AerialSwarm(_data):
                                               np.transpose(graphMatrixBatch,
                                                             axes = [0,1,3,2]))
 
+                    adjacencyMatrixBatch = graphMatrixBatch
+                    degreeMatrixBatch = np.sum(graphMatrixBatch, axis=2)
+                    
+                    laplacianMatrixBatch = np.zeros((degreeMatrixBatch.shape[0], nAgents, nAgents))
+                    normalisedLaplacianMatrixBatch = np.zeros((degreeMatrixBatch.shape[0], nAgents, nAgents))
+                    
+                    for i in range(degreeMatrixBatch.shape[0]):
+                        laplacianMatrixBatch[i, :, :] = np.diag(degreeMatrixBatch[i, :]) - adjacencyMatrixBatch[i, :, :]  # Non-Normalized laplacian matrix
+
+                    graphMatrixBatch = laplacianMatrixTime
+
                     if isSymmetric:
                         W = np.linalg.eigvalsh(graphMatrixBatch)
+                        # WW = np.linalg.eigvalsh(normalisedLaplacianMatrixTime)                        
                     else:
                         W = np.linalg.eigvals(graphMatrixBatch)
-                        
-                    maxEigenvalue = np.max(np.real(W), axis = 2)
+                      
+                    maxEigenvalue = np.max(np.real(W), axis = 2) # Todo: need check axis
                     maxEigenvalue = maxEigenvalue.reshape((batchSize[b],
-                                                           tSamples,
-                                                           1, 1))
+                                                            tSamples,
+                                                            1, 1))
 
                     graphMatrixBatch = graphMatrixBatch / maxEigenvalue
                     
