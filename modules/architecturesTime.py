@@ -9,7 +9,8 @@ class LocalGNN_DB(nn.Module):
                  dimNodeSignals, nFilterTaps, bias,
                  nonlinearity,
                  dimReadout,
-                 dimEdgeFeatures):
+                 dimEdgeFeatures,
+                 heatKernel):
         
         super().__init__() # initialise parent:
 
@@ -24,13 +25,14 @@ class LocalGNN_DB(nn.Module):
         self.dimReadout = dimReadout
         
         self.evalModel = False
+        self.heatKernel = heatKernel
         
         gfl = []
-        gfl.append(gml.GraphFilter_DB(self.F[0], self.F[1], self.K[0], self.E, self.bias))
+        gfl.append(gml.GraphFilter_DB(self.F[0], self.F[1], self.K[0], self.E, self.bias, self.heatKernel))
             
         for l in range(1, self.L):
             # gfl.append(self.sigma())
-            gfl.append(gml.GraphFilter_DB(self.F[l], self.F[l+1], self.K[l], self.E, self.bias))                
+            gfl.append(gml.GraphFilter_DB(self.F[l], self.F[l+1], self.K[l], self.E, self.bias, self.heatKernel))                
 
         self.GFL = nn.Sequential(*gfl) # graph filtering layers
 

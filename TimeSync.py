@@ -3,7 +3,7 @@ get_ipython().magic('clear')
 get_ipython().magic('reset -f')
 
 import time
-time.sleep(10) # wait 10 seconds
+time.sleep(2) # wait 2 seconds
 
 #%%
 import os
@@ -111,11 +111,12 @@ hParamsGNNOne['name'] = 'GNNOne'
 hParamsGNNOne['archit'] = architTime.LocalGNN_DB
 hParamsGNNOne['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
 hParamsGNNOne['dimNodeSignals'] = [2, 16, 2] # features per layer
-hParamsGNNOne['nFilterTaps'] = [2, 2] # number of filter taps
+hParamsGNNOne['nFilterTaps'] = [2, 1] # number of filter taps
 hParamsGNNOne['bias'] = True
 hParamsGNNOne['nonlinearity'] = nonlinearity
 hParamsGNNOne['dimReadout'] = [ ] 
 hParamsGNNOne['dimEdgeFeatures'] = 1 # scalar edge weights
+hParamsGNNOne['heatKernel'] = True
 modelList += [hParamsGNNOne['name']]
 
 hParamsGNNTwo = {}
@@ -128,6 +129,7 @@ hParamsGNNTwo['bias'] = True
 hParamsGNNTwo['nonlinearity'] = nonlinearity
 hParamsGNNTwo['dimReadout'] = [ ] 
 hParamsGNNTwo['dimEdgeFeatures'] = 1 # scalar edge weights
+hParamsGNNTwo['heatKernel'] = False
 modelList += [hParamsGNNTwo['name']]
 
 hParamsGNNThree = {}
@@ -140,6 +142,7 @@ hParamsGNNThree['bias'] = True
 hParamsGNNThree['nonlinearity'] = nonlinearity
 hParamsGNNThree['dimReadout'] = [ ] 
 hParamsGNNThree['dimEdgeFeatures'] = 1 # scalar edge weights
+hParamsGNNThree['heatKernel'] = False
 modelList += [hParamsGNNThree['name']]
 
 trainingOptions = {}

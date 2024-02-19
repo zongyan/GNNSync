@@ -135,6 +135,7 @@ class Trainer:
         historicalSigma = []
         historicalReadout = []
         historicalNumReadoutLayer = []        
+        historicalHeatKernel = []
         
         # store the layer-wise, DAgger, epoch, and batch iteration for each best GNN model
         historicalBestL = []
@@ -409,6 +410,7 @@ class Trainer:
             historicalSigma = np.append(historicalSigma, self.model.archit.sigma)
             historicalReadout = np.append(historicalReadout, self.model.archit.dimReadout)
             historicalNumReadoutLayer = np.append(historicalNumReadoutLayer, len(self.model.archit.dimReadout))
+            historicalHeatKernel = np.append(historicalHeatKernel, self.model.archit.heatKernel)
             
             lastL = self.model.archit.L
             lastF = self.model.archit.F
@@ -417,6 +419,7 @@ class Trainer:
             lastBias = self.model.archit.bias
             lastSigma = self.model.archit.sigma
             lastReadout = self.model.archit.dimReadout
+            lastHeatKernel = self.model.archit.heatKernel
             
             if ("GFL" in layers) and (l < layerWiseTrainL):
                 
@@ -448,14 +451,14 @@ class Trainer:
 
                     else:
 
-                        layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i)], originalArchitF[np.int64(i + 1)], originalArchitK[np.int64(i)], self.model.archit.E, self.model.archit.bias))
+                        layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i)], originalArchitF[np.int64(i + 1)], originalArchitK[np.int64(i)], self.model.archit.E, self.model.archit.bias, self.model.archit.heatKernel))
         
                 # append the layer-wise training layer
-                layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias))
+                layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias, self.model.archit.heatKernel))
                 # layerWiseGFL.append(nn.Tanh())
                  
                 # add the original final output layer
-                layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], originalArchitF[-1], originalArchitK[-1], self.model.archit.E, self.model.archit.bias))
+                layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], originalArchitF[-1], originalArchitK[-1], self.model.archit.E, self.model.archit.bias, self.model.archit.heatKernel))
                 
                 architTime.LocalGNN_DB.gflLayerWiseInit(self.model.archit, layerWiseGFL) # graph filtering layers for layer-wise training            
             
@@ -525,7 +528,7 @@ class Trainer:
             np.savez(saveFile+'.npz', lastL=lastL, lastF=lastF, \
                      lastK=lastK, lastE=lastE, \
                          lastBias=lastBias, lastSigma=lastSigma, \
-                             lastReadout=lastReadout)               
+                             lastReadout=lastReadout, lastHeatKernel=lastHeatKernel)               
                 
             l = l + 1
             
@@ -539,7 +542,7 @@ class Trainer:
                      historicalBias=historicalBias, historicalSigma=historicalSigma, \
                          historicalReadout=historicalReadout, historicalNumReadoutLayer=historicalNumReadoutLayer, \
                              historicalBestL = historicalBestL, historicalBestIteration = historicalBestIteration, \
-                                 historicalBestEpoch = historicalBestEpoch, historicalBestBatch = historicalBestBatch)
+                                 historicalBestEpoch = historicalBestEpoch, historicalBestBatch = historicalBestBatch, historicalHeatKernel = historicalHeatKernel)
 
 #%%
     def configuration(self):        
@@ -651,16 +654,16 @@ class Trainer:
                     else:
 
                         # if (i % 2) == 0:
-                        layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i)], originalArchitF[np.int64((i) + 1)], originalArchitK[np.int64(i)], self.model.archit.E, self.model.archit.bias))
+                        layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i)], originalArchitF[np.int64((i) + 1)], originalArchitK[np.int64(i)], self.model.archit.E, self.model.archit.bias, self.model.archit.heatKernel))
                         # else:
                         #     layerWiseGFL.append(nn.Tanh())
         
                 # append the layer-wise training layer
-                layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias))
+                layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias, self.model.archit.heatKernel))
                 # layerWiseGFL.append(nn.Tanh())
                  
                 # add the original final output layer
-                layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], originalArchitF[-1], originalArchitK[-1], self.model.archit.E, self.model.archit.bias))
+                layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], originalArchitF[-1], originalArchitK[-1], self.model.archit.E, self.model.archit.bias, self.model.archit.heatKernel))
                 
                 architTime.LocalGNN_DB.gflLayerWiseInit(self.model.archit, layerWiseGFL) # graph filtering layers for layer-wise training            
             

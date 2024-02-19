@@ -40,6 +40,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
     historicalBias = trainingFile['historicalBias']
     historicalSigma = trainingFile['historicalSigma']
     historicalReadout = np.int64(trainingFile['historicalReadout'])
+    historicalHeatKernel = np.int64(trainingFile['historicalHeatKernel'])    
     historicalNumReadoutLayer = np.int64(trainingFile['historicalNumReadoutLayer'])
     
     historicalBestL = np.int64(trainingFile['historicalBestL'])
@@ -72,6 +73,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         trainedModelBias = historicalBias[l]
         trainedModelSigma = historicalSigma[l]        
         trainedModelNumReadoutLayer = historicalNumReadoutLayer[l]
+        trainedModelHeatKernel = historicalHeatKernel[l]        
         trainedModelReadout = historicalReadout[sumNumReadoutLayer:sumNumReadoutLayer+trainedModelNumReadoutLayer]
         
         sumNumLayerF = sumNumLayerF + trainedModelL + 1
@@ -79,11 +81,11 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         sumNumReadoutLayer = sumNumReadoutLayer + trainedModelNumReadoutLayer
         
         evaluationGFL = []
-        evaluationGFL.append(gml.GraphFilter_DB(trainedModelF[0], trainedModelF[1], trainedModelK[0], trainedModelE, trainedModelBias))        
+        evaluationGFL.append(gml.GraphFilter_DB(trainedModelF[0], trainedModelF[1], trainedModelK[0], trainedModelE, trainedModelBias, trainedModelHeatKernel))        
 
         for i in range(1, trainedModelL):
             # evaluationGFL.append(trainedModelSigma())
-            evaluationGFL.append(gml.GraphFilter_DB(trainedModelF[i], trainedModelF[i+1], trainedModelK[i], trainedModelE, trainedModelBias))                
+            evaluationGFL.append(gml.GraphFilter_DB(trainedModelF[i], trainedModelF[i+1], trainedModelK[i], trainedModelE, trainedModelBias, trainedModelHeatKernel))                
 
         model.archit.GFL = nn.Sequential(*evaluationGFL) # graph filtering layers
         
@@ -104,6 +106,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         model.archit.bias = trainedModelBias
         model.archit.sigma = trainedModelSigma
         model.archit.dimReadout = trainedModelReadout
+        model.archit.heatKernel = trainedModelHeatKernel        
         
         model.optim = optim.Adam(model.archit.parameters(),
                                 lr = learningRate,

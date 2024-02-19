@@ -7,7 +7,7 @@ infiniteNumber = 1e12 # infinity not less than this number
 
 # WARNING: Only scalar bias.
 
-def LSIGF_DB(h, S, x, b=None):    
+def LSIGF_DB(h, S, x, b=None, heatKernel=False):    
     # input: ###
     # h: F x E x K x G
     # S: B x T x E x N x N
@@ -36,16 +36,18 @@ def LSIGF_DB(h, S, x, b=None):
         
     x = x.reshape([B, T, 1, G, N]).repeat(1, 1, E, 1, 1)
     z = x.reshape([B, T, 1, E, G, N]) # k=0, k is counted in dim = 2
-
-    # heatKernel = torch.exp(-S) # convert the normalised laplacian matrix for using heat kernel
-    heatKernel = S
+    
+    if heatKernel:
+        heatKernelOperation = torch.exp(-S) # convert the normalised laplacian matrix for using heat kernel
+    else:
+        heatKernelOperation = S
     
     for k in range(1,K):
         x, _ = torch.split(x, [T-1, 1], dim = 1)        
         zeroRow = torch.zeros(B, 1, E, G, N, dtype=x.dtype, device=x.device)
         x = torch.cat((zeroRow, x), dim = 1)        
 
-        aggregatedX = torch.matmul(x, heatKernel)
+        aggregatedX = torch.matmul(x, heatKernelOperation)
         xS = aggregatedX.reshape(B, T, 1, E, G, N)
 
         z = torch.cat((z, xS), dim = 2) # B x T x K x E x G x N
@@ -65,7 +67,7 @@ def LSIGF_DB(h, S, x, b=None):
     return y
     
 class GraphFilter_DB(nn.Module):
-    def __init__(self, G, F, K, E = 1, bias = True):
+    def __init__(self, G, F, K, E = 1, bias = True, heatKernel=False):
         # K: number of filter taps
         # GSOs will be added later.
         # This combines both weight scalars and weight vectors.
@@ -78,6 +80,7 @@ class GraphFilter_DB(nn.Module):
         self.K = K
         self.E = E
         self.S = None # No GSO assigned yet
+        self.heatKernel = heatKernel
 
         self.weight = nn.parameter.Parameter(torch.Tensor(F, E, K, G))
         if bias:
@@ -116,7 +119,7 @@ class GraphFilter_DB(nn.Module):
         F = x.shape[2]
         assert x.shape[3] == self.N
 
-        u = LSIGF_DB(self.weight, self.S, x, self.bias)
+        u = LSIGF_DB(self.weight, self.S, x, self.bias, self.heatKernel)
         
         return u
 

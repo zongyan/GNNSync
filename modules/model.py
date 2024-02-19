@@ -34,6 +34,7 @@ class Model:
         self.config = [copy.deepcopy([copy.deepcopy(trainer) for k in range(len(nDAggersValues))]) for j in range(len(layerWise))]                    
 
         self.evalModel = False
+        self.heatKenel = False        
         
         self.evaluator = evaluator
         self.device = device
