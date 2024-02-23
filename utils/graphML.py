@@ -38,7 +38,7 @@ def LSIGF_DB(h, S, x, b=None, heatKernel=False):
     z = x.reshape([B, T, 1, E, G, N]) # k=0, k is counted in dim = 2
     
     if heatKernel:
-        heatKernelOperation = torch.exp(-S) # convert the normalised laplacian matrix for using heat kernel
+        heatKernelOperation = torch.exp(-1 * S) # convert the normalised laplacian matrix for using heat kernel
     else:
         heatKernelOperation = S
     
