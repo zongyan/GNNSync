@@ -564,7 +564,6 @@ class AerialSwarm(_data):
                         degreeMatrixTime = np.sum(graphMatrixTime, axis=2)
                         
                         laplacianMatrixTime = np.zeros((degreeMatrixTime.shape[0], nAgents, nAgents))
-                        normalisedLaplacianMatrixTime = np.zeros((degreeMatrixTime.shape[0], nAgents, nAgents))
                         
                         for i in range(degreeMatrixTime.shape[0]):
                             laplacianMatrixTime[i, :, :] = np.diag(degreeMatrixTime[i, :]) - adjacencyMatrixTime[i, :, :]  # Non-Normalized laplacian matrix
@@ -612,15 +611,15 @@ class AerialSwarm(_data):
                                                             axes = [0,1,3,2]))
 
                     adjacencyMatrixBatch = graphMatrixBatch
-                    degreeMatrixBatch = np.sum(graphMatrixBatch, axis=2)
+                    degreeMatrixBatch = np.sum(graphMatrixBatch, axis=3)
                     
-                    laplacianMatrixBatch = np.zeros((degreeMatrixBatch.shape[0], nAgents, nAgents))
-                    normalisedLaplacianMatrixBatch = np.zeros((degreeMatrixBatch.shape[0], nAgents, nAgents))
+                    laplacianMatrixBatch = np.zeros((degreeMatrixBatch.shape[0], degreeMatrixBatch.shape[1], nAgents, nAgents))
                     
                     for i in range(degreeMatrixBatch.shape[0]):
-                        laplacianMatrixBatch[i, :, :] = np.diag(degreeMatrixBatch[i, :]) - adjacencyMatrixBatch[i, :, :]  # Non-Normalized laplacian matrix
+                        for j in range(degreeMatrixBatch.shape[0]):
+                            laplacianMatrixBatch[i, j, :, :] = np.diag(degreeMatrixBatch[i, j, :]) - adjacencyMatrixBatch[i, j, :, :]  # Non-Normalized laplacian matrix
 
-                    graphMatrixBatch = laplacianMatrixTime
+                    graphMatrixBatch = laplacianMatrixBatch
 
                     if isSymmetric:
                         W = np.linalg.eigvalsh(graphMatrixBatch)
