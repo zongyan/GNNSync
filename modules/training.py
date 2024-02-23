@@ -634,7 +634,7 @@ class Trainer:
                 originalArchitL = self.model.archit.L
                 
                 self.model.archit.F = np.append(np.append(self.model.archit.F[0:-1], layerWiseTrainF[l]), self.model.archit.F[-1])
-                self.model.archit.K = np.append(self.model.archit.K, layerWiseTrainK[l])
+                self.model.archit.K = np.append(np.append(self.model.archit.K[0:-1], layerWiseTrainK[l]), self.model.archit.K[-1])
                 self.model.archit.L = len(self.model.archit.K)
                 
                 layerWiseGFL = [] 
