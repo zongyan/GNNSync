@@ -221,8 +221,7 @@ class AerialSwarm(_data):
                 initOffsetAll = initValuesFile['initOffsetAll']
                 initSkewAll = initValuesFile['initSkewAll']
             else:
-                savedFileFolderName = os.path.join('experiments', 'test2')                
-                initValuesFile = np.load(os.path.join(savedFileFolderName, 'flockingGNN') + 'initTestValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
+                initValuesFile = np.load(os.path.join('experiments', 'flockingGNN') + 'initTestValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
                 
                 initPosAll = initValuesFile['initPosAll']
                 initVelAll = initValuesFile['initVelAll']
