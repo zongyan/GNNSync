@@ -35,6 +35,7 @@ class Model:
 
         self.evalModel = False
         self.heatKenel = False        
+        self.useNonlinearity = False
         
         self.evaluator = evaluator
         self.device = device
@@ -44,39 +45,41 @@ class Model:
     def train(self, data, nEpochs, batchSize, \
               nDAggers, expertProb, aggregationSize, \
                   paramsLayerWiseTrain, layerWiseTraining, \
-                      lossFunction, learningRate, beta1, beta2, **kwargs):
+                      lossFunction, learningRate, beta1, beta2, useNonlinearity, **kwargs):
         
         self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)] = \
             self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)]\
                 (self, data, nEpochs, batchSize, \
                  nDAggers, expertProb, aggregationSize, \
                      paramsLayerWiseTrain, layerWiseTraining, \
-                         lossFunction, learningRate, beta1, beta2, **kwargs)        
+                         lossFunction, learningRate, beta1, beta2, useNonlinearity, **kwargs)        
 
         return self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)].train()
 
     def configure(self, data, nEpochs, batchSize, \
               nDAggers, expertProb, aggregationSize, \
                   paramsLayerWiseTrain, layerWiseTraining, \
-                      lossFunction, learningRate, beta1, beta2, evalModel, **kwargs):
+                      lossFunction, learningRate, beta1, beta2, evalModel, useNonlinearity, **kwargs):
         
         self.evalModel = evalModel
-        self.archit.evalModel = evalModel
+        # self.archit.evalModel = evalModel        
+        self.useNonlinearity = useNonlinearity
+        # self.archit.useNonlinearity = useNonlinearity
         
         self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)] = \
             self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)]\
                 (self, data, nEpochs, batchSize, \
                  nDAggers, expertProb, aggregationSize, \
                      paramsLayerWiseTrain, layerWiseTraining, \
-                         lossFunction, learningRate, beta1, beta2, **kwargs)
+                         lossFunction, learningRate, beta1, beta2, useNonlinearity, **kwargs)
 
         return self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)].configuration()    
     
     def evaluate(self, data, nDAggers, layerWiseTraining, **kwargs):        
         if (self.evalModel == False): 
-            return self.evaluator(self, self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)], data, self.evalModel, **kwargs)
+            return self.evaluator(self, self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)], data, self.evalModel, self.useNonlinearity, **kwargs)
         else:
-            return self.evaluator(self, self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)], data, self.evalModel, **kwargs)    
+            return self.evaluator(self, self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)], data, self.evalModel, self.useNonlinearity, **kwargs)    
     
     def save(self, layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = '', **kwargs):        
         

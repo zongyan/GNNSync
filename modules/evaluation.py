@@ -5,7 +5,7 @@ import torch.optim as optim
 
 import utils.graphML as gml
 
-def evaluate(model, trainer, data, evalModel, **kwargs):
+def evaluate(model, trainer, data, evalModel, useNonlinearity, **kwargs):
     initPosTest = data.getData('initOffset', 'test')
     initVelTest = data.getData('initSkew', 'test')
     graphTest = data.getData('commGraph','test')   
@@ -84,7 +84,8 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         evaluationGFL.append(gml.GraphFilter_DB(trainedModelF[0], trainedModelF[1], trainedModelK[0], trainedModelE, trainedModelBias, trainedModelHeatKernel))        
 
         for i in range(1, trainedModelL):
-            # evaluationGFL.append(trainedModelSigma())
+            if useNonlinearity == True:
+                evaluationGFL.append(trainedModelSigma())
             evaluationGFL.append(gml.GraphFilter_DB(trainedModelF[i], trainedModelF[i+1], trainedModelK[i], trainedModelE, trainedModelBias, trainedModelHeatKernel))                
 
         model.archit.GFL = nn.Sequential(*evaluationGFL) # graph filtering layers
@@ -94,7 +95,8 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
             evaluationFC.append(trainedModelSigma())            
             evaluationFC.append(nn.Linear(trainedModelF[-1], trainedModelReadout[0], bias = trainedModelBias))
             for i in range(trainedModelNumReadoutLayer-1):
-                # evaluationFC.append(trainedModelSigma())
+                if useNonlinearity == True:
+                    evaluationFC.append(trainedModelSigma())
                 evaluationFC.append(nn.Linear(trainedModelReadout[i], trainedModelReadout[i+1], bias = trainedModelBias))
 
             model.archit.Readout = nn.Sequential(*evaluationFC) # readout layers        
