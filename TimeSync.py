@@ -76,6 +76,7 @@ initMinDist = 0.1 # initial minimum distance between any two UAVs
 accelMax = 10. # maximum acceleration value
 normalizeGraph = True # normalise wireless communication graph
 useLaplacianMatrix = False # true - using Laplacian Matrix, false - using Adjacency Matrix
+useNonlinearity = False
 
 optimAlg = 'ADAM' 
 learningRate = 0.0005
@@ -117,6 +118,7 @@ hParamsGNNOne['bias'] = True
 hParamsGNNOne['nonlinearity'] = nonlinearity
 hParamsGNNOne['dimReadout'] = [ ] 
 hParamsGNNOne['dimEdgeFeatures'] = 1 # scalar edge weights
+hParamsGNNOne['useNonlinearity'] = useNonlinearity
 hParamsGNNOne['heatKernel'] = True
 modelList += [hParamsGNNOne['name']]
 
@@ -130,6 +132,7 @@ hParamsGNNTwo['bias'] = True
 hParamsGNNTwo['nonlinearity'] = nonlinearity
 hParamsGNNTwo['dimReadout'] = [ ] 
 hParamsGNNTwo['dimEdgeFeatures'] = 1 # scalar edge weights
+hParamsGNNTwo['useNonlinearity'] = useNonlinearity
 hParamsGNNTwo['heatKernel'] = True
 modelList += [hParamsGNNTwo['name']]
 
@@ -143,6 +146,7 @@ hParamsGNNThree['bias'] = True
 hParamsGNNThree['nonlinearity'] = nonlinearity
 hParamsGNNThree['dimReadout'] = [ ] 
 hParamsGNNThree['dimEdgeFeatures'] = 1 # scalar edge weights
+hParamsGNNThree['useNonlinearity'] = useNonlinearity
 hParamsGNNThree['heatKernel'] = True
 modelList += [hParamsGNNThree['name']]
 
@@ -156,6 +160,7 @@ hParamsGNNFour['bias'] = True
 hParamsGNNFour['nonlinearity'] = nonlinearity
 hParamsGNNFour['dimReadout'] = [ ] 
 hParamsGNNFour['dimEdgeFeatures'] = 1 # scalar edge weights
+hParamsGNNFour['useNonlinearity'] = useNonlinearity
 hParamsGNNFour['heatKernel'] = False
 modelList += [hParamsGNNFour['name']]
 
@@ -169,6 +174,7 @@ hParamsGNNFive['bias'] = True
 hParamsGNNFive['nonlinearity'] = nonlinearity
 hParamsGNNFive['dimReadout'] = [ ] 
 hParamsGNNFive['dimEdgeFeatures'] = 1 # scalar edge weights
+hParamsGNNFive['useNonlinearity'] = useNonlinearity
 hParamsGNNFive['heatKernel'] = False
 modelList += [hParamsGNNFive['name']]
 
@@ -182,6 +188,7 @@ hParamsGNNSix['bias'] = True
 hParamsGNNSix['nonlinearity'] = nonlinearity
 hParamsGNNSix['dimReadout'] = [ ] 
 hParamsGNNSix['dimEdgeFeatures'] = 1 # scalar edge weights
+hParamsGNNSix['useNonlinearity'] = useNonlinearity
 hParamsGNNSix['heatKernel'] = False
 modelList += [hParamsGNNSix['name']]
 
@@ -192,8 +199,8 @@ trainingOptions['validationInterval'] = validationInterval
 '''ONLY for hidden layer parameters [at the layer-wise training] '''
 paramsLayerWiseTrainGNNOne = {}
 paramsLayerWiseTrainGNNOne['name'] = 'GNNOne'
-paramsLayerWiseTrainGNNOne['dimNodeSignals'] = [16, 16] # features per hidden layer
-paramsLayerWiseTrainGNNOne['nFilterTaps'] = [2, 2] # number of filter taps for each hidden layer
+paramsLayerWiseTrainGNNOne['dimNodeSignals'] = [16] # features per hidden layer
+paramsLayerWiseTrainGNNOne['nFilterTaps'] = [2] # number of filter taps for each hidden layer
 paramsLayerWiseTrainGNNOne['bias'] = True
 paramsLayerWiseTrainGNNOne['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
 paramsLayerWiseTrainGNNOne['dimReadout'] = [ ]
@@ -324,7 +331,7 @@ for thisModel in modelsGNN.keys():
             thisTrainVars = modelsGNN[thisModel].train(data, nEpochs, batchSize, \
                                                         nDAggersVal, expertProb, aggregationSize, \
                                                             paramsLayerWiseTrain, val, \
-                                                                lossFunction, learningRate, beta1, beta2, **trainingOptions)
+                                                                lossFunction, learningRate, beta1, beta2, useNonlinearity, **trainingOptions)
 
             trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel] = copy.deepcopy(modelsGNN[thisModel])
 
