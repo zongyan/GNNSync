@@ -118,6 +118,7 @@ class AerialSwarm(_data):
     def __init__(self, nAgents, commRadius, repelDist,
                  nTrain, nDAgger, nValid, nTest,
                  duration, updateTime, adjustTime,
+                 useLaplacianMatrix,
                  initVelValue=3.,initMinDist=0.1,
                  accelMax=10., savingSeeds=True, 
                  initOffsetValue=1., initSkewValue=0.,
@@ -175,6 +176,8 @@ class AerialSwarm(_data):
         self.commGraph = None
         self.state = None
         
+        self.useLaplacianMatrix = useLaplacianMatrix
+        
         if savingSeeds:
             if self.doPrint:
                 print("\tComputing initial conditions...", end = ' ', flush = True)
@@ -183,7 +186,7 @@ class AerialSwarm(_data):
                 initPosAll, initVelAll, \
                     initOffsetAll, initSkewAll = self.computeInitialConditions(
                                                   self.nAgents, nSamples, 
-                                                  self.commRadius, self.initMinDist,                                                                                           
+                                                  self.commRadius, self.useLaplacianMatrix, self.initMinDist,                                                                                           
                                                   self.initOffsetValue, self.initSkewValue,
                                                   self.meanOffsetValue, self.stdOffsetValue,
                                                   self.meanSkewValue, self.stdSkewValue,
@@ -197,7 +200,7 @@ class AerialSwarm(_data):
                 initPosAll, initVelAll, \
                     initOffsetAll, initSkewAll = self.computeInitialConditions(
                                                   self.nAgents, nSamples, 
-                                                  self.commRadius, self.initMinDist,                                                                                           
+                                                  self.commRadius, self.useLaplacianMatrix, self.initMinDist,                                                                                           
                                                   self.initOffsetValue, self.initSkewValue,
                                                   self.meanOffsetValue, self.stdOffsetValue,
                                                   self.meanSkewValue, self.stdSkewValue,
@@ -269,7 +272,7 @@ class AerialSwarm(_data):
                   end=' ', flush=True)
         
         commGraphAll = self.computeCommunicationGraph(posAll, self.commRadius,
-                                                      self.normalizeGraph)
+                                                      self.normalizeGraph, useLaplacianMatrix)
         
         self.commGraph = {}
         
@@ -493,7 +496,7 @@ class AerialSwarm(_data):
         
         return state
         
-    def computeCommunicationGraph(self, pos, commRadius, normalizeGraph,
+    def computeCommunicationGraph(self, pos, commRadius, normalizeGraph, useLaplacianMatrix,
                                   **kwargs):
         # input: ###
         # pos: nSamples x tSamples x 2 x nAgents
@@ -566,8 +569,9 @@ class AerialSwarm(_data):
                         
                         for i in range(degreeMatrixTime.shape[0]):
                             laplacianMatrixTime[i, :, :] = np.diag(degreeMatrixTime[i, :]) - adjacencyMatrixTime[i, :, :]  # Non-Normalized laplacian matrix
-    
-                        graphMatrixTime = laplacianMatrixTime
+                        
+                        if useLaplacianMatrix == True:
+                            graphMatrixTime = laplacianMatrixTime
 
                         if isSymmetric:
                             W = np.linalg.eigvalsh(graphMatrixTime)
@@ -618,7 +622,8 @@ class AerialSwarm(_data):
                         for j in range(degreeMatrixBatch.shape[0]):
                             laplacianMatrixBatch[i, j, :, :] = np.diag(degreeMatrixBatch[i, j, :]) - adjacencyMatrixBatch[i, j, :, :]  # Non-Normalized laplacian matrix
 
-                    graphMatrixBatch = laplacianMatrixBatch
+                    if useLaplacianMatrix == True:
+                        graphMatrixBatch = laplacianMatrixBatch
 
                     if isSymmetric:
                         W = np.linalg.eigvalsh(graphMatrixBatch)
@@ -1360,7 +1365,7 @@ class AerialSwarm(_data):
                 
         return clkNoise, measurementNoise, processingNoise
     
-    def computeInitialConditions(self, nAgents, nSamples, commRadius, minDist=0.1,
+    def computeInitialConditions(self, nAgents, nSamples, commRadius, useLaplacianMatrix, minDist=0.1,
                                 initOffsetVal=1., initSkewVal=2.5,
                                 meanOffset=0.0, stdOffset=0.5, meanSkew=0.0, stdSkew=2.5,
                                 **kwargs):             
@@ -1432,6 +1437,7 @@ class AerialSwarm(_data):
         graphMatrix = self.computeCommunicationGraph(np.expand_dims(initPos,1),
                                                      self.commRadius,
                                                      False,
+                                                     useLaplacianMatrix,
                                                      doPrint = False)
         graphMatrix = graphMatrix.squeeze(1) # nSamples x nAgents x nAgents  
         

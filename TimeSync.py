@@ -75,6 +75,7 @@ initVelValue = 3. # initial velocities: [-initVelValue, initVelValue]
 initMinDist = 0.1 # initial minimum distance between any two UAVs
 accelMax = 10. # maximum acceleration value
 normalizeGraph = True # normalise wireless communication graph
+useLaplacianMatrix = False # true - using Laplacian Matrix, false - using Adjacency Matrix
 
 optimAlg = 'ADAM' 
 learningRate = 0.0005
@@ -259,6 +260,7 @@ print("...", flush = True)
 data = dataTools.AerialSwarm(nAgents, commRadius,repelDist,
             nTrain, nDAgger, nValid, 1, # no care about testing, re-generating the dataset for testing
             duration, updateTime, adjustTime, 
+            useLaplacianMatrix,
             initVelValue, initMinDist, accelMax, savingSeeds)
 
 print("Preview data", end = '')
@@ -330,6 +332,7 @@ for thisModel in modelsGNN.keys():
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
                 1, 1, 1, nTest, # no care about training nor validation
                 duration, updateTime, adjustTime,
+                useLaplacianMatrix,
                 initVelValue, initMinDist, accelMax, savingSeeds)
 
 offsetTest = dataTest.getData('offset', 'test')
