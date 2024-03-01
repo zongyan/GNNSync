@@ -123,7 +123,12 @@ class Trainer:
         in graph filter layers will raise bugs, (see the first 'append the 
         layer-wise training layer' thisArchit.F[-2] part)
         """
-        assert len(self.model.archit.K) >= 2
+        """
+        The main purpose of this branch is used to evalue each gnn model, not 
+        to find the best architecture for each model, no need to have the following 
+        assert
+        """
+        # assert len(self.model.archit.K) >= 2
         
         maximumLayerWiseNum = max(np.array((layerWiseTrainL, len(layerWiseTraindimReadout))))
 
