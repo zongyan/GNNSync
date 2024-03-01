@@ -47,6 +47,8 @@ class Model:
                   paramsLayerWiseTrain, layerWiseTraining, \
                       lossFunction, learningRate, beta1, beta2, useNonlinearity, **kwargs):
         
+        self.useNonlinearity = useNonlinearity
+        
         self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)] = \
             self.trainer[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)]\
                 (self, data, nEpochs, batchSize, \

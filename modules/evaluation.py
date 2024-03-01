@@ -92,7 +92,8 @@ def evaluate(model, trainer, data, evalModel, useNonlinearity, **kwargs):
         
         evaluationFC = []
         if len(trainedModelReadout) > 0:
-            evaluationFC.append(trainedModelSigma())            
+            if useNonlinearity == True:
+                evaluationFC.append(trainedModelSigma())            
             evaluationFC.append(nn.Linear(trainedModelF[-1], trainedModelReadout[0], bias = trainedModelBias))
             for i in range(trainedModelNumReadoutLayer-1):
                 if useNonlinearity == True:
