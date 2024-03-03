@@ -75,7 +75,7 @@ initVelValue = 3. # initial velocities: [-initVelValue, initVelValue]
 initMinDist = 0.1 # initial minimum distance between any two UAVs
 accelMax = 10. # maximum acceleration value
 normalizeGraph = True # normalise wireless communication graph
-useLaplacianMatrix = True # true - using Laplacian Matrix, false - using Adjacency Matrix
+useLaplacianMatrix = False # true - using Laplacian Matrix, false - using Adjacency Matrix
 
 optimAlg = 'ADAM' 
 learningRate = 0.0005
