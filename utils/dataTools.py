@@ -4,6 +4,7 @@ import numpy as np
 from numpy.random import default_rng
 import matplotlib.pyplot as plt
 import scipy
+from collections import Counter
 
 import utils.graphTools as graph
 
@@ -537,6 +538,7 @@ class AerialSwarm(_data):
         batchIndex = [0] + batchIndex
         
         graphMatrix = np.zeros((nSamples, tSamples, nAgents, nAgents))
+        distanceSquare = np.zeros((nSamples, tSamples, nAgents, nAgents))
         
         for b in range(nBatches):
             posBatch = pos[batchIndex[b]:batchIndex[b+1]]
@@ -579,8 +581,8 @@ class AerialSwarm(_data):
 
                         graphMatrixTime = graphMatrixTime / maxEigenvalue
                         
-                    graphMatrix[batchIndex[b]:batchIndex[b+1],t,:,:] = \
-                                                                graphMatrixTime
+                    graphMatrix[batchIndex[b]:batchIndex[b+1],t,:,:] = graphMatrixTime
+                    distanceSquare[batchIndex[b]:batchIndex[b+1],t,:,:] = distSq
                     
                     if doPrint:
                         percentageCount = int(100*(t+1+b*tSamples)\
@@ -634,6 +636,7 @@ class AerialSwarm(_data):
                     graphMatrixBatch = graphMatrixBatch / maxEigenvalue
                     
                 graphMatrix[batchIndex[b]:batchIndex[b+1]] = graphMatrixBatch
+                distanceSquare[batchIndex[b]:batchIndex[b+1]] = distSq
                 
                 if doPrint:
                     percentageCount = int(100*(b+1)/nBatches)
@@ -647,6 +650,82 @@ class AerialSwarm(_data):
                     
         if doPrint:
             print('\b \b' * 4, end = '', flush = True)        
+        
+        maximumDistanceSquare = np.max(distanceSquare, axis=3)
+        maxDistanceSquare = np.max(maximumDistanceSquare, axis=2)
+        maxDistSquare = np.max(maxDistanceSquare, axis=1)        
+        maxDist = np.sqrt(maxDistSquare)
+
+        thisMaxDist = Counter(list(np.rint(maxDist)))
+        sortedRadius = sorted(thisMaxDist.items(), key=lambda x:x[1])          
+
+        radiusRange = np.arange(start=1, stop=sortedRadius[0][0]+0.5, step=0.5)
+        attackRadius = np.zeros((pos.shape[0], radiusRange.shape[0], pos.shape[1], pos.shape[3]))
+
+        for index in range(len(radiusRange)):
+            thisAttackRadius = np.reshape(np.repeat(radiusRange[index], pos.shape[0] * pos.shape[1] * pos.shape[3]), (pos.shape[0], pos.shape[1], pos.shape[3]))            
+            attackRadius[:, index, :, :] = thisAttackRadius
+
+        meanCenter = np.zeros((pos.shape[0], pos.shape[1], pos.shape[2]))
+
+        for i in range(pos.shape[1]):            
+            meanCenter[:, i, :] = np.mean(pos[:, i, :, :], axis=2)
+            
+        attackCenter = np.repeat(meanCenter.reshape((pos.shape[0], pos.shape[1], pos.shape[2], 1)), pos.shape[3], axis=3)            
+
+        attackNodesIndex = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0], pos.shape[3]))
+        
+        distanceAttacker = (pos - attackCenter)**2        
+        for index in range(len(radiusRange)):
+            thisIsAttack = distanceAttacker[:, :, 0, :] + distanceAttacker[:, :, 1, :] <= attackRadius[:, index, :, :] ** 2        
+            thisNumAttackedNodes = np.sum(thisIsAttack, axis=2)    
+
+            thisAttackNodesIndex = np.zeros((pos.shape[0], pos.shape[1], pos.shape[3]), dtype=np.int8)
+        
+            for i in range(thisIsAttack.shape[0]):
+                for j in range(thisIsAttack.shape[1]):
+                    thisAttackNodesIndex[i, j, 0:thisNumAttackedNodes[i,j]] = np.array([index for index, element in enumerate(thisIsAttack[i, j,:].tolist()) if element == True])                        
+            
+            attackNodesIndex[:, :, index, :] = thisAttackNodesIndex
+            
+        
+##################################
+
+        # attackRadius = 1
+    
+        # # (x - a)**2 + (y - b)**2 <= attackRadius**2
+        
+        # pos.shape
+
+        # randomCenter = np.array([2, 3])        
+        # xx = np.tile(randomCenter, (2, 3))
+        # yy = xx.reshape((2,3,2))
+        # zz = np.repeat(xx.reshape((2,3,2,1)), 5, axis=3)
+        # zz[1,3,:,3]
+        
+        
+        # ####
+        # randomCenter = np.array([2, 3])        
+        # randomCenter = np.tile(randomCenter, (pos.shape[0], pos.shape[1]))
+        # attackCenter = np.repeat(randomCenter.reshape((pos.shape[0], pos.shape[1], pos.shape[2], 1)), pos.shape[3], axis=3)
+        
+        # randomRadius = np.array((1))
+        # attackRadius = np.reshape(np.repeat(randomRadius, pos.shape[0] * pos.shape[1] * pos.shape[3]), (pos.shape[0], pos.shape[1], pos.shape[3]))
+        
+        # distanceAttacker = (pos - attackCenter)**2        
+        # isAttack = distanceAttacker[:, :, 0, :] + distanceAttacker[:, :, 1, :] <= attackRadius ** 2        
+        # numAttackedNodes = np.sum(isAttack, axis=2)
+        
+        # attackNodesIndex = np.zeros((pos.shape[0], pos.shape[1], pos.shape[3]), dtype=np.int8)
+        
+        # for i in range(isAttack.shape[0]):
+        #     for j in range(isAttack.shape[1]):
+        #         attackNodesIndex[i, j, 0:numAttackedNodes[i,j]] = np.array([index for index, element in enumerate(isAttack[i, j,:].tolist()) if element == True])                        
+
+
+
+        # pos.shape
+        # (23, 1000, 2, 50)
         
         return graphMatrix
     
