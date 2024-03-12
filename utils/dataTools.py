@@ -657,7 +657,7 @@ class AerialSwarm(_data):
         maxDist = np.sqrt(maxDistSquare)
 
         thisMaxDist = Counter(list(np.rint(maxDist)))
-        sortedRadius = sorted(thisMaxDist.items(), key=lambda x:x[1])          
+        sortedRadius = sorted(thisMaxDist.items(), reverse=True)          
 
         radiusRange = np.arange(start=1, stop=sortedRadius[0][0]+0.5, step=0.5)
         attackRadius = np.zeros((pos.shape[0], radiusRange.shape[0], pos.shape[1], pos.shape[3]))
@@ -688,45 +688,6 @@ class AerialSwarm(_data):
             
             attackNodesIndex[:, :, index, :] = thisAttackNodesIndex
             
-        
-##################################
-
-        # attackRadius = 1
-    
-        # # (x - a)**2 + (y - b)**2 <= attackRadius**2
-        
-        # pos.shape
-
-        # randomCenter = np.array([2, 3])        
-        # xx = np.tile(randomCenter, (2, 3))
-        # yy = xx.reshape((2,3,2))
-        # zz = np.repeat(xx.reshape((2,3,2,1)), 5, axis=3)
-        # zz[1,3,:,3]
-        
-        
-        # ####
-        # randomCenter = np.array([2, 3])        
-        # randomCenter = np.tile(randomCenter, (pos.shape[0], pos.shape[1]))
-        # attackCenter = np.repeat(randomCenter.reshape((pos.shape[0], pos.shape[1], pos.shape[2], 1)), pos.shape[3], axis=3)
-        
-        # randomRadius = np.array((1))
-        # attackRadius = np.reshape(np.repeat(randomRadius, pos.shape[0] * pos.shape[1] * pos.shape[3]), (pos.shape[0], pos.shape[1], pos.shape[3]))
-        
-        # distanceAttacker = (pos - attackCenter)**2        
-        # isAttack = distanceAttacker[:, :, 0, :] + distanceAttacker[:, :, 1, :] <= attackRadius ** 2        
-        # numAttackedNodes = np.sum(isAttack, axis=2)
-        
-        # attackNodesIndex = np.zeros((pos.shape[0], pos.shape[1], pos.shape[3]), dtype=np.int8)
-        
-        # for i in range(isAttack.shape[0]):
-        #     for j in range(isAttack.shape[1]):
-        #         attackNodesIndex[i, j, 0:numAttackedNodes[i,j]] = np.array([index for index, element in enumerate(isAttack[i, j,:].tolist()) if element == True])                        
-
-
-
-        # pos.shape
-        # (23, 1000, 2, 50)
-        
         return graphMatrix
     
     def getData(self, name, samplesType, *args):
