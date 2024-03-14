@@ -27,7 +27,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
             # print("\t attacking radius: %.1f... " %(attackRadiusTest[i,i,i,i]), flush = True)            
             for t in range(attackRadiusTest.shape[1]):        
                 thisAttackNodes = np.int64(attackNodesIndexTest[instant,t,i,0:np.int64(numAttackedNodesTest[instant,t,i])])                
-                attackGraphTest[instant, t, i, thisAttackNodes, :] = np.zeros((50)) # we remove communication link due to attacks
+                attackGraphTest[instant, t, i, thisAttackNodes, :] = np.zeros((np.int64(numAttackedNodesTest[instant,t,i]), 50)) # we remove communication link due to attacks
     
     paramsLayerWiseTrain = trainer.trainingOptions['paramsLayerWiseTrain']
     layerWiseTraining = trainer.trainingOptions['layerWiseTraining']
@@ -179,8 +179,21 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                                        attackGraphTest[:, :, i, :, :], data.duration,
                                        archit = model.archit)    
             
-            attackOffset = attackOffsetTestBest[:, :, :, :]
-            attackSkew = attackSkewTestBest[:, :, :, :]
+            attackOffset = np.zeros((attackOffsetTestBest.shape))
+            attackSkew = np.zeros((attackSkewTestBest.shape))            
+            
+            for instant in range(attackRadiusTest.shape[0]):
+                for t in range(attackRadiusTest.shape[1]):        
+                    thisAttackNodes = np.int64(attackNodesIndexTest[instant,t,i,0:np.int64(numAttackedNodesTest[instant,t,i])])                
+                
+                    thisAttackOffsetTestBest = copy.deepcopy(attackOffsetTestBest[instant, t, :, :])
+                    thisAttackOffsetTestBest[:, thisAttackNodes] = np.zeros((attackOffsetTestBest.shape[2], np.int64(numAttackedNodesTest[instant,t,i])))
+                    attackOffset[instant, t, :, :] = thisAttackOffsetTestBest
+                    
+                    thisAttackSkewTestBest = copy.deepcopy(attackSkewTestBest[instant, t, :, :])
+                    thisAttackSkewTestBest[:, thisAttackNodes] = np.zeros((attackSkewTestBest.shape[2], np.int64(numAttackedNodesTest[instant,t,i])))                
+                    attackSkew[instant, t, :, :] = thisAttackSkewTestBest
+
             attackAvgOffset = np.mean(attackOffset, axis = 3) # nSamples x tSamples x 1
             attackAvgSkew = np.mean(attackSkew/10, axis = 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
             
