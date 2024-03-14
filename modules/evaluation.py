@@ -26,8 +26,10 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         for i in range(attackRadiusTest.shape[2]):
             # print("\t attacking radius: %.1f... " %(attackRadiusTest[i,i,i,i]), flush = True)            
             for t in range(attackRadiusTest.shape[1]):        
-                thisAttackNodes = np.int64(attackNodesIndexTest[instant,t,i,0:np.int64(numAttackedNodesTest[instant,t,i])])                
-                attackGraphTest[instant, t, i, thisAttackNodes, :] = np.zeros((np.int64(numAttackedNodesTest[instant,t,i]), 50)) # we remove communication link due to attacks
+                thisAttackNodes = np.int64(attackNodesIndexTest[instant,t,i,0:np.int64(numAttackedNodesTest[instant,t,i])])                     
+                for element in thisAttackNodes:                    
+                    attackGraphTest[instant, t, i, element, :] = np.zeros((50)) # we remove communication link due to attacks
+                    attackGraphTest[instant, t, i, :, element] = np.zeros((50)) # we remove communication link due to attacks                
     
     paramsLayerWiseTrain = trainer.trainingOptions['paramsLayerWiseTrain']
     layerWiseTraining = trainer.trainingOptions['layerWiseTraining']
@@ -144,6 +146,15 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                                     graphTest, data.duration,
                                     archit = model.archit)    
         
+        import matplotlib.pyplot as plt
+        
+        for n in range(offsetTestBest.shape[0]):
+            plt.figure()
+            plt.rcParams["figure.figsize"] = (6.4,4.8)                        
+            for j in range(offsetTestBest.shape[3]):
+                plt.plot(offsetTestBest[n,:,0,j])
+
+        
         offset = offsetTestBest[:, :, :, :]
         skew = skewTestBest[:, :, :, :]
         avgOffset = np.mean(offset, axis = 3) # nSamples x tSamples x 1
@@ -181,18 +192,34 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
             
             attackOffset = copy.deepcopy(attackOffsetTestBest)
             attackSkew = copy.deepcopy(attackSkewTestBest)
+
+            import matplotlib.pyplot as plt
+
+            for n in range(attackOffset.shape[0]):
+                plt.figure()
+                plt.rcParams["figure.figsize"] = (6.4,4.8)                        
+                for j in range(attackOffset.shape[3]):
+                    plt.plot(attackOffset[n,:,0,j])
             
             for instant in range(attackRadiusTest.shape[0]):
                 for t in range(attackRadiusTest.shape[1]):        
                     thisAttackNodes = np.int64(attackNodesIndexTest[instant,t,i,0:np.int64(numAttackedNodesTest[instant,t,i])])                
                 
                     thisAttackOffsetTestBest = copy.deepcopy(attackOffsetTestBest[instant, t, :, :])
-                    thisAttackOffsetTestBest[:, thisAttackNodes] = np.zeros((attackOffsetTestBest.shape[2], np.int64(numAttackedNodesTest[instant,t,i])))
-                    attackOffset[instant, t, :, :] = copy.deepcopy(thisAttackOffsetTestBest)
-                    
                     thisAttackSkewTestBest = copy.deepcopy(attackSkewTestBest[instant, t, :, :])
-                    thisAttackSkewTestBest[:, thisAttackNodes] = np.zeros((attackSkewTestBest.shape[2], np.int64(numAttackedNodesTest[instant,t,i])))                
+                    
+                    for element in thisAttackNodes:                    
+                        thisAttackOffsetTestBest[:, element] = np.zeros((attackOffsetTestBest.shape[2]))
+                        thisAttackSkewTestBest[:, element] = np.zeros((attackSkewTestBest.shape[2]))                
+
+                    attackOffset[instant, t, :, :] = copy.deepcopy(thisAttackOffsetTestBest)
                     attackSkew[instant, t, :, :] = copy.deepcopy(thisAttackSkewTestBest)
+
+            for n in range(attackOffset.shape[0]):
+                plt.figure()
+                plt.rcParams["figure.figsize"] = (6.4,4.8)                        
+                for j in range(attackOffset.shape[3]):
+                    plt.plot(attackOffset[n,:,0,j])
 
             attackAvgOffset = np.mean(attackOffset, axis = 3) # nSamples x tSamples x 1
             attackAvgSkew = np.mean(attackSkew/10, axis = 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
@@ -203,13 +230,15 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
             for instant in range(attackRadiusTest.shape[0]):
                 for t in range(attackRadiusTest.shape[1]):        
                     thisAttackNodes = np.int64(attackNodesIndexTest[instant,t,i,0:np.int64(numAttackedNodesTest[instant,t,i])])                
-                
+
                     thisAttackDiffOffset = copy.deepcopy(attackDiffOffset[instant, t, :, :])
-                    thisAttackDiffOffset[:, thisAttackNodes] = np.zeros((attackDiffOffset.shape[2], np.int64(numAttackedNodesTest[instant,t,i])))
-                    attackDiffOffset[instant, t, :, :] = copy.deepcopy(thisAttackDiffOffset)
-                    
                     thisAttackDiffSkew = copy.deepcopy(attackDiffSkew[instant, t, :, :])
-                    thisAttackDiffSkew[:, thisAttackNodes] = np.zeros((attackDiffSkew.shape[2], np.int64(numAttackedNodesTest[instant,t,i])))                
+                
+                    for element in thisAttackNodes: 
+                        thisAttackDiffOffset[:, element] = np.zeros((attackDiffOffset.shape[2]))
+                        thisAttackDiffSkew[:, element] = np.zeros((attackDiffSkew.shape[2]))                
+                    
+                    attackDiffOffset[instant, t, :, :] = copy.deepcopy(thisAttackDiffOffset)
                     attackDiffSkew[instant, t, :, :] = copy.deepcopy(thisAttackDiffSkew)
             
             attackDiffOffset = np.sum(attackDiffOffset**2, 2) # nSamples x tSamples x nAgents
