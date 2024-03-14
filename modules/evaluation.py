@@ -179,8 +179,8 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                                        attackGraphTest[:, :, i, :, :], data.duration,
                                        archit = model.archit)    
             
-            attackOffset = np.zeros((attackOffsetTestBest.shape))
-            attackSkew = np.zeros((attackSkewTestBest.shape))            
+            attackOffset = copy.deepcopy(attackOffsetTestBest)
+            attackSkew = copy.deepcopy(attackSkewTestBest)
             
             for instant in range(attackRadiusTest.shape[0]):
                 for t in range(attackRadiusTest.shape[1]):        
@@ -188,17 +188,29 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                 
                     thisAttackOffsetTestBest = copy.deepcopy(attackOffsetTestBest[instant, t, :, :])
                     thisAttackOffsetTestBest[:, thisAttackNodes] = np.zeros((attackOffsetTestBest.shape[2], np.int64(numAttackedNodesTest[instant,t,i])))
-                    attackOffset[instant, t, :, :] = thisAttackOffsetTestBest
+                    attackOffset[instant, t, :, :] = copy.deepcopy(thisAttackOffsetTestBest)
                     
                     thisAttackSkewTestBest = copy.deepcopy(attackSkewTestBest[instant, t, :, :])
                     thisAttackSkewTestBest[:, thisAttackNodes] = np.zeros((attackSkewTestBest.shape[2], np.int64(numAttackedNodesTest[instant,t,i])))                
-                    attackSkew[instant, t, :, :] = thisAttackSkewTestBest
+                    attackSkew[instant, t, :, :] = copy.deepcopy(thisAttackSkewTestBest)
 
             attackAvgOffset = np.mean(attackOffset, axis = 3) # nSamples x tSamples x 1
             attackAvgSkew = np.mean(attackSkew/10, axis = 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
             
             attackDiffOffset = attackOffset - np.tile(np.expand_dims(attackAvgOffset, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
             attackDiffSkew = attackSkew/10 - np.tile(np.expand_dims(attackAvgSkew, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
+
+            for instant in range(attackRadiusTest.shape[0]):
+                for t in range(attackRadiusTest.shape[1]):        
+                    thisAttackNodes = np.int64(attackNodesIndexTest[instant,t,i,0:np.int64(numAttackedNodesTest[instant,t,i])])                
+                
+                    thisAttackDiffOffset = copy.deepcopy(attackDiffOffset[instant, t, :, :])
+                    thisAttackDiffOffset[:, thisAttackNodes] = np.zeros((attackDiffOffset.shape[2], np.int64(numAttackedNodesTest[instant,t,i])))
+                    attackDiffOffset[instant, t, :, :] = copy.deepcopy(thisAttackDiffOffset)
+                    
+                    thisAttackDiffSkew = copy.deepcopy(attackDiffSkew[instant, t, :, :])
+                    thisAttackDiffSkew[:, thisAttackNodes] = np.zeros((attackDiffSkew.shape[2], np.int64(numAttackedNodesTest[instant,t,i])))                
+                    attackDiffSkew[instant, t, :, :] = copy.deepcopy(thisAttackDiffSkew)
             
             attackDiffOffset = np.sum(attackDiffOffset**2, 2) # nSamples x tSamples x nAgents
             attackDiffSkew = np.sum(attackDiffSkew**2, 2) # nSamples x tSamples x nAgents
