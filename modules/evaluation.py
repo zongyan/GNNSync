@@ -2,6 +2,7 @@ import numpy as np
 import os
 import torch.nn as nn
 import torch.optim as optim
+import copy 
 
 import utils.graphML as gml
 
@@ -12,6 +13,21 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
     clockNoiseTest = data.getData('clockNoise','test')   
     measurementNoiseTest = data.getData('packetExchangeDelay','test')   
     processingNoiseTest = data.getData('processingDelay','test')   
+    
+    attackCenterTest = data.getData('attackCenter','test')
+    attackRadiusTest = data.getData('attackRadius','test')
+    numAttackedNodesTest = data.getData('numAttackedNodes','test')
+    attackNodesIndexTest = data.getData('attackNodesIndex','test')
+
+    thisAttackGraphTest = (copy.deepcopy(graphTest)).reshape((graphTest.shape[0], graphTest.shape[1], 1, graphTest.shape[2], graphTest.shape[3]))
+    attackGraphTest = np.repeat(thisAttackGraphTest, attackRadiusTest.shape[2], axis=2)
+    
+    for instant in range(attackRadiusTest.shape[0]):
+        for i in range(attackRadiusTest.shape[2]):
+            # print("\t attacking radius: %.1f... " %(attackRadiusTest[i,i,i,i]), flush = True)            
+            for t in range(attackRadiusTest.shape[1]):        
+                thisAttackNodes = np.int64(attackNodesIndexTest[instant,t,i,0:np.int64(numAttackedNodesTest[instant,t,i])])                
+                attackGraphTest[instant, t, i, thisAttackNodes, :] = np.zeros((50)) # we remove communication link due to attacks
     
     paramsLayerWiseTrain = trainer.trainingOptions['paramsLayerWiseTrain']
     layerWiseTraining = trainer.trainingOptions['layerWiseTraining']
@@ -115,7 +131,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         model.load(layerWiseTraining, \
                nDAggers, historicalBestL[l], historicalBestIteration[l], historicalBestEpoch[l], historicalBestBatch[l], label = 'Best')        
         
-        print("\tComputing learned time synchronisation for best %s model..." %(model.name), 
+        print("\tComputing learned time synchronisation for best %s model with NO attacks..." %(model.name), 
               flush = True)
         
         offsetTestBest, \
@@ -124,14 +140,14 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         stateTestBest, \
         commGraphTestBest = \
             data.computeTrajectory(initPosTest, initVelTest, \
-                                   measurementNoiseTest, processingNoiseTest, clockNoiseTest, 
-                                   graphTest, data.duration,
-                                   archit = model.archit)    
+                                    measurementNoiseTest, processingNoiseTest, clockNoiseTest, 
+                                    graphTest, data.duration,
+                                    archit = model.archit)    
         
         offset = offsetTestBest[:, :, :, :]
         skew = skewTestBest[:, :, :, :]
         avgOffset = np.mean(offset, axis = 3) # nSamples x tSamples x 1
-        avgSkew = np.mean(skew/10, axis= 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
+        avgSkew = np.mean(skew/10, axis = 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
         
         diffOffset = offset - np.tile(np.expand_dims(avgOffset, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
         diffSkew = skew/10 - np.tile(np.expand_dims(avgSkew, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
@@ -145,7 +161,42 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*0.01 # nSamples
         
         cost = np.mean(costPerSample) # scalar
-        print("\tThe cost of time sync for best model: %.4f" %(cost), flush = True)
+        print("\tThe cost of time sync for best model with NO attacks: %.4f" %(cost), flush = True)
+
+        print("\tComputing learned time synchronisation for best %s model under attacks..." %(model.name), 
+              flush = True)
+                
+        for i in range(attackRadiusTest.shape[2]):
+            print("\tAttacking radius: %.1f... " %(attackRadiusTest[i,i,i,i]), flush = True)            
+
+            attackOffsetTestBest, \
+            attackSkewTestBest, \
+            attackAdjTestBest, \
+            attackStateTestBest, \
+            attackCommGraphTestBest = \
+                data.computeTrajectory(initPosTest, initVelTest, \
+                                       measurementNoiseTest, processingNoiseTest, clockNoiseTest, 
+                                       attackGraphTest[:, :, i, :, :], data.duration,
+                                       archit = model.archit)    
+            
+            attackOffset = attackOffsetTestBest[:, :, :, :]
+            attackSkew = attackSkewTestBest[:, :, :, :]
+            attackAvgOffset = np.mean(attackOffset, axis = 3) # nSamples x tSamples x 1
+            attackAvgSkew = np.mean(attackSkew/10, axis = 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
+            
+            attackDiffOffset = attackOffset - np.tile(np.expand_dims(attackAvgOffset, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
+            attackDiffSkew = attackSkew/10 - np.tile(np.expand_dims(attackAvgSkew, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
+            
+            attackDiffOffset = np.sum(attackDiffOffset**2, 2) # nSamples x tSamples x nAgents
+            attackDiffSkew = np.sum(attackDiffSkew**2, 2) # nSamples x tSamples x nAgents
+            
+            attackDiffOffsetAvg = np.mean(attackDiffOffset, axis = 2) # nSamples x tSamples
+            attackDiffSkewAvg = np.mean(attackDiffSkew, axis = 2) # nSamples x tSamples
+            
+            attackCostPerSample = np.sum(attackDiffOffsetAvg, axis = 1) + np.sum(attackDiffSkewAvg, axis = 1)*0.01 # nSamples
+            
+            attackCost = np.mean(attackCostPerSample) # scalar
+            print("\tThe cost of time sync for best model under attacks: %.4f" %(attackCost), flush = True)   
         
         if (evalModel == False):
             saveDataDir = os.path.join(model.saveDir,'savedData')

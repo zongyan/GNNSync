@@ -176,6 +176,11 @@ class AerialSwarm(_data):
         self.commGraph = None
         self.state = None
         
+        self.attackCenter = None
+        self.attackRadius = None
+        self.attackNodesIndex = None 
+        self.numAttackedNodes = None         
+        
         if savingSeeds:
             if self.doPrint:
                 print("\tComputing initial conditions...", end = ' ', flush = True)
@@ -269,10 +274,14 @@ class AerialSwarm(_data):
             print("\tComputing the communication graphs...",
                   end=' ', flush=True)
         
-        commGraphAll = self.computeCommunicationGraph(posAll, self.commRadius,
-                                                      self.normalizeGraph)
+        commGraphAll, attackCenterAll, attackRadiusAll, numAttackedNodesAll, attackNodesIndexAll = \
+            self.computeCommunicationGraph(posAll, self.commRadius, self.normalizeGraph)
         
         self.commGraph = {}
+        self.attackCenter = {}
+        self.attackRadius = {}
+        self.numAttackedNodes = {}        
+        self.attackNodesIndex = {}
         
         if self.doPrint:
             print("OK", flush = True)
@@ -342,6 +351,10 @@ class AerialSwarm(_data):
         self.adj['test'] = adjAll[startSample:endSample]
         self.commGraph['test'] = commGraphAll[startSample:endSample]
         self.state['test'] = stateAll[startSample:endSample]        
+        self.attackCenter['test'] = attackCenterAll[startSample:endSample]        
+        self.attackRadius['test'] = attackRadiusAll[startSample:endSample]    
+        self.numAttackedNodes['test'] = numAttackedNodesAll[startSample:endSample]    
+        self.attackNodesIndex['test'] = attackNodesIndexAll[startSample:endSample]
         
         self.astype(self.dataType)
         self.to(self.device)
@@ -660,11 +673,11 @@ class AerialSwarm(_data):
         sortedRadius = sorted(thisMaxDist.items(), reverse=True)          
 
         radiusRange = np.arange(start=1, stop=sortedRadius[0][0]+0.5, step=0.5)
-        attackRadius = np.zeros((pos.shape[0], radiusRange.shape[0], pos.shape[1], pos.shape[3]))
+        attackRadius = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0], pos.shape[3]))
 
         for index in range(len(radiusRange)):
             thisAttackRadius = np.reshape(np.repeat(radiusRange[index], pos.shape[0] * pos.shape[1] * pos.shape[3]), (pos.shape[0], pos.shape[1], pos.shape[3]))            
-            attackRadius[:, index, :, :] = thisAttackRadius
+            attackRadius[:, :, index, :] = thisAttackRadius
 
         meanCenter = np.zeros((pos.shape[0], pos.shape[1], pos.shape[2]))
 
@@ -675,9 +688,11 @@ class AerialSwarm(_data):
 
         attackNodesIndex = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0], pos.shape[3]))
         
+        numAttackedNodes = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0]))
+        
         distanceAttacker = (pos - attackCenter)**2        
         for index in range(len(radiusRange)):
-            thisIsAttack = distanceAttacker[:, :, 0, :] + distanceAttacker[:, :, 1, :] <= attackRadius[:, index, :, :] ** 2        
+            thisIsAttack = distanceAttacker[:, :, 0, :] + distanceAttacker[:, :, 1, :] <= attackRadius[:, :, index, :] ** 2        
             thisNumAttackedNodes = np.sum(thisIsAttack, axis=2)    
 
             thisAttackNodesIndex = np.zeros((pos.shape[0], pos.shape[1], pos.shape[3]), dtype=np.int8)
@@ -687,8 +702,9 @@ class AerialSwarm(_data):
                     thisAttackNodesIndex[i, j, 0:thisNumAttackedNodes[i,j]] = np.array([index for index, element in enumerate(thisIsAttack[i, j,:].tolist()) if element == True])                        
             
             attackNodesIndex[:, :, index, :] = thisAttackNodesIndex
+            numAttackedNodes[:, :, index] = thisNumAttackedNodes
             
-        return graphMatrix
+        return graphMatrix, attackCenter, attackRadius, numAttackedNodes, attackNodesIndex
     
     def getData(self, name, samplesType, *args):
         # samplesType: train, valid, test
@@ -1469,7 +1485,7 @@ class AerialSwarm(_data):
         
         assert minDistSq>=(minDist ** 2)
         
-        graphMatrix = self.computeCommunicationGraph(np.expand_dims(initPos,1),
+        graphMatrix, _, _, _, _ = self.computeCommunicationGraph(np.expand_dims(initPos,1),
                                                      self.commRadius,
                                                      False,
                                                      doPrint = False)
