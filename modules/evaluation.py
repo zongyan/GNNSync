@@ -253,21 +253,22 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                 os.makedirs(saveDataDir)        
         
             if layerWiseTraining == True:
-                saveFile = os.path.join(saveDataDir, model.name + '-LayerWise-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+                saveFile = os.path.join(saveDataDir, model.name + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
             else:
-                saveFile = os.path.join(saveDataDir, model.name + '-EndToEnd-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+                saveFile = os.path.join(saveDataDir, model.name + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
             
             saveFile = saveFile + '.npz'
             
             # here we mostly expoert the data related to the GNN control
-            np.savez(saveFile, attackOffsetTestBest=attackOffsetTestBest, attackSkewTestBest=attackSkewTestBest, \
+            # we also need to expoert the position and velocity for plotting purposes.
+            np.savez(saveFile, attackOffset=attackOffset, attackSkew=attackSkew, \
+                     attackOffsetTestBest=attackOffsetTestBest, attackSkewTestBest=attackSkewTestBest, \
                       attackAdjTestBest=attackAdjTestBest, attackStateTestBest=attackStateTestBest, \
                           attackCommGraphTestBest=attackCommGraphTestBest, \
                               attackCenterTest=attackCenterTest, attackRadiusTest=attackRadiusTest, \
                                   numAttackedNodesTest=numAttackedNodesTest, attackNodesIndexTest=attackNodesIndexTest, \
                                       attackGraphTest=attackGraphTest, \
-                                          bestL = historicalBestL[l], bestIteration = historicalBestIteration[l], bestEpoch = historicalBestEpoch[l], bestBatch = historicalBestBatch[l], \
-                                              lossTrain = trainer.lossTrain, accValid = trainer.accValid)
+                                          bestL = historicalBestL[l], bestIteration = historicalBestIteration[l], bestEpoch = historicalBestEpoch[l], bestBatch = historicalBestBatch[l])
         
         if (evalModel == False):
             saveDataDir = os.path.join(model.saveDir,'savedData')
