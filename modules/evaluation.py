@@ -6,6 +6,8 @@ import copy
 
 import utils.graphML as gml
 
+import matplotlib.pyplot as plt
+
 def evaluate(model, trainer, data, evalModel, **kwargs):
     initPosTest = data.getData('initOffset', 'test')
     initVelTest = data.getData('initSkew', 'test')
@@ -24,7 +26,6 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
     
     for instant in range(attackRadiusTest.shape[0]):
         for i in range(attackRadiusTest.shape[2]):
-            # print("\t attacking radius: %.1f... " %(attackRadiusTest[i,i,i,i]), flush = True)            
             for t in range(attackRadiusTest.shape[1]):        
                 thisAttackNodes = np.int64(attackNodesIndexTest[instant,t,i,0:np.int64(numAttackedNodesTest[instant,t,i])])                     
                 for element in thisAttackNodes:                    
@@ -144,16 +145,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
             data.computeTrajectory(initPosTest, initVelTest, \
                                     measurementNoiseTest, processingNoiseTest, clockNoiseTest, 
                                     graphTest, data.duration,
-                                    archit = model.archit)    
-        
-        import matplotlib.pyplot as plt
-        
-        for n in range(offsetTestBest.shape[0]):
-            plt.figure()
-            plt.rcParams["figure.figsize"] = (6.4,4.8)                        
-            for j in range(offsetTestBest.shape[3]):
-                plt.plot(offsetTestBest[n,:,0,j])
-
+                                    archit = model.archit)
         
         offset = offsetTestBest[:, :, :, :]
         skew = skewTestBest[:, :, :, :]
@@ -192,14 +184,6 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
             
             attackOffset = copy.deepcopy(attackOffsetTestBest)
             attackSkew = copy.deepcopy(attackSkewTestBest)
-
-            import matplotlib.pyplot as plt
-
-            for n in range(attackOffset.shape[0]):
-                plt.figure()
-                plt.rcParams["figure.figsize"] = (6.4,4.8)                        
-                for j in range(attackOffset.shape[3]):
-                    plt.plot(attackOffset[n,:,0,j])
             
             for instant in range(attackRadiusTest.shape[0]):
                 for t in range(attackRadiusTest.shape[1]):        
@@ -214,13 +198,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
 
                     attackOffset[instant, t, :, :] = copy.deepcopy(thisAttackOffsetTestBest)
                     attackSkew[instant, t, :, :] = copy.deepcopy(thisAttackSkewTestBest)
-
-            for n in range(attackOffset.shape[0]):
-                plt.figure()
-                plt.rcParams["figure.figsize"] = (6.4,4.8)                        
-                for j in range(attackOffset.shape[3]):
-                    plt.plot(attackOffset[n,:,0,j])
-
+            
             attackAvgOffset = np.mean(attackOffset, axis = 3) # nSamples x tSamples x 1
             attackAvgSkew = np.mean(attackSkew/10, axis = 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
             
@@ -240,6 +218,12 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                     
                     attackDiffOffset[instant, t, :, :] = copy.deepcopy(thisAttackDiffOffset)
                     attackDiffSkew[instant, t, :, :] = copy.deepcopy(thisAttackDiffSkew)
+        
+            for n in range(attackDiffOffset.shape[0]):
+                plt.figure()
+                plt.rcParams["figure.figsize"] = (6.4,4.8)                        
+                for j in range(attackDiffOffset.shape[3]):
+                    plt.plot(attackDiffOffset[n,:,0,j])
             
             attackDiffOffset = np.sum(attackDiffOffset**2, 2) # nSamples x tSamples x nAgents
             attackDiffSkew = np.sum(attackDiffSkew**2, 2) # nSamples x tSamples x nAgents
@@ -275,7 +259,9 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                           commGraphTestBest=commGraphTestBest, \
                               bestL = historicalBestL[l], bestIteration = historicalBestIteration[l], bestEpoch = historicalBestEpoch[l], bestBatch = historicalBestBatch[l], \
                                   lossTrain = trainer.lossTrain, accValid = trainer.accValid)
-            
+        elif ():
+            pass
+                
         l = l + 1
     
     print("OK")
