@@ -238,69 +238,36 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                 attackCostsPerSample.append(thisAttackCostPerSample)
                 
             attackCost = np.mean(np.array(attackCostsPerSample)) # scalar
-                
-            for n in range(attackOffset.shape[0]):
-                plt.figure()
-                plt.rcParams["figure.figsize"] = (6.4,4.8)                        
-                for j in range(attackOffset.shape[3]):
-                    plt.plot(attackOffset[n,:,i,j])
-                    
-            for n in range(attackOffsetTestBest.shape[0]):
-                plt.figure()
-                plt.rcParams["figure.figsize"] = (6.4,4.8)                        
-                for j in range(attackOffsetTestBest.shape[3]):
-                    plt.plot(attackOffsetTestBest[n,:,i,j])                    
-            
-            # for instant in range(attackRadiusTest.shape[0]):
-            #     for t in range(attackRadiusTest.shape[1]):        
-            #         thisAttackNodes = np.int64(attackNodesIndexTest[instant,t,i,0:np.int64(numAttackedNodesTest[instant,t,i])])                
-                
-            #         thisAttackOffsetTestBest = copy.deepcopy(attackOffsetTestBest[instant, t, :, :])
-            #         thisAttackSkewTestBest = copy.deepcopy(attackSkewTestBest[instant, t, :, :])
-                    
-            #         for element in thisAttackNodes:                    
-            #             thisAttackOffsetTestBest[:, element] = np.zeros((attackOffsetTestBest.shape[2]))
-            #             thisAttackSkewTestBest[:, element] = np.zeros((attackSkewTestBest.shape[2]))                
 
-            #         attackOffset[instant, t, :, :] = copy.deepcopy(thisAttackOffsetTestBest)
-            #         attackSkew[instant, t, :, :] = copy.deepcopy(thisAttackSkewTestBest)
-            
-            attackAvgOffset = np.mean(attackOffset, axis = 3) # nSamples x tSamples x 1
-            attackAvgSkew = np.mean(attackSkew/10, axis = 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
-            
-            attackDiffOffset = attackOffset - np.tile(np.expand_dims(attackAvgOffset, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
-            attackDiffSkew = attackSkew/10 - np.tile(np.expand_dims(attackAvgSkew, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
-
-            # for instant in range(attackRadiusTest.shape[0]):
-            #     for t in range(attackRadiusTest.shape[1]):        
-            #         thisAttackNodes = np.int64(attackNodesIndexTest[instant,t,i,0:np.int64(numAttackedNodesTest[instant,t,i])])                
-
-            #         thisAttackDiffOffset = copy.deepcopy(attackDiffOffset[instant, t, :, :])
-            #         thisAttackDiffSkew = copy.deepcopy(attackDiffSkew[instant, t, :, :])
-                
-            #         for element in thisAttackNodes: 
-            #             thisAttackDiffOffset[:, element] = np.zeros((attackDiffOffset.shape[2]))
-            #             thisAttackDiffSkew[:, element] = np.zeros((attackDiffSkew.shape[2]))                
-                    
-            #         attackDiffOffset[instant, t, :, :] = copy.deepcopy(thisAttackDiffOffset)
-            #         attackDiffSkew[instant, t, :, :] = copy.deepcopy(thisAttackDiffSkew)
-        
-            for n in range(attackDiffOffset.shape[0]):
-                plt.figure()
-                plt.rcParams["figure.figsize"] = (6.4,4.8)                        
-                for j in range(attackDiffOffset.shape[3]):
-                    plt.plot(attackDiffOffset[n,:,0,j])
-            
-            attackDiffOffset = np.sum(attackDiffOffset**2, 2) # nSamples x tSamples x nAgents
-            attackDiffSkew = np.sum(attackDiffSkew**2, 2) # nSamples x tSamples x nAgents
-            
-            attackDiffOffsetAvg = np.mean(attackDiffOffset, axis = 2) # nSamples x tSamples
-            attackDiffSkewAvg = np.mean(attackDiffSkew, axis = 2) # nSamples x tSamples
-            
-            attackCostPerSample = np.sum(attackDiffOffsetAvg, axis = 1) + np.sum(attackDiffSkewAvg, axis = 1)*0.01 # nSamples
-            
-            attackCost = np.mean(attackCostPerSample) # scalar
             print("\tThe cost of time sync for best model under attacks: %.4f" %(attackCost), flush = True)   
+
+            saveDataDir = os.path.join(model.saveDir,'savedData')
+            if not os.path.exists(saveDataDir):
+                os.makedirs(saveDataDir)
+        
+            if layerWiseTraining == True:
+                saveDataDir = os.path.join(saveDataDir,'layerWiseTraining')
+            else:
+                saveDataDir = os.path.join(saveDataDir,'endToEndTraining')        
+            if not os.path.exists(saveDataDir):
+                os.makedirs(saveDataDir)        
+        
+            if layerWiseTraining == True:
+                saveFile = os.path.join(saveDataDir, model.name + '-LayerWise-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+            else:
+                saveFile = os.path.join(saveDataDir, model.name + '-EndToEnd-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+            
+            saveFile = saveFile + '.npz'
+            
+            # here we mostly expoert the data related to the GNN control
+            np.savez(saveFile, attackOffsetTestBest=attackOffsetTestBest, attackSkewTestBest=attackSkewTestBest, \
+                      attackAdjTestBest=attackAdjTestBest, attackStateTestBest=attackStateTestBest, \
+                          attackCommGraphTestBest=attackCommGraphTestBest, \
+                              attackCenterTest=attackCenterTest, attackRadiusTest=attackRadiusTest, \
+                                  numAttackedNodesTest=numAttackedNodesTest, attackNodesIndexTest=attackNodesIndexTest, \
+                                      attackGraphTest=attackGraphTest, \
+                                          bestL = historicalBestL[l], bestIteration = historicalBestIteration[l], bestEpoch = historicalBestEpoch[l], bestBatch = historicalBestBatch[l], \
+                                              lossTrain = trainer.lossTrain, accValid = trainer.accValid)
         
         if (evalModel == False):
             saveDataDir = os.path.join(model.saveDir,'savedData')
@@ -325,8 +292,6 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                           commGraphTestBest=commGraphTestBest, \
                               bestL = historicalBestL[l], bestIteration = historicalBestIteration[l], bestEpoch = historicalBestEpoch[l], bestBatch = historicalBestBatch[l], \
                                   lossTrain = trainer.lossTrain, accValid = trainer.accValid)
-        elif ():
-            pass
                 
         l = l + 1
     
