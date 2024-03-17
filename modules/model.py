@@ -34,7 +34,7 @@ class Model:
         self.config = [copy.deepcopy([copy.deepcopy(trainer) for k in range(len(nDAggersValues))]) for j in range(len(layerWise))]                    
 
         self.evalModel = False
-        self.heatKenel = False        
+        self.heatKernel = False        
         
         self.evaluator = evaluator
         self.device = device
@@ -62,6 +62,10 @@ class Model:
         
         self.evalModel = evalModel
         self.archit.evalModel = evalModel
+        self.heatKernel = self.archit.heatKernel
+        
+        assert self.archit.evalModel == self.evalModel
+        assert self.archit.heatKernel == self.heatKernel
         
         self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)] = \
             self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)]\

@@ -689,14 +689,11 @@ class Trainer:
 
                     else:
 
-                        if (i % 2) == 0:
-                            layerWiseFC.append(nn.Tanh())  
-                        else:
-                            layerWiseFC.append(nn.Linear(origLayer.in_features, origLayer.out_features, bias = self.model.archit.bias))
+                        layerWiseFC.append(nn.Linear(origLayer.in_features, origLayer.out_features, bias = self.model.archit.bias))
     
                 # append the original layer
                 layerWiseFC.append(nn.Linear(lastReadoutLayer.in_features, layerWiseTraindimReadout[l], bias = layerWiseTrainBias))            
-                layerWiseFC.append(nn.Tanh())
+                # layerWiseFC.append(nn.Tanh())
                 
                 # add the original final output layer
                 layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], lastReadoutLayer.out_features, bias = self.model.archit.bias))
@@ -711,9 +708,9 @@ class Trainer:
                     nn.init.xavier_uniform_(self.model.archit.Readout[-1].weight)
                     nn.init.zeros_(self.model.archit.Readout[-1].bias)                    
                 else:
-                    for i in range(np.int64((len(self.model.archit.Readout) + 1)/2)):
-                        nn.init.xavier_uniform_(self.model.archit.Readout[np.int64(2*i+1)].weight)
-                        nn.init.zeros_(self.model.archit.Readout[np.int64(2*i+1)].bias)
+                    for i in range(np.int64(len(self.model.archit.Readout))):
+                        nn.init.xavier_uniform_(self.model.archit.Readout[np.int64(i)].weight)
+                        nn.init.zeros_(self.model.archit.Readout[np.int64(i)].bias)
                
             self.model.archit.to(self.model.device)
                 

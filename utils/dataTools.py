@@ -176,7 +176,7 @@ class AerialSwarm(_data):
         self.commGraph = None
         self.state = None
         
-        self.attackMode = True
+        self.attackMode = attackMode
         self.attackCenter = None
         self.attackRadius = None
         self.attackNodesIndex = None 
@@ -197,9 +197,10 @@ class AerialSwarm(_data):
                                                   xMaxInitVel=self.initVelValue,
                                                   yMaxInitVel=self.initVelValue)            
                 
-                np.savez(os.path.join('experiments', 'flockingGNN') + 'initTrainValues' + '.npz', \
-                         initPosAll=initPosAll, initVelAll=initVelAll, \
-                             initOffsetAll=initOffsetAll, initSkewAll=initSkewAll)            
+                if nTrain == 400:
+                    np.savez(os.path.join('experiments', 'flockingGNN') + 'initTrainValues' + '.npz', \
+                             initPosAll=initPosAll, initVelAll=initVelAll, \
+                                 initOffsetAll=initOffsetAll, initSkewAll=initSkewAll)
             else:
                 initPosAll, initVelAll, \
                     initOffsetAll, initSkewAll = self.computeInitialConditions(
@@ -357,7 +358,7 @@ class AerialSwarm(_data):
         self.numAttackedNodes['test'] = numAttackedNodesAll[startSample:endSample]    
         self.attackNodesIndex['test'] = attackNodesIndexAll[startSample:endSample]
 
-        if (self.nTrain==1 and self.nDAgger==1 and self.nValid==1 and self.nTest==20):
+        if (self.attackMode==1 or self.attackMode==2):
             np.savez('saveFile', posTest=posAll[startSample:endSample], velTest=velAll[startSample:endSample], accelTest=accelAll[startSample:endSample], \
                      commGraphTest=commGraphAll[startSample:endSample], attackCenterTest=attackCenterAll[startSample:endSample], \
                          attackRadiusTest=attackRadiusAll[startSample:endSample], numAttackedNodesTest=numAttackedNodesAll[startSample:endSample], \
@@ -671,52 +672,61 @@ class AerialSwarm(_data):
         if doPrint:
             print('\b \b' * 4, end = '', flush = True)        
         
-        maximumDistanceSquare = np.max(distanceSquare, axis=3)
-        maxDistanceSquare = np.max(maximumDistanceSquare, axis=2)
-        maxDistSquare = np.max(maxDistanceSquare, axis=1)        
-        maxDist = np.sqrt(maxDistSquare)
-
-        thisMaxDist = Counter(list(np.rint(maxDist)))
-        sortedRadius = sorted(thisMaxDist.items(), reverse=True)          
-
-        radiusRange = np.arange(start=1, stop=sortedRadius[0][0]+0.5, step=0.5)
-        attackRadius = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0], pos.shape[3]))
-
-        for index in range(len(radiusRange)):
-            thisAttackRadius = np.reshape(np.repeat(radiusRange[index], pos.shape[0] * pos.shape[1] * pos.shape[3]), (pos.shape[0], pos.shape[1], pos.shape[3]))            
-            attackRadius[:, :, index, :] = thisAttackRadius
-        
-        if self.attackMode == True: # attacking mode 1
-            meanCenter = np.zeros((pos.shape[0], pos.shape[1], pos.shape[2]))
+        if (self.attackMode==1 or self.attackMode==2):        
+            maximumDistanceSquare = np.max(distanceSquare, axis=3)
+            maxDistanceSquare = np.max(maximumDistanceSquare, axis=2)
+            maxDistSquare = np.max(maxDistanceSquare, axis=1)        
+            maxDist = np.sqrt(maxDistSquare)
     
-            for i in range(pos.shape[1]):            
-                meanCenter[:, i, :] = np.mean(pos[:, i, :, :], axis=2)
-                
-            attackCenter = np.repeat(meanCenter.reshape((pos.shape[0], pos.shape[1], pos.shape[2], 1)), pos.shape[3], axis=3)            
-        else:   # attacking mode 2
-            startPosition = pos[:,0,:,:]
-            endPosition = pos[:,-1,:,:]                    
-            middleCenter = (startPosition + endPosition)/2
-                
-            attackCenter = np.repeat(middleCenter.reshape((pos.shape[0], 1, pos.shape[2], pos.shape[3])), pos.shape[1], axis=1)            
-        
-        attackNodesIndex = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0], pos.shape[3]))
-        
-        numAttackedNodes = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0]))
-        
-        distanceAttacker = (pos - attackCenter)**2        
-        for index in range(len(radiusRange)):
-            thisIsAttack = distanceAttacker[:, :, 0, :] + distanceAttacker[:, :, 1, :] <= attackRadius[:, :, index, :] ** 2        
-            thisNumAttackedNodes = np.sum(thisIsAttack, axis=2)    
-
-            thisAttackNodesIndex = np.zeros((pos.shape[0], pos.shape[1], pos.shape[3]), dtype=np.int8)
-        
-            for i in range(thisIsAttack.shape[0]):
-                for j in range(thisIsAttack.shape[1]):
-                    thisAttackNodesIndex[i, j, 0:thisNumAttackedNodes[i,j]] = np.array([index for index, element in enumerate(thisIsAttack[i, j,:].tolist()) if element == True])                        
+            thisMaxDist = Counter(list(np.rint(maxDist)))
+            sortedRadius = sorted(thisMaxDist.items(), reverse=True)          
+    
+            radiusRange = np.arange(start=1, stop=sortedRadius[0][0]+0.5, step=0.5)
+            attackRadius = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0], pos.shape[3]))
+    
+            for index in range(len(radiusRange)):
+                thisAttackRadius = np.reshape(np.repeat(radiusRange[index], pos.shape[0] * pos.shape[1] * pos.shape[3]), (pos.shape[0], pos.shape[1], pos.shape[3]))            
+                attackRadius[:, :, index, :] = thisAttackRadius
             
-            attackNodesIndex[:, :, index, :] = thisAttackNodesIndex
-            numAttackedNodes[:, :, index] = thisNumAttackedNodes
+            if self.attackMode == 1: # attacking mode 1
+                meanCenter = np.zeros((pos.shape[0], pos.shape[1], pos.shape[2]))
+        
+                for i in range(pos.shape[1]):            
+                    meanCenter[:, i, :] = np.mean(pos[:, i, :, :], axis=2)
+                    
+                attackCenter = np.repeat(meanCenter.reshape((pos.shape[0], pos.shape[1], pos.shape[2], 1)), pos.shape[3], axis=3)            
+            elif self.attackMode == 2:   # attacking mode 2
+                startPosition = pos[:,0,:,:]
+                endPosition = pos[:,-1,:,:]                    
+                middleCenter = (startPosition + endPosition)/2
+                    
+                attackCenter = np.repeat(middleCenter.reshape((pos.shape[0], 1, pos.shape[2], pos.shape[3])), pos.shape[1], axis=1)            
+            else:
+                raise Exception("unknown attack mode is found!")            
+        
+            attackNodesIndex = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0], pos.shape[3]))
+            
+            numAttackedNodes = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0]))
+            
+            distanceAttacker = (pos - attackCenter)**2        
+            for index in range(len(radiusRange)):
+                thisIsAttack = distanceAttacker[:, :, 0, :] + distanceAttacker[:, :, 1, :] <= attackRadius[:, :, index, :] ** 2        
+                thisNumAttackedNodes = np.sum(thisIsAttack, axis=2)    
+    
+                thisAttackNodesIndex = np.zeros((pos.shape[0], pos.shape[1], pos.shape[3]), dtype=np.int8)
+            
+                for i in range(thisIsAttack.shape[0]):
+                    for j in range(thisIsAttack.shape[1]):
+                        thisAttackNodesIndex[i, j, 0:thisNumAttackedNodes[i,j]] = np.array([index for index, element in enumerate(thisIsAttack[i, j,:].tolist()) if element == True])                        
+                
+                attackNodesIndex[:, :, index, :] = thisAttackNodesIndex
+                numAttackedNodes[:, :, index] = thisNumAttackedNodes
+        else:
+            attackCenter = np.zeros(pos.shape)
+            attackRadius = np.zeros(pos.shape)
+            attackNodesIndex = np.zeros(pos.shape)            
+            numAttackedNodes = np.zeros((pos.shape[0], pos.shape[1], pos.shape[2]))            
+            print("\tNo need to calculate the attacked data.", end = ' ', flush = True)        
             
         return graphMatrix, attackCenter, attackRadius, numAttackedNodes, attackNodesIndex
     

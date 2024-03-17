@@ -22,17 +22,19 @@ import modules.evaluation as evaluation
 from utils.miscTools import loadSeed
 
 #%%
-addedLayerNum = np.array([9, 4, 4, 4, 9, 4, 4, 4])
 saveDirRoot = 'experiments'
 dataFolder = os.listdir(saveDirRoot)
-
-testName = "TimeSync-050-20240301232924"
-
+for i in range(len(dataFolder)):
+    saveDir = os.path.join(saveDirRoot, dataFolder[i])
+    loadSeed('./' + saveDirRoot + '/' + dataFolder[i]) # loading the states and seed
+        
+# the following is for temperature use
+folderName = "TimeSync-050-20240301232924"
+saveDir = os.path.join(saveDirRoot, folderName)
+loadSeed('./experiments' + '/' + folderName) # loading the states and seed
 #%%
-nAgents = 50  # number of UAVs during training 
 
-loadSeed('./experiments/2nd_simulation_1') # loading the states and seed
-
+nAgents = 50  # number of UAVs during training
 useGPU = True
 commRadius = 2. # communication radius
 repelDist = 1. # minimum distance before activating repelling function
@@ -61,10 +63,17 @@ layerWiseTraining = True
 endToEndTraining = not layerWiseTraining
 layerWise = [endToEndTraining]
 
-attackMode = False # True -- attacking mode 1; False -- attacking mode 2
+savingSeeds = False
+attackMode = 1 # 1 -- attacking mode 1; 2 -- attacking mode 2
 evalModel = True
-
 #%%
+'''
+In the initial manuscript, we only study the fault tolerant control
+performance of the proposed GNN structure, which is GNNThree at the 
+Experiments 2 and 2.1. Experiment 2 means the Laplacian matrix, and
+Experiment 2.1 uses the adjacency matrix.
+'''
+
 modelList = []
 
 hParamsGNNThree = {}
@@ -104,17 +113,13 @@ for thisModel in modelList:
 print("Generating dummy training data", end = '')
 print("...", flush = True)
 
-savingSeeds = True
 data = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
-            nTest, 1, 1, nTest, # no care about testing, re-generating the dataset for testing
-            duration, updateTime, adjustTime, attackMode,
-            initVelValue, initMinDist, accelMax, savingSeeds)
-savingSeeds = False
+            nTest, 1, 1, nTest,
+            duration, updateTime, adjustTime, 0,
+            initVelValue, initMinDist, accelMax, True)
 
 #%%
 modelsGNN = {}
-    
-saveDir = os.path.join(saveDirRoot, testName)
 
 print("Model initialisation...", flush = True)    
 
@@ -167,7 +172,7 @@ for thisModel in modelsGNN.keys():
         
         for val in layerWise:
             
-            modelsGNN[thisModel] = copy.deepcopy(initModelsGNN[thisModel])                
+            modelsGNN[thisModel] = copy.deepcopy(initModelsGNN[thisModel])
             thisTrainVars = modelsGNN[thisModel].configure(data, 1, 1, \
                                                         nDAggersVal, 1, 1, \
                                                             paramsLayerWiseTrain, val, \
