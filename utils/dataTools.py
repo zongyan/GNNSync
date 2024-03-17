@@ -723,9 +723,9 @@ class AerialSwarm(_data):
                 numAttackedNodes[:, :, index] = thisNumAttackedNodes
         else:
             attackCenter = np.zeros(pos.shape)
-            attackRadius = np.zeros(pos.shape)
-            attackNodesIndex = np.zeros(pos.shape)            
-            numAttackedNodes = np.zeros((pos.shape[0], pos.shape[1], pos.shape[2]))            
+            attackRadius = np.zeros(pos.shape) # attackRadius.shape[2] is the dummy dimension
+            attackNodesIndex = np.zeros(pos.shape)  # attackNodesIndex.shape[2] is the dummy dimension            
+            numAttackedNodes = np.zeros((pos.shape[0], pos.shape[1], pos.shape[2])) # numAttackedNodes.shape[2] is the dummy dimension              
             print("\tNo need to calculate the attacked data.", end = ' ', flush = True)        
             
         return graphMatrix, attackCenter, attackRadius, numAttackedNodes, attackNodesIndex
