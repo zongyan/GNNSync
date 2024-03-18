@@ -4,9 +4,9 @@ import torch.nn as nn
 import torch.optim as optim
 import copy 
 from collections import Counter
-import utils.graphML as gml
+from scipy import io
 
-import matplotlib.pyplot as plt
+import utils.graphML as gml
 
 def evaluate(model, trainer, data, evalModel, **kwargs):
     initPosTest = data.getData('initOffset', 'test')
@@ -245,15 +245,29 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
             if not os.path.exists(saveAttackDir):
                 os.makedirs(saveAttackDir)
 
-            saveFile = os.path.join(saveAttackDir, 'AttackMode-' + str(data.attackMode) + '-Radius-' + str(attackRadiusTest[i,i,i,i]) + '-GNN-Results' + '.npz')
+            saveFile = os.path.join(saveAttackDir, 'AttackMode-' + str(data.attackMode) + '-Radius-' + str(attackRadiusTest[i,i,i,i]) + '-GNN-Results')
             
-            np.savez(saveFile, processedAttackOffset=attackOffset, processedAttackSkew=attackSkew, \
+            np.savez(saveFile+'.npz', processedAttackOffset=attackOffset, processedAttackSkew=attackSkew, \
                      attackOffsetTestBest=attackOffsetTestBest, attackSkewTestBest=attackSkewTestBest, \
                       attackAdjTestBest=attackAdjTestBest, attackStateTestBest=attackStateTestBest, \
                           attackCommGraphTestBest=attackCommGraphTestBest, \
                               attackCenterTest=attackCenterTest, attackRadiusTest=attackRadiusTest, \
                                   numAttackedNodesTest=numAttackedNodesTest, attackNodesIndexTest=attackNodesIndexTest, \
                                       attackGraphTest=attackGraphTest)
+
+            mdic = {"processedAttackOffset": attackOffset, \
+                    "processedAttackSkew": attackSkew, \
+                    "attackOffsetTestBest": attackOffsetTestBest, \
+                    "attackSkewTestBest": attackSkewTestBest, \
+                    "attackAdjTestBest": attackAdjTestBest, \
+                    "attackStateTestBest": attackStateTestBest, \
+                    "attackCommGraphTestBest": attackCommGraphTestBest, \
+                    "attackCenterTest": attackCenterTest, \
+                    "attackRadiusTest": attackRadiusTest, \
+                    "numAttackedNodesTest": numAttackedNodesTest, \
+                    "attackNodesIndexTest": attackNodesIndexTest, \
+                    "attackGraphTest": attackGraphTest}            
+            io.savemat(saveFile+'.mat', mdic)
         
         if (evalModel == False):
             saveDataDir = os.path.join(model.saveDir,'savedData')

@@ -5,6 +5,7 @@ from numpy.random import default_rng
 import matplotlib.pyplot as plt
 import scipy
 from collections import Counter
+from scipy import io
 
 import utils.graphTools as graph
 
@@ -358,13 +359,24 @@ class AerialSwarm(_data):
         if not os.path.exists(saveAttackDir):
             os.makedirs(saveAttackDir)
         
-        saveFile = os.path.join(saveAttackDir, 'AttackMode-' + str(self.attackMode) + '.npz')       
+        saveFile = os.path.join(saveAttackDir, 'AttackMode-' + str(self.attackMode))       
         
         if (self.attackMode==1 or self.attackMode==2):
-            np.savez(saveFile, posTest=posAll[startSample:endSample], velTest=velAll[startSample:endSample], accelTest=accelAll[startSample:endSample], \
+            np.savez(saveFile+'.npz', posTest=posAll[startSample:endSample], velTest=velAll[startSample:endSample], accelTest=accelAll[startSample:endSample], \
                      commGraphTest=commGraphAll[startSample:endSample], attackCenterTest=attackCenterAll[startSample:endSample], \
                          attackRadiusTest=attackRadiusAll[startSample:endSample], numAttackedNodesTest=numAttackedNodesAll[startSample:endSample], \
                              attackNodesIndexTest=attackNodesIndexAll[startSample:endSample])        
+
+            mdic = {"posTest": posAll[startSample:endSample], \
+                    "velTest": velAll[startSample:endSample], \
+                    "accelTest": accelAll[startSample:endSample], \
+                    "commGraphTest": commGraphAll[startSample:endSample], \
+                    "attackCenterTest": attackCenterAll[startSample:endSample], \
+                    "attackRadiusTest": attackRadiusAll[startSample:endSample], \
+                    "numAttackedNodesTest": numAttackedNodesAll[startSample:endSample], \
+                    "attackNodesIndexTest": attackNodesIndexAll[startSample:endSample]}            
+            io.savemat(saveFile+'.mat', mdic)
+                
             print("\tAttacking data (attack mode %s) is saved to the 'savedAttacks' folder!" % (self.attackMode), flush = True)
         
         self.astype(self.dataType)
