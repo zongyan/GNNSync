@@ -82,20 +82,20 @@ class LocalGNN_DB(nn.Module):
         for l in range(self.L):
             self.GFL[l].addGSO(S)
         
-        if self.evalModel == False:            
-            yGFL = self.GFL(x)
-            y = yGFL.permute(0, 1, 3, 2) # B x T x N x F[-1]
-        else:            
-            z = x
-            for l in range(len(self.GFL)):
-                if l % 2 == 0: # GSO function
-                    z = self.GFL[l](z)
-                else: # non-linear activation function
-                    self.beforeActivation.append(z[:,-1,:,:]) # storing the values before the activation function
-                    z = self.GFL[l](z)
-                    self.afterActivation.append(z[:,-1,:,:]) # storing the values from the activation function
-            yGFL = z
-            y = yGFL.permute(0, 1, 3, 2) # B x T x N x F[-1]
+        # if self.evalModel == False:            
+        yGFL = self.GFL(x)
+        y = yGFL.permute(0, 1, 3, 2) # B x T x N x F[-1]
+        # else:            
+        #     z = x
+        #     for l in range(len(self.GFL)):
+        #         if l % 2 == 0: # GSO function
+        #             z = self.GFL[l](z)
+        #         else: # non-linear activation function
+        #             self.beforeActivation.append(z[:,-1,:,:]) # storing the values before the activation function
+        #             z = self.GFL[l](z)
+        #             self.afterActivation.append(z[:,-1,:,:]) # storing the values from the activation function
+        #     yGFL = z
+        #     y = yGFL.permute(0, 1, 3, 2) # B x T x N x F[-1]
         
         if len(self.dimReadout) > 0:
             y = self.Readout(y) # B x T x N x dimReadout[-1]

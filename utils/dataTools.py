@@ -118,7 +118,7 @@ class _data:
 class AerialSwarm(_data):    
     def __init__(self, nAgents, commRadius, repelDist,
                  nTrain, nDAgger, nValid, nTest,
-                 duration, updateTime, adjustTime, attackMode,
+                 duration, updateTime, adjustTime, attackMode, saveDir, 
                  initVelValue=3.,initMinDist=0.1,
                  accelMax=10., savingSeeds=True, 
                  initOffsetValue=1., initSkewValue=0.,
@@ -186,7 +186,7 @@ class AerialSwarm(_data):
             if self.doPrint:
                 print("\tComputing initial conditions...", end = ' ', flush = True)
             
-            if nTrain == 400 or nTrain == 20:            
+            if nTrain == 400:            
                 initPosAll, initVelAll, \
                     initOffsetAll, initSkewAll = self.computeInitialConditions(
                                                   self.nAgents, nSamples, 
@@ -197,39 +197,34 @@ class AerialSwarm(_data):
                                                   xMaxInitVel=self.initVelValue,
                                                   yMaxInitVel=self.initVelValue)            
                 
-                if nTrain == 400:
-                    np.savez(os.path.join('experiments', 'flockingGNN') + 'initTrainValues' + '.npz', \
-                             initPosAll=initPosAll, initVelAll=initVelAll, \
-                                 initOffsetAll=initOffsetAll, initSkewAll=initSkewAll)
-            else:
-                initPosAll, initVelAll, \
-                    initOffsetAll, initSkewAll = self.computeInitialConditions(
-                                                  self.nAgents, nSamples, 
-                                                  self.commRadius, self.initMinDist,                                                                                           
-                                                  self.initOffsetValue, self.initSkewValue,
-                                                  self.meanOffsetValue, self.stdOffsetValue,
-                                                  self.meanSkewValue, self.stdSkewValue,
-                                                  xMaxInitVel=self.initVelValue,
-                                                  yMaxInitVel=self.initVelValue)            
-                
-                np.savez(os.path.join('experiments', 'flockingGNN') + 'initTestValues' + '.npz', \
+                np.savez(os.path.join('experiments', 'flockingGNN') + 'initTrainValues' + '.npz', \
                          initPosAll=initPosAll, initVelAll=initVelAll, \
-                             initOffsetAll=initOffsetAll, initSkewAll=initSkewAll)                    
+                             initOffsetAll=initOffsetAll, initSkewAll=initSkewAll)
+            elif nTrain == 20: # generating dummy training data
+                initPosAll, initVelAll, \
+                    initOffsetAll, initSkewAll = self.computeInitialConditions(
+                                                  self.nAgents, nSamples, 
+                                                  self.commRadius, self.initMinDist,                                                                                           
+                                                  self.initOffsetValue, self.initSkewValue,
+                                                  self.meanOffsetValue, self.stdOffsetValue,
+                                                  self.meanSkewValue, self.stdSkewValue,
+                                                  xMaxInitVel=self.initVelValue,
+                                                  yMaxInitVel=self.initVelValue)
                 
         else:
 
             if self.doPrint:
                 print("\tLoading initial conditions...", end = ' ', flush = True)            
             
-            if nTrain == 400 or nTrain == 20:
-                initValuesFile = np.load(os.path.join('experiments', 'flockingGNN') + 'initTrainValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
+            if nTrain==400 or nTrain==20:
+                initValuesFile = np.load(os.path.join(saveDir, 'flockingGNN') + 'initTrainValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
                 
                 initPosAll = initValuesFile['initPosAll']
                 initVelAll = initValuesFile['initVelAll']
                 initOffsetAll = initValuesFile['initOffsetAll']
                 initSkewAll = initValuesFile['initSkewAll']
             else:
-                initValuesFile = np.load(os.path.join('experiments', 'flockingGNN') + 'initTestValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
+                initValuesFile = np.load(os.path.join(saveDir, 'flockingGNN') + 'initTestValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
                 
                 initPosAll = initValuesFile['initPosAll']
                 initVelAll = initValuesFile['initVelAll']
@@ -274,7 +269,7 @@ class AerialSwarm(_data):
         if self.doPrint:
             print("OK", flush = True)
             print("\tComputing the communication graphs...",
-                  end=' ', flush=True)
+                  end = ' ', flush=True)
         
         commGraphAll, attackCenterAll, attackRadiusAll, numAttackedNodesAll, attackNodesIndexAll = \
             self.computeCommunicationGraph(posAll, self.commRadius, self.normalizeGraph)
@@ -353,16 +348,24 @@ class AerialSwarm(_data):
         self.adj['test'] = adjAll[startSample:endSample]
         self.commGraph['test'] = commGraphAll[startSample:endSample]
         self.state['test'] = stateAll[startSample:endSample]        
+
         self.attackCenter['test'] = attackCenterAll[startSample:endSample]        
         self.attackRadius['test'] = attackRadiusAll[startSample:endSample]    
         self.numAttackedNodes['test'] = numAttackedNodesAll[startSample:endSample]    
         self.attackNodesIndex['test'] = attackNodesIndexAll[startSample:endSample]
-
+        
+        saveAttackDir = os.path.join(saveDir,'savedAttacks')
+        if not os.path.exists(saveAttackDir):
+            os.makedirs(saveAttackDir)
+        
+        saveFile = os.path.join(saveAttackDir, 'AttackMode-' + str(self.attackMode) + '.npz')       
+        
         if (self.attackMode==1 or self.attackMode==2):
-            np.savez('saveFile', posTest=posAll[startSample:endSample], velTest=velAll[startSample:endSample], accelTest=accelAll[startSample:endSample], \
+            np.savez(saveFile, posTest=posAll[startSample:endSample], velTest=velAll[startSample:endSample], accelTest=accelAll[startSample:endSample], \
                      commGraphTest=commGraphAll[startSample:endSample], attackCenterTest=attackCenterAll[startSample:endSample], \
                          attackRadiusTest=attackRadiusAll[startSample:endSample], numAttackedNodesTest=numAttackedNodesAll[startSample:endSample], \
                              attackNodesIndexTest=attackNodesIndexAll[startSample:endSample])        
+            print("\tAttacking data (attack mode %s) is saved to the 'savedAttacks' folder!" % (self.attackMode), flush = True)
         
         self.astype(self.dataType)
         self.to(self.device)
@@ -567,7 +570,9 @@ class AerialSwarm(_data):
             if tSamples > maxTimeSamples:
                 for t in range(tSamples):                    
                     _, distSq = self.computeDifferences(posBatch[:,t,:,:])
-
+                    
+                    # Todo: it seems over complicated to define the network
+                    # topology using the following method (to discuss)
                     graphMatrixTime = np.exp(-distSq)
                     graphMatrixTime[distSq > (commRadius ** 2)] = 0.
                     graphMatrixTime[:,\
@@ -694,19 +699,19 @@ class AerialSwarm(_data):
                 for i in range(pos.shape[1]):            
                     meanCenter[:, i, :] = np.mean(pos[:, i, :, :], axis=2)
                     
-                attackCenter = np.repeat(meanCenter.reshape((pos.shape[0], pos.shape[1], pos.shape[2], 1)), pos.shape[3], axis=3)            
+                attackCenter = np.repeat(meanCenter.reshape((pos.shape[0], pos.shape[1], pos.shape[2], 1)), pos.shape[3], axis=3)
             elif self.attackMode == 2:   # attacking mode 2
                 startPosition = pos[:,0,:,:]
                 endPosition = pos[:,-1,:,:]                    
-                middleCenter = (startPosition + endPosition)/2
+                middleCenter = (np.mean(startPosition, axis=2) + np.mean(endPosition, axis=2))/2
                     
-                attackCenter = np.repeat(middleCenter.reshape((pos.shape[0], 1, pos.shape[2], pos.shape[3])), pos.shape[1], axis=1)            
+                attackCenter = np.repeat(middleCenter.reshape((pos.shape[0], 1, pos.shape[2], 1)), pos.shape[1], axis=1)            
+                attackCenter = np.repeat(attackCenter, pos.shape[3], axis=3)                            
             else:
                 raise Exception("unknown attack mode is found!")            
-        
+
+            numAttackedNodes = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0]))        
             attackNodesIndex = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0], pos.shape[3]))
-            
-            numAttackedNodes = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0]))
             
             distanceAttacker = (pos - attackCenter)**2        
             for index in range(len(radiusRange)):
@@ -717,7 +722,8 @@ class AerialSwarm(_data):
             
                 for i in range(thisIsAttack.shape[0]):
                     for j in range(thisIsAttack.shape[1]):
-                        thisAttackNodesIndex[i, j, 0:thisNumAttackedNodes[i,j]] = np.array([index for index, element in enumerate(thisIsAttack[i, j,:].tolist()) if element == True])                        
+                        thisAttackNodesIndex[i, j, 0:thisNumAttackedNodes[i,j]] = \
+                            np.array([idx for idx, element in enumerate(thisIsAttack[i, j,:].tolist()) if element == True])
                 
                 attackNodesIndex[:, :, index, :] = thisAttackNodesIndex
                 numAttackedNodes[:, :, index] = thisNumAttackedNodes
@@ -726,7 +732,7 @@ class AerialSwarm(_data):
             attackRadius = np.zeros(pos.shape) # attackRadius.shape[2] is the dummy dimension
             attackNodesIndex = np.zeros(pos.shape)  # attackNodesIndex.shape[2] is the dummy dimension            
             numAttackedNodes = np.zeros((pos.shape[0], pos.shape[1], pos.shape[2])) # numAttackedNodes.shape[2] is the dummy dimension              
-            print("\tNo need to calculate the attacked data.", end = ' ', flush = True)        
+            # print("\tNo need to calculate the attacked data.", end = ' ', flush = True)        
             
         return graphMatrix, attackCenter, attackRadius, numAttackedNodes, attackNodesIndex
     

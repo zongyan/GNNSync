@@ -115,7 +115,7 @@ print("...", flush = True)
 
 data = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
             nTest, 1, 1, nTest,
-            duration, updateTime, adjustTime, 0,
+            duration, updateTime, adjustTime, 0, saveDir, 
             initVelValue, initMinDist, accelMax, True)
 
 #%%
@@ -185,7 +185,7 @@ for thisModel in modelsGNN.keys():
 print("Generating testing data", end = '')
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
                 1, 1, 1, nTest,
-                duration, updateTime, adjustTime, attackMode,
+                duration, updateTime, adjustTime, attackMode, saveDir, 
                 initVelValue, initMinDist, accelMax, savingSeeds)
 print("...", flush = True)
 
@@ -194,5 +194,5 @@ for thisModel in list(modelsGNN.keys()):
     for nDAggersVal in nDAggersValues:
             
         for val in layerWise:
-            modelsGNN[thisModel] = copy.deepcopy(trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel]) # 这里的代码是有问题的，按理说这里的model是训练出来的结果，至少框架结构如此
+            modelsGNN[thisModel] = copy.deepcopy(trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel])
             modelsGNN[thisModel].evaluate(dataTest, nDAggersVal, val)

@@ -32,21 +32,21 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
             thisAttackNodeIndex = []
             
             for t in range(attackRadiusTest.shape[1]):        
-                thisAttackNodes = np.int64(attackNodesIndexTest[instant,t,i,0:np.int64(numAttackedNodesTest[instant,t,i])])
+                thisAttackNodes = np.int64(attackNodesIndexTest[instant, t, i, 0:np.int64(numAttackedNodesTest[instant,t,i])])
                 thisAttackNodeIndex.append(thisAttackNodes)
                 for element in thisAttackNodes:                    
                     attackGraphTest[instant, t, i, element, :] = np.zeros((50)) # we remove communication link due to attacks
                     attackGraphTest[instant, t, i, :, element] = np.zeros((50)) # we remove communication link due to attacks                
             
             thisAttackNodeIdxs = thisAttackNodeIndex[0]
-            for i in range(1, len(thisAttackNodeIndex)):    
-                thisAttackNodeIdxs = np.concatenate([thisAttackNodeIdxs, thisAttackNodeIndex[i]])
+            for idx in range(1, len(thisAttackNodeIndex)):    
+                thisAttackNodeIdxs = np.concatenate([thisAttackNodeIdxs, thisAttackNodeIndex[idx]])
             
             dicAttackNodeIdxs = Counter(thisAttackNodeIdxs)
             sortedAttackNodeIdxs = sorted(dicAttackNodeIdxs.items(), reverse=True)          
             attackedNodes = []
-            for i in range(len(sortedAttackNodeIdxs)):
-                attackedNodes.append(sortedAttackNodeIdxs[i][0])
+            for idx in range(len(sortedAttackNodeIdxs)):
+                attackedNodes.append(sortedAttackNodeIdxs[idx][0])
             
             attackedNodes = np.array(attackedNodes)     
             eachAttackNodeIndex.append(attackedNodes)
@@ -168,8 +168,8 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                                     graphTest, data.duration,
                                     archit = model.archit)
         
-        offset = offsetTestBest[:, :, :, :]
-        skew = skewTestBest[:, :, :, :]
+        offset = copy.deepcopy(offsetTestBest)
+        skew = copy.deepcopy(skewTestBest)
         avgOffset = np.mean(offset, axis = 3) # nSamples x tSamples x 1
         avgSkew = np.mean(skew/10, axis = 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
         
@@ -214,8 +214,8 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                     attackOffset[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
                     attackSkew[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
 
-                thisAttackOffset = attackOffset[instant, :, :, :]
-                thisAttackSkew = attackSkew[instant, :, :, :]
+                thisAttackOffset = copy.deepcopy(attackOffset[instant, :, :, :])
+                thisAttackSkew = copy.deepcopy(attackSkew[instant, :, :, :])
                     
                 for element in thisTotalAttackNodeIndex:
                     thisAttackOffset = np.delete(thisAttackOffset, element, axis=2)
@@ -240,35 +240,20 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
             attackCost = np.mean(np.array(attackCostsPerSample)) # scalar
 
             print("\tThe cost of time sync for best model under attacks: %.4f" %(attackCost), flush = True)   
+            
+            saveAttackDir = os.path.join(model.saveDir,'savedAttacks')
+            if not os.path.exists(saveAttackDir):
+                os.makedirs(saveAttackDir)
 
-            saveDataDir = os.path.join(model.saveDir,'savedData')
-            if not os.path.exists(saveDataDir):
-                os.makedirs(saveDataDir)
-        
-            if layerWiseTraining == True:
-                saveDataDir = os.path.join(saveDataDir,'layerWiseTraining')
-            else:
-                saveDataDir = os.path.join(saveDataDir,'endToEndTraining')        
-            if not os.path.exists(saveDataDir):
-                os.makedirs(saveDataDir)        
-        
-            if layerWiseTraining == True:
-                saveFile = os.path.join(saveDataDir, model.name + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
-            else:
-                saveFile = os.path.join(saveDataDir, model.name + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+            saveFile = os.path.join(saveAttackDir, 'AttackMode-' + str(data.attackMode) + '-Radius-' + str(attackRadiusTest[i,i,i,i]) + '-GNN-Results' + '.npz')
             
-            saveFile = saveFile + '.npz'
-            
-            # here we mostly expoert the data related to the GNN control
-            # we also need to expoert the position and velocity for plotting purposes.
-            np.savez(saveFile, attackOffset=attackOffset, attackSkew=attackSkew, \
+            np.savez(saveFile, processedAttackOffset=attackOffset, processedAttackSkew=attackSkew, \
                      attackOffsetTestBest=attackOffsetTestBest, attackSkewTestBest=attackSkewTestBest, \
                       attackAdjTestBest=attackAdjTestBest, attackStateTestBest=attackStateTestBest, \
                           attackCommGraphTestBest=attackCommGraphTestBest, \
                               attackCenterTest=attackCenterTest, attackRadiusTest=attackRadiusTest, \
                                   numAttackedNodesTest=numAttackedNodesTest, attackNodesIndexTest=attackNodesIndexTest, \
-                                      attackGraphTest=attackGraphTest, \
-                                          bestL = historicalBestL[l], bestIteration = historicalBestIteration[l], bestEpoch = historicalBestEpoch[l], bestBatch = historicalBestBatch[l])
+                                      attackGraphTest=attackGraphTest)
         
         if (evalModel == False):
             saveDataDir = os.path.join(model.saveDir,'savedData')
