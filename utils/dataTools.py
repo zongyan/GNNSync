@@ -697,8 +697,8 @@ class AerialSwarm(_data):
     
             thisMaxDist = Counter(list(np.rint(maxDist)))
             sortedRadius = sorted(thisMaxDist.items(), reverse=True)          
-    
-            radiusRange = np.arange(start=1, stop=sortedRadius[0][0]+0.5, step=0.5)
+
+            radiusRange = np.arange(start=1, stop=((sortedRadius[0][0]/2)+0.5), step=0.5)
             attackRadius = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0], pos.shape[3]))
     
             for index in range(len(radiusRange)):
