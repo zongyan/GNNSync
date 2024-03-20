@@ -131,8 +131,8 @@ def evaluate(model, trainer, data, evalModel, useNonlinearity, **kwargs):
                                    graphTest, data.duration,
                                    archit = model.archit)    
         
-        offset = offsetTestBest[:, :, :, :]
-        skew = skewTestBest[:, :, :, :]
+        offset = offsetTestBest
+        skew = skewTestBest
         avgOffset = np.mean(offset, axis = 3) # nSamples x tSamples x 1
         avgSkew = np.mean(skew/10, axis= 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
         
@@ -145,7 +145,7 @@ def evaluate(model, trainer, data, evalModel, useNonlinearity, **kwargs):
         diffOffsetAvg = np.mean(diffOffset, axis = 2) # nSamples x tSamples
         diffSkewAvg = np.mean(diffSkew, axis = 2) # nSamples x tSamples
         
-        costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*0.01 # nSamples
+        costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*(0.01**2) # nSamples
         
         cost = np.mean(costPerSample) # scalar
         print("\tThe cost of time sync for best model: %.4f" %(cost), flush = True)
