@@ -182,7 +182,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         diffOffsetAvg = np.mean(diffOffset, axis = 2) # nSamples x tSamples
         diffSkewAvg = np.mean(diffSkew, axis = 2) # nSamples x tSamples
         
-        costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*0.01 # nSamples
+        costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*(0.01**2) # nSamples
         
         cost = np.mean(costPerSample) # scalar
         print("\tThe cost of time sync for best model with NO attacks: %.4f" %(cost), flush = True)
@@ -233,7 +233,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                 thisAttackDiffOffsetAvg = np.mean(thisAttackDiffOffset, axis = 1) # nSamples x tSamples
                 thisAttackDiffSkewAvg = np.mean(thisAttackDiffSkew, axis = 1) # nSamples x tSamples
                 
-                thisAttackCostPerSample = np.sum(thisAttackDiffOffsetAvg, axis = 0) + np.sum(thisAttackDiffSkewAvg, axis = 0)*0.01 # nSamples
+                thisAttackCostPerSample = np.sum(thisAttackDiffOffsetAvg, axis = 0) + np.sum(thisAttackDiffSkewAvg, axis = 0)*(0.01**2) # nSamples
                 
                 attackCostsPerSample.append(thisAttackCostPerSample)
                 

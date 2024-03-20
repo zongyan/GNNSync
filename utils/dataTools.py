@@ -835,7 +835,7 @@ class AerialSwarm(_data):
             diffOffsetAvg = np.mean(diffOffset, axis = 2) # nSamples x tSamples
             diffSkewAvg = np.mean(diffSkew, axis = 2) # nSamples x tSamples
 
-            costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*updateTime # nSamples
+            costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*(updateTime**2) # nSamples
 
             cost = np.mean(costPerSample) # scalar        
         return cost
