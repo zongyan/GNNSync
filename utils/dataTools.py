@@ -174,12 +174,12 @@ class AerialSwarm(_data):
         self.adj = None
         self.commGraph = None
         self.state = None
-        
+                
         if savingSeeds:
             if self.doPrint:
                 print("\tComputing initial conditions...", end = ' ', flush = True)
             
-            if nTrain == 400 or nTrain == 20:            
+            if nTrain == 400:            
                 initPosAll, initVelAll, \
                     initOffsetAll, initSkewAll = self.computeInitialConditions(
                                                   self.nAgents, nSamples, 
@@ -192,8 +192,8 @@ class AerialSwarm(_data):
                 
                 np.savez(os.path.join('experiments', 'flockingGNN') + 'initTrainValues' + '.npz', \
                          initPosAll=initPosAll, initVelAll=initVelAll, \
-                             initOffsetAll=initOffsetAll, initSkewAll=initSkewAll)            
-            else:
+                             initOffsetAll=initOffsetAll, initSkewAll=initSkewAll)
+            elif nTrain == 20: # generating dummy training data
                 initPosAll, initVelAll, \
                     initOffsetAll, initSkewAll = self.computeInitialConditions(
                                                   self.nAgents, nSamples, 
@@ -202,26 +202,22 @@ class AerialSwarm(_data):
                                                   self.meanOffsetValue, self.stdOffsetValue,
                                                   self.meanSkewValue, self.stdSkewValue,
                                                   xMaxInitVel=self.initVelValue,
-                                                  yMaxInitVel=self.initVelValue)            
-                
-                np.savez(os.path.join('experiments', 'flockingGNN') + 'initTestValues' + '.npz', \
-                         initPosAll=initPosAll, initVelAll=initVelAll, \
-                             initOffsetAll=initOffsetAll, initSkewAll=initSkewAll)                    
+                                                  yMaxInitVel=self.initVelValue)
                 
         else:
 
             if self.doPrint:
                 print("\tLoading initial conditions...", end = ' ', flush = True)            
             
-            if nTrain == 400 or nTrain == 20:
-                initValuesFile = np.load(os.path.join('experiments', 'flockingGNN') + 'initTrainValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
+            if nTrain==400 or nTrain==20:
+                initValuesFile = np.load(os.path.join(saveDir, 'flockingGNN') + 'initTrainValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
                 
                 initPosAll = initValuesFile['initPosAll']
                 initVelAll = initValuesFile['initVelAll']
                 initOffsetAll = initValuesFile['initOffsetAll']
                 initSkewAll = initValuesFile['initSkewAll']
             else:
-                initValuesFile = np.load(os.path.join('experiments', 'flockingGNN') + 'initTestValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
+                initValuesFile = np.load(os.path.join(saveDir, 'flockingGNN') + 'initTestValues' + '.npz', allow_pickle=True) # the data file loaded from the example folder
                 
                 initPosAll = initValuesFile['initPosAll']
                 initVelAll = initValuesFile['initVelAll']
@@ -266,10 +262,9 @@ class AerialSwarm(_data):
         if self.doPrint:
             print("OK", flush = True)
             print("\tComputing the communication graphs...",
-                  end=' ', flush=True)
+                  end = ' ', flush=True)
         
-        commGraphAll = self.computeCommunicationGraph(posAll, self.commRadius,
-                                                      self.normalizeGraph)
+        commGraphAll = self.computeCommunicationGraph(posAll, self.commRadius, self.normalizeGraph)
         
         self.commGraph = {}
         
@@ -544,7 +539,9 @@ class AerialSwarm(_data):
             if tSamples > maxTimeSamples:
                 for t in range(tSamples):                    
                     _, distSq = self.computeDifferences(posBatch[:,t,:,:])
-
+                    
+                    # Todo: it seems over complicated to define the network
+                    # topology using the following method (to discuss)
                     graphMatrixTime = np.exp(-distSq)
                     graphMatrixTime[distSq > (commRadius ** 2)] = 0.
                     graphMatrixTime[:,\
@@ -579,8 +576,7 @@ class AerialSwarm(_data):
 
                         graphMatrixTime = graphMatrixTime / maxEigenvalue
                         
-                    graphMatrix[batchIndex[b]:batchIndex[b+1],t,:,:] = \
-                                                                graphMatrixTime
+                    graphMatrix[batchIndex[b]:batchIndex[b+1],t,:,:] = graphMatrixTime
                     
                     if doPrint:
                         percentageCount = int(100*(t+1+b*tSamples)\
@@ -647,7 +643,7 @@ class AerialSwarm(_data):
                     
         if doPrint:
             print('\b \b' * 4, end = '', flush = True)        
-        
+                    
         return graphMatrix
     
     def getData(self, name, samplesType, *args):

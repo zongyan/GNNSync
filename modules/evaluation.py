@@ -2,6 +2,7 @@ import numpy as np
 import os
 import torch.nn as nn
 import torch.optim as optim
+import copy 
 
 import utils.graphML as gml
 
@@ -11,7 +12,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
     graphTest = data.getData('commGraph','test')   
     clockNoiseTest = data.getData('clockNoise','test')   
     measurementNoiseTest = data.getData('packetExchangeDelay','test')   
-    processingNoiseTest = data.getData('processingDelay','test')   
+    processingNoiseTest = data.getData('processingDelay','test')
     
     paramsLayerWiseTrain = trainer.trainingOptions['paramsLayerWiseTrain']
     layerWiseTraining = trainer.trainingOptions['layerWiseTraining']
@@ -126,12 +127,12 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
             data.computeTrajectory(initPosTest, initVelTest, \
                                    measurementNoiseTest, processingNoiseTest, clockNoiseTest, 
                                    graphTest, data.duration,
-                                   archit = model.archit)    
+                                   archit = model.archit)
         
-        offset = offsetTestBest[:, :, :, :]
-        skew = skewTestBest[:, :, :, :]
+        offset = copy.deepcopy(offsetTestBest)
+        skew = copy.deepcopy(skewTestBest)
         avgOffset = np.mean(offset, axis = 3) # nSamples x tSamples x 1
-        avgSkew = np.mean(skew/10, axis= 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
+        avgSkew = np.mean(skew/10, axis = 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
         
         diffOffset = offset - np.tile(np.expand_dims(avgOffset, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
         diffSkew = skew/10 - np.tile(np.expand_dims(avgSkew, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
@@ -170,7 +171,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                           commGraphTestBest=commGraphTestBest, \
                               bestL = historicalBestL[l], bestIteration = historicalBestIteration[l], bestEpoch = historicalBestEpoch[l], bestBatch = historicalBestBatch[l], \
                                   lossTrain = trainer.lossTrain, accValid = trainer.accValid)
-            
+                
         l = l + 1
     
     print("OK")
