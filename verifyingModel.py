@@ -29,7 +29,7 @@ for i in range(len(dataFolder)):
     loadSeed('./' + saveDirRoot + '/' + dataFolder[i]) # loading the states and seed
         
 # the following is for temperature use
-folderName = "TimeSync-050-20240301232924"
+folderName = "TimeSync-050-20240223174555"
 saveDir = os.path.join(saveDirRoot, folderName)
 loadSeed('./experiments' + '/' + folderName) # loading the states and seed
 #%%
@@ -38,6 +38,9 @@ nAgents = 50  # number of UAVs during training
 useGPU = True
 commRadius = 2. # communication radius
 repelDist = 1. # minimum distance before activating repelling function
+nTrain = 400 # number of training samples
+nDAgger = nTrain
+nValid = 20 # number of valid samples
 nTest = 20 # number of testing samples
 duration = 10. # simulation duration 
 updateTime = 0.01 # clock update time
@@ -94,11 +97,11 @@ trainingOptions = {}
 '''ONLY for hidden layer parameters [at the layer-wise training] '''
 paramsLayerWiseTrainGNNThree = {}
 paramsLayerWiseTrainGNNThree['name'] = 'GNNThree'
-paramsLayerWiseTrainGNNThree['dimNodeSignals'] = [ ] # features per hidden layer
-paramsLayerWiseTrainGNNThree['nFilterTaps'] = [ ] # number of filter taps for each hidden layer
+paramsLayerWiseTrainGNNThree['dimNodeSignals'] = [64, 64] # features per hidden layer
+paramsLayerWiseTrainGNNThree['nFilterTaps'] = [2, 2] # number of filter taps for each hidden layer
 paramsLayerWiseTrainGNNThree['bias'] = True
 paramsLayerWiseTrainGNNThree['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
-paramsLayerWiseTrainGNNThree['dimReadout'] = [ ]
+paramsLayerWiseTrainGNNThree['dimReadout'] = []
 paramsLayerWiseTrainGNNThree['dimEdgeFeatures'] = 1 # scalar edge weights
 
 #%%
@@ -113,10 +116,10 @@ for thisModel in modelList:
 print("Generating dummy training data", end = '')
 print("...", flush = True)
 
-data = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
-            nTest, 1, 1, nTest,
-            duration, updateTime, adjustTime, 0, saveDir, 
-            initVelValue, initMinDist, accelMax, True)
+data = dataTools.AerialSwarm(nAgents, commRadius,repelDist,
+            nTrain, nDAgger, nValid, 1, # no care about testing, re-generating the dataset for testing
+            duration, updateTime, adjustTime, saveDir, 
+            initVelValue, initMinDist, accelMax, savingSeeds)
 
 #%%
 modelsGNN = {}
@@ -184,8 +187,8 @@ for thisModel in modelsGNN.keys():
 
 print("Generating testing data", end = '')
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
-                1, 1, 1, nTest,
-                duration, updateTime, adjustTime, attackMode, saveDir, 
+                1, 1, 1, nTest, # no care about training nor validation
+                duration, updateTime, adjustTime, saveDir,
                 initVelValue, initMinDist, accelMax, savingSeeds)
 print("...", flush = True)
 

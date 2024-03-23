@@ -117,7 +117,7 @@ class _data:
 class AerialSwarm(_data):    
     def __init__(self, nAgents, commRadius, repelDist,
                  nTrain, nDAgger, nValid, nTest,
-                 duration, updateTime, adjustTime,
+                 duration, updateTime, adjustTime, saveDir, 
                  initVelValue=3.,initMinDist=0.1,
                  accelMax=10., savingSeeds=True, 
                  initOffsetValue=1., initSkewValue=0.,

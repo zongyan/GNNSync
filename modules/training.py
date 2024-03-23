@@ -579,7 +579,8 @@ class Trainer:
         
         l = 0 # layer wise training counter
         while l < maximumLayerWiseNum + 1:
-                        
+            
+            # 应该就是这部分，需要类似于训练部分，同时需要重新载入不同的模型参数，计算结果
             saveDir = os.path.join(self.model.saveDir, 'savedModels')
             if (self.trainingOptions['layerWiseTraining'] == True):
                                     
