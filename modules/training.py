@@ -689,8 +689,26 @@ class Trainer:
                     else:
                         print("\t=> Best validation achieved (EndToEnd: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d): %.4f" % (
                                 bestL, bestIteration, bestEpoch, bestBatch, bestScore))
-                        
-                # 需要在这个地方，和之前的bestL等数据进行对比。                                
+
+                saveArchitDir = os.path.join(self.model.saveDir,'savedArchits')                
+
+                if layerWiseTraining == True:
+                    saveFile = os.path.join(saveArchitDir, 'LayerWiseTraining')
+                else:
+                    saveFile = os.path.join(saveArchitDir, 'endToEndTraining')                
+
+                trainingFile = np.load(saveFile + '-' + str(self.model.name) + '-nDAggers-' + str(nDAggers) + '.npz', allow_pickle=True)
+                                
+                historicalBestL = np.int64(trainingFile['historicalBestL'])
+                historicalBestIteration = np.int64(trainingFile['historicalBestIteration'])
+                historicalBestEpoch = np.int64(trainingFile['historicalBestEpoch'])
+                historicalBestBatch = np.int64(trainingFile['historicalBestBatch'])
+                
+                assert bestL == historicalBestL[l]
+                assert bestIteration == historicalBestIteration[l]
+                assert bestEpoch == historicalBestEpoch[l]
+                assert bestBatch == historicalBestBatch[l]
+                
                 iteration = iteration + 1 # end of DAgger, increase iteration count
             
             if ("GFL" in layers) and (l < layerWiseTrainL):
