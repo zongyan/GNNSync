@@ -127,7 +127,7 @@ for thisModel in modelList:
 print("Generating training data ", end = '')
 print("...", flush = True)
 
-data = dataTools.AerialSwarm(nAgents, commRadius,repelDist,
+data = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
             nTrain, nDAgger, nValid, 1, # no care about testing, re-generating the dataset for testing
             duration, updateTime, adjustTime, saveDir, 
             initVelValue, initMinDist, accelMax, savingSeeds)
@@ -144,7 +144,7 @@ for thisModel in modelList:
     thisName = hParamsDict.pop('name')
     callArchit = hParamsDict.pop('archit')
     thisDevice = hParamsDict.pop('device')
-    print("\tInitialising %s..." % thisName, end = ' ',flush = True)
+    print("\tInitialising %s..." % thisName, end = ' ', flush = True)
 
     thisOptimAlg = optimAlg
     thisLearningRate = learningRate
@@ -178,6 +178,7 @@ for thisModel in modelList:
 initModelsGNN = copy.deepcopy(modelsGNN)    
 trainedModelsGNN = [copy.deepcopy([copy.deepcopy(initModelsGNN) for k in range(len(nDAggersValues))]) for j in range(len(layerWise))]
 
+#%%
 print("Configuring and loading the trained model parameters%s..." % thisModel)
 for thisModel in modelsGNN.keys():
     

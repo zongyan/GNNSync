@@ -536,7 +536,7 @@ class Trainer:
             saveFile = os.path.join(saveArchitDir, 'LayerWiseTraining')
         else:
             saveFile = os.path.join(saveArchitDir, 'endToEndTraining')
-        
+
         np.savez(saveFile + '-' + str(self.model.name) + '-nDAggers-' + str(nDAggers) + '.npz', historicalL=historicalL, historicalF=historicalF, \
                  historicalK=historicalK, historicalE=historicalE, \
                      historicalBias=historicalBias, historicalSigma=historicalSigma, \
@@ -617,17 +617,7 @@ class Trainer:
                     evalValid = []
                     
                     batch = 0 # batch counter
-                    while batch < nBatches:    
-                        
-                        if printInterval > 0:
-                            if (epoch * nBatches + batch) % printInterval == 0:                                
-                                if layerWiseTraining == True:                          
-                                    print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d)" % (
-                                            l, iteration, epoch, batch), end = ' ')
-                                else:
-                                    print("\t(EndToEnd: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d)" % (
-                                            l, iteration, epoch, batch), end = ' ')
-                                print("")                        
+                    while batch < nBatches:                     
 
                         if (epoch * nBatches + batch) % validationInterval == 0:                    
 
@@ -690,8 +680,6 @@ class Trainer:
         
                 if nEpochs == 0:
                     bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
-                    self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
-                    self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Last')
                     print("\nWARNING: No training. Best and Last models are the same.\n")
                 
                 if nEpochs > 0:
@@ -735,7 +723,7 @@ class Trainer:
 
                     else:
 
-                        layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i)], originalArchitF[np.int64((i) + 1)], originalArchitK[np.int64(i)], self.model.archit.E, self.model.archit.bias, self.model.archit.heatKernel))
+                        layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i)], originalArchitF[np.int64(i + 1)], originalArchitK[np.int64(i)], self.model.archit.E, self.model.archit.bias, self.model.archit.heatKernel))
         
                 # append the layer-wise training layer
                 layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias, self.model.archit.heatKernel))
@@ -787,6 +775,9 @@ class Trainer:
                     for i in range(np.int64(len(self.model.archit.Readout))):
                         nn.init.xavier_uniform_(self.model.archit.Readout[np.int64(i)].weight)
                         nn.init.zeros_(self.model.archit.Readout[np.int64(i)].bias)
+
+            del thisLoss
+            del thisOptim
 
             self.model.loss = lossFunction()
             self.model.optim = optim.Adam(self.model.archit.parameters(),
