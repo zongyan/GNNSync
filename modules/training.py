@@ -631,14 +631,7 @@ class Trainer:
 
                         if (epoch * nBatches + batch) % validationInterval == 0:                    
 
-                            if (self.trainingOptions['layerWiseTraining'] == True):
-                                
-                                """
-                                In TNNLS, we only use the end-to-end training solution,
-                                there is no need to check the optimal model in this 
-                                layer-wise training paradim. 
-                                Thus, the following code has NOT been checked
-                                """                                                    
+                            if (self.trainingOptions['layerWiseTraining'] == True):                            
                                 print("\tLoading best layer-wise training %s model parameters..." % self.model.name) 
 
                                 self.model.load(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')                                
@@ -675,7 +668,6 @@ class Trainer:
                             if iteration == 0 and epoch == 0 and batch == 0:
                                 bestScore = accValid
                                 bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
-                                # self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
                             else:
                                 thisValidScore = accValid
                                 if thisValidScore < bestScore:
@@ -683,8 +675,6 @@ class Trainer:
                                     bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
                                     print("\t=> New best achieved: %.4f" % \
                                               (bestScore))
-                                    # self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
-                                    # initialBest = False
         
                             del initThetaValid
                             del initGammaValid                                                        
@@ -697,8 +687,6 @@ class Trainer:
                         self.accValid[iteration, epoch, :] = np.asarray(evalValid, dtype=np.float64)                       
                         
                     epoch += 1 # end of epoch, increase epoch count
-        
-                # self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Last') # training over, save the last model
         
                 if nEpochs == 0:
                     bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
@@ -714,19 +702,8 @@ class Trainer:
                         print("\t=> Best validation achieved (EndToEnd: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d): %.4f" % (
                                 bestL, bestIteration, bestEpoch, bestBatch, bestScore))
                         
-                # 需要在这个地方，和之前的bestL等数据进行对比。
-                
-                # '''ToDo: if the 'adjustTime' is not the same as the 'updateTime', 
-                #          we may need to re-write the DAgger part'''
-                # assert self.data.adjustTime == self.data.updateTime
-                
-                iteration = iteration + 1 # end of DAgger, increase iteration count          
-                
-            # if layerWiseTraining == True:                          
-            #     # reload best model for layer-wise training
-            #     self.model.load(layerWiseTraining, nDAggers, bestL, bestIteration, bestEpoch, bestBatch, label = 'Best')
-            # else:
-            #     pass
+                # 需要在这个地方，和之前的bestL等数据进行对比。                                
+                iteration = iteration + 1 # end of DAgger, increase iteration count
             
             if ("GFL" in layers) and (l < layerWiseTrainL):
                 
@@ -793,8 +770,7 @@ class Trainer:
                         layerWiseFC.append(nn.Linear(origLayer.in_features, origLayer.out_features, bias = self.model.archit.bias))
     
                 # append the original layer
-                layerWiseFC.append(nn.Linear(lastReadoutLayer.in_features, layerWiseTraindimReadout[l], bias = layerWiseTrainBias))            
-                # layerWiseFC.append(nn.Tanh())
+                layerWiseFC.append(nn.Linear(lastReadoutLayer.in_features, layerWiseTraindimReadout[l], bias = layerWiseTrainBias))
                 
                 # add the original final output layer
                 layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], lastReadoutLayer.out_features, bias = self.model.archit.bias))
