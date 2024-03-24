@@ -630,8 +630,23 @@ class Trainer:
                                 print("")                        
 
                         if (epoch * nBatches + batch) % validationInterval == 0:                    
-                            startTime = datetime.datetime.now()
-                                        
+
+                            if (self.trainingOptions['layerWiseTraining'] == True):
+                                
+                                """
+                                In TNNLS, we only use the end-to-end training solution,
+                                there is no need to check the optimal model in this 
+                                layer-wise training paradim. 
+                                Thus, the following code has NOT been checked
+                                """                                                    
+                                print("\tLoading best layer-wise training %s model parameters..." % self.model.name) 
+
+                                self.model.load(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')                                
+                            else:
+                                print("\tLoading best end-to-end training %s model parameters..." % self.model.name)
+
+                                self.model.load(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
+                            
                             initThetaValid = self.data.getData('initOffset','valid')
                             initGammaValid = self.data.getData('initSkew','valid')
                             graphValid = self.data.getData('commGraph','valid')                       
@@ -660,7 +675,7 @@ class Trainer:
                             if iteration == 0 and epoch == 0 and batch == 0:
                                 bestScore = accValid
                                 bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
-                                self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
+                                # self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
                             else:
                                 thisValidScore = accValid
                                 if thisValidScore < bestScore:
@@ -668,7 +683,7 @@ class Trainer:
                                     bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
                                     print("\t=> New best achieved: %.4f" % \
                                               (bestScore))
-                                    self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
+                                    # self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
                                     # initialBest = False
         
                             del initThetaValid
@@ -683,7 +698,7 @@ class Trainer:
                         
                     epoch += 1 # end of epoch, increase epoch count
         
-                self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Last') # training over, save the last model
+                # self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Last') # training over, save the last model
         
                 if nEpochs == 0:
                     bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
@@ -698,62 +713,20 @@ class Trainer:
                     else:
                         print("\t=> Best validation achieved (EndToEnd: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d): %.4f" % (
                                 bestL, bestIteration, bestEpoch, bestBatch, bestScore))
+                        
+                # 需要在这个地方，和之前的bestL等数据进行对比。
                 
-                '''ToDo: if the 'adjustTime' is not the same as the 'updateTime', 
-                         we may need to re-write the DAgger part'''
-                assert self.data.adjustTime == self.data.updateTime
+                # '''ToDo: if the 'adjustTime' is not the same as the 'updateTime', 
+                #          we may need to re-write the DAgger part'''
+                # assert self.data.adjustTime == self.data.updateTime
                 
                 iteration = iteration + 1 # end of DAgger, increase iteration count          
                 
-            if layerWiseTraining == True:                          
-                # reload best model for layer-wise training
-                self.model.load(layerWiseTraining, nDAggers, bestL, bestIteration, bestEpoch, bestBatch, label = 'Best')
-            else:
-                pass                
-                        
-            # 应该就是这部分，需要类似于训练部分，同时需要重新载入不同的模型参数，计算结果
-            saveDir = os.path.join(self.model.saveDir, 'savedModels')
-            if (self.trainingOptions['layerWiseTraining'] == True):
-                                    
-                print("\tLoading best layer-wise training %s model parameters..." % self.model.name) 
-                
-                saveDir = os.path.join(saveDir, 'layerWiseTraining')
-                
-                historicalModels = sorted(Path(saveDir).iterdir(), key=os.path.getmtime)
-                                        
-                thisHistoricalModels = []
-    
-                for element in historicalModels:            
-                    if self.model.name == str(element)[70:(70+len(self.model.name))] and np.int64(str(element)[70+len(self.model.name)+len('-LayerWise-')]) == l:
-                        thisHistoricalModels.append(str(element)[70:])
-                
-                for i in range(len(thisHistoricalModels)):
-                    if list(reversed(thisHistoricalModels))[i][-9:-5] == 'Best':
-                        thisBestModelArchit = list(reversed(thisHistoricalModels))[i+1]                    
-                        break                    
-                
-                architLoadFile = os.path.join(saveDir, thisBestModelArchit) 
-                self.model.archit.load_state_dict(torch.load(architLoadFile))                        
-            else:
-                print("\tLoading best end-to-end training %s model parameters..." % self.model.name)
-                
-                saveDir = os.path.join(saveDir, 'endToEndTraining')                    
-
-                historicalModels = sorted(Path(saveDir).iterdir(), key=os.path.getmtime)
-                                        
-                thisHistoricalModels = []
-                
-                for element in historicalModels:                                    
-                    if self.model.name == str(element)[69:(69+len(self.model.name))] and np.int64(str(element)[69+len(self.model.name)+len('-EndToEnd-')]) == l:                        
-                        thisHistoricalModels.append(str(element)[69:])
-                
-                for i in range(len(thisHistoricalModels)):
-                    if list(reversed(thisHistoricalModels))[i][-9:-5] == 'Best':
-                        thisBestModelArchit = list(reversed(thisHistoricalModels))[i+1]   
-                        break
-                
-                architLoadFile = os.path.join(saveDir, thisBestModelArchit) 
-                self.model.archit.load_state_dict(torch.load(architLoadFile))
+            # if layerWiseTraining == True:                          
+            #     # reload best model for layer-wise training
+            #     self.model.load(layerWiseTraining, nDAggers, bestL, bestIteration, bestEpoch, bestBatch, label = 'Best')
+            # else:
+            #     pass
             
             if ("GFL" in layers) and (l < layerWiseTrainL):
                 
@@ -789,7 +762,6 @@ class Trainer:
         
                 # append the layer-wise training layer
                 layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias, self.model.archit.heatKernel))
-                # layerWiseGFL.append(nn.Tanh())
                  
                 # add the original final output layer
                 layerWiseGFL.append(gml.GraphFilter_DB(layerWiseTrainF[l], originalArchitF[-1], originalArchitK[-1], self.model.archit.E, self.model.archit.bias, self.model.archit.heatKernel))
