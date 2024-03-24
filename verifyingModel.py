@@ -7,6 +7,7 @@ Created on Wed Jan  3 19:28:24 2024
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import datetime
 import copy
 
 import torch; torch.set_default_dtype(torch.float64)
@@ -21,6 +22,8 @@ import modules.evaluation as evaluation
 
 from utils.miscTools import loadSeed
 
+# Start measuring time
+startRunTime = datetime.datetime.now()
 #%%
 saveDirRoot = 'experiments'
 dataFolder = os.listdir(saveDirRoot)
@@ -323,3 +326,17 @@ for thisModel in list(modelsGNN.keys()):
         for val in layerWise:
             modelsGNN[thisModel] = copy.deepcopy(trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel])
             modelsGNN[thisModel].evaluate(dataTest, nDAggersVal, val)
+
+#%%
+endRunTime = datetime.datetime.now()
+
+totalRunTime = abs(endRunTime - startRunTime)
+totalRunTimeH = int(divmod(totalRunTime.total_seconds(), 3600)[0])
+totalRunTimeM, totalRunTimeS = \
+               divmod(totalRunTime.total_seconds() - totalRunTimeH * 3600., 60)
+totalRunTimeM = int(totalRunTimeM)
+print("Simulation started: %s" %startRunTime.strftime("%Y/%m/%d %H:%M:%S"))
+print("Simulation ended:   %s" % endRunTime.strftime("%Y/%m/%d %H:%M:%S"))
+print("Total time: %dh %dm %.2fs" % (totalRunTimeH,
+                                     totalRunTimeM,
+                                     totalRunTimeS))    
