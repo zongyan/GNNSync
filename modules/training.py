@@ -775,8 +775,7 @@ class Trainer:
                 # add the original final output layer
                 layerWiseFC.append(nn.Linear(layerWiseTraindimReadout[l], lastReadoutLayer.out_features, bias = self.model.archit.bias))
                 
-                self.model.archit.dimReadout = np.append(np.append(self.model.archit.dimReadout[0:-1], layerWiseTraindimReadout[0:l+1]), self.model.archit.dimReadout[-1])                
-                # self.model.archit.dimReadout = np.append(layerWiseTraindimReadout[0:l+1], self.model.archit.dimReadout[-1])
+                self.model.archit.dimReadout = np.append(np.append(self.model.archit.dimReadout[0:-1], layerWiseTraindimReadout[0:l+1]), self.model.archit.dimReadout[-1])
                 architTime.LocalGNN_DB.readoutLayerWiseInit(self.model.archit, layerWiseFC) # readout layer for layer-wise training  
                 
                 if layerWiseTraining == True:
@@ -788,7 +787,11 @@ class Trainer:
                     for i in range(np.int64(len(self.model.archit.Readout))):
                         nn.init.xavier_uniform_(self.model.archit.Readout[np.int64(i)].weight)
                         nn.init.zeros_(self.model.archit.Readout[np.int64(i)].bias)
-               
+
+            self.model.loss = lossFunction()
+            self.model.optim = optim.Adam(self.model.archit.parameters(),
+                                    lr = learningRate,
+                                    betas = (beta1, beta2))                            
             self.model.archit.to(self.model.device)
                 
             l = l + 1
