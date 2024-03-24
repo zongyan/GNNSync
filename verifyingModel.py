@@ -58,16 +58,25 @@ lossFunction = nn.MSELoss
 trainer = training.Trainer
 evaluator = evaluation.evaluate
 
+nEpochs = 30 # number of epochs
+batchSize = 20 # batch size
+validationInterval = 5 # how many training steps to do the validation
 nDAggersValues = [1]
+expertProb = 0.9
+aggregationSize = nDAgger
 
+nonlinearityHidden = torch.tanh
+nonlinearityOutput = torch.tanh
 nonlinearity = nn.Tanh
 
 layerWiseTraining = True
 endToEndTraining = not layerWiseTraining
 layerWise = [endToEndTraining]
 
+printInterval = 1 # after how many training steps, print the partial results
+                  #   0 means to never print partial results while training
+
 savingSeeds = False
-attackMode = 1 # 1 -- attacking mode 1; 2 -- attacking mode 2
 evalModel = True
 #%%
 '''
@@ -93,6 +102,8 @@ hParamsGNNThree['heatKernel'] = True
 modelList += [hParamsGNNThree['name']]
 
 trainingOptions = {}
+trainingOptions['printInterval'] = printInterval
+trainingOptions['validationInterval'] = validationInterval
 
 '''ONLY for hidden layer parameters [at the layer-wise training] '''
 paramsLayerWiseTrainGNNThree = {}
@@ -113,7 +124,7 @@ for thisModel in modelList:
     hParamsDict = eval('hParams' + thisModel)
     print("\t%s: %s" % (thisModel, hParamsDict['device']))
 
-print("Generating dummy training data", end = '')
+print("Generating training data ", end = '')
 print("...", flush = True)
 
 data = dataTools.AerialSwarm(nAgents, commRadius,repelDist,
@@ -121,6 +132,8 @@ data = dataTools.AerialSwarm(nAgents, commRadius,repelDist,
             duration, updateTime, adjustTime, saveDir, 
             initVelValue, initMinDist, accelMax, savingSeeds)
 
+print("Preview data", end = '')
+print("...", flush = True)
 #%%
 modelsGNN = {}
 
@@ -176,8 +189,8 @@ for thisModel in modelsGNN.keys():
         for val in layerWise:
             
             modelsGNN[thisModel] = copy.deepcopy(initModelsGNN[thisModel])
-            thisTrainVars = modelsGNN[thisModel].configure(data, 1, 1, \
-                                                        nDAggersVal, 1, 1, \
+            thisTrainVars = modelsGNN[thisModel].configure(data, nEpochs, batchSize, \
+                                                        nDAggersVal, expertProb, aggregationSize, \
                                                             paramsLayerWiseTrain, val, \
                                                                 lossFunction, learningRate, beta1, beta2, evalModel, **trainingOptions)
 

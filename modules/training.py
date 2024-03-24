@@ -546,8 +546,21 @@ class Trainer:
 
 #%%
     def configuration(self):        
+        printInterval = self.trainingOptions['printInterval']
+        validationInterval = self.trainingOptions['validationInterval']
+        batchIndex = self.trainingOptions['batchIndex']
+        batchSize = self.trainingOptions['batchSize']
+        nEpochs = self.trainingOptions['nEpochs']
+        nBatches = self.trainingOptions['nBatches']
+        nDAggers = self.trainingOptions['nDAggers']
+        expertProb = self.trainingOptions['expertProb']
+        aggSize = self.trainingOptions['aggSize']
         paramsLayerWiseTrain = self.trainingOptions['paramsLayerWiseTrain']        
         layerWiseTraining = self.trainingOptions['layerWiseTraining']
+        lossFunction = self.trainingOptions['lossFunction']
+        learningRate = self.trainingOptions['learningRate']
+        beta1 = self.trainingOptions['beta1']
+        beta2 = self.trainingOptions['beta2']
                 
         paramsNameLayerWiseTrain = list(paramsLayerWiseTrain)
         
@@ -561,7 +574,12 @@ class Trainer:
         layerWiseTrainBias = paramsLayerWiseTrain[paramsNameLayerWiseTrain[2]]
         layerWiseTrainSigma = paramsLayerWiseTrain[paramsNameLayerWiseTrain[3]]
         layerWiseTraindimReadout = paramsLayerWiseTrain[paramsNameLayerWiseTrain[4]]
-        
+
+        nTrain = self.data.nTrain
+        thisDevice = self.model.device
+
+        epoch = 0 # epoch counter
+        iteration = 1 # DAgger counter                
         l = 0 # adding layer counter
                       
         modules = [name for name, _ in self.model.archit.named_parameters()]
@@ -576,10 +594,123 @@ class Trainer:
         assert len(self.model.archit.K) >= 2
         
         maximumLayerWiseNum = max(np.array((layerWiseTrainL, len(layerWiseTraindimReadout))))
+
+        if maximumLayerWiseNum != 0:
+            self.accValid = np.zeros(((maximumLayerWiseNum+1), nDAggers, nEpochs, np.int64(nBatches/validationInterval)))        
+        else:
+            self.accValid = np.zeros((nDAggers, nEpochs, np.int64(nBatches/validationInterval)))                    
         
         l = 0 # layer wise training counter
         while l < maximumLayerWiseNum + 1:
+
+            print("\tdimGFL: % 2s, numTap: % 2s, dimReadout: %2s " % (
+                str(list(self.model.archit.F)), str(list(self.model.archit.K)), str(list(np.int64(self.model.archit.dimReadout)))
+                ), end = ' ')
+            print("")        
             
+            iteration = 0 # DAgger counter
+            while iteration < nDAggers:
+                
+                epoch = 0 # epoch counter
+                while epoch < nEpochs:
+
+                    evalValid = []
+                    
+                    batch = 0 # batch counter
+                    while batch < nBatches:    
+                        
+                        if printInterval > 0:
+                            if (epoch * nBatches + batch) % printInterval == 0:                                
+                                if layerWiseTraining == True:                          
+                                    print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d)" % (
+                                            l, iteration, epoch, batch), end = ' ')
+                                else:
+                                    print("\t(EndToEnd: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d)" % (
+                                            l, iteration, epoch, batch), end = ' ')
+                                print("")                        
+
+                        if (epoch * nBatches + batch) % validationInterval == 0:                    
+                            startTime = datetime.datetime.now()
+                                        
+                            initThetaValid = self.data.getData('initOffset','valid')
+                            initGammaValid = self.data.getData('initSkew','valid')
+                            graphValid = self.data.getData('commGraph','valid')                       
+                            clockNoiseValid = self.data.getData('clockNoise','valid')                        
+                            measurementNoiseValid = self.data.getData('packetExchangeDelay','valid')    
+                            processingNoiseValid = self.data.getData('processingDelay','valid')    
+                            
+                            offsetTestValid, skewTestValid, _, _, _ = self.data.computeTrajectory(
+                                    initThetaValid, initGammaValid, measurementNoiseValid, 
+                                    processingNoiseValid, clockNoiseValid, graphValid, self.data.duration,
+                                    archit = self.model.archit, doPrint = False)
+                            
+                            accValid = self.data.evaluate(thetaOffset=offsetTestValid, 
+                                                          gammaSkew=skewTestValid)
+        
+                            evalValid += [accValid]
+                            
+                            if layerWiseTraining == True:                          
+                                print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) Valid Accuracy: %8.4f" % (
+                                        l, iteration, epoch, batch, accValid), end = ' ')
+                            else:
+                                print("\t(EndToEnd: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) Valid Accuracy: %8.4f" % (
+                                        l, iteration, epoch, batch, accValid), end = ' ')
+                            print("")
+        
+                            if iteration == 0 and epoch == 0 and batch == 0:
+                                bestScore = accValid
+                                bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
+                                self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
+                            else:
+                                thisValidScore = accValid
+                                if thisValidScore < bestScore:
+                                    bestScore = thisValidScore
+                                    bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
+                                    print("\t=> New best achieved: %.4f" % \
+                                              (bestScore))
+                                    self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
+                                    # initialBest = False
+        
+                            del initThetaValid
+                            del initGammaValid                                                        
+                            
+                        batch += 1 # end of batch, and increase batch count
+
+                    if maximumLayerWiseNum != 0:
+                        self.accValid[l, iteration, epoch, :] = np.asarray(evalValid, dtype=np.float64)
+                    else:
+                        self.accValid[iteration, epoch, :] = np.asarray(evalValid, dtype=np.float64)                       
+                        
+                    epoch += 1 # end of epoch, increase epoch count
+        
+                self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Last') # training over, save the last model
+        
+                if nEpochs == 0:
+                    bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
+                    self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
+                    self.model.save(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Last')
+                    print("\nWARNING: No training. Best and Last models are the same.\n")
+                
+                if nEpochs > 0:
+                    if layerWiseTraining == True:                          
+                        print("\t=> Best validation achieved (LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d): %.4f" % (
+                                bestL, bestIteration, bestEpoch, bestBatch, bestScore))
+                    else:
+                        print("\t=> Best validation achieved (EndToEnd: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d): %.4f" % (
+                                bestL, bestIteration, bestEpoch, bestBatch, bestScore))
+                
+                '''ToDo: if the 'adjustTime' is not the same as the 'updateTime', 
+                         we may need to re-write the DAgger part'''
+                assert self.data.adjustTime == self.data.updateTime
+                
+                iteration = iteration + 1 # end of DAgger, increase iteration count          
+                
+            if layerWiseTraining == True:                          
+                # reload best model for layer-wise training
+                self.model.load(layerWiseTraining, nDAggers, bestL, bestIteration, bestEpoch, bestBatch, label = 'Best')
+            else:
+                pass                
+                        
             # 应该就是这部分，需要类似于训练部分，同时需要重新载入不同的模型参数，计算结果
             saveDir = os.path.join(self.model.saveDir, 'savedModels')
             if (self.trainingOptions['layerWiseTraining'] == True):
@@ -654,10 +785,7 @@ class Trainer:
 
                     else:
 
-                        # if (i % 2) == 0:
                         layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[np.int64(i)], originalArchitF[np.int64((i) + 1)], originalArchitK[np.int64(i)], self.model.archit.E, self.model.archit.bias, self.model.archit.heatKernel))
-                        # else:
-                        #     layerWiseGFL.append(nn.Tanh())
         
                 # append the layer-wise training layer
                 layerWiseGFL.append(gml.GraphFilter_DB(originalArchitF[-2], layerWiseTrainF[l], layerWiseTrainK[l], layerWiseTrainE, layerWiseTrainBias, self.model.archit.heatKernel))
