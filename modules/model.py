@@ -67,6 +67,15 @@ class Model:
         # self.archit.evalModel = evalModel        
         self.useNonlinearity = useNonlinearity
         # self.archit.useNonlinearity = useNonlinearity
+
+        self.evalModel = evalModel
+        self.archit.evalModel = evalModel
+        self.heatKernel = self.archit.heatKernel
+        self.archit.useNonlinearity = useNonlinearity
+        
+        assert self.archit.evalModel == self.evalModel
+        assert self.archit.heatKernel == self.heatKernel
+        assert self.archit.useNonlinearity == self.useNonlinearity
         
         self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)] = \
             self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)]\
