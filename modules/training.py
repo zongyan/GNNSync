@@ -571,6 +571,10 @@ class Trainer:
     def configuration(self):        
         paramsLayerWiseTrain = self.trainingOptions['paramsLayerWiseTrain']        
         layerWiseTraining = self.trainingOptions['layerWiseTraining']
+        lossFunction = self.trainingOptions['lossFunction']
+        learningRate = self.trainingOptions['learningRate']
+        beta1 = self.trainingOptions['beta1']
+        beta2 = self.trainingOptions['beta2']        
                 
         paramsNameLayerWiseTrain = list(paramsLayerWiseTrain)
         
@@ -740,7 +744,11 @@ class Trainer:
                     for i in range(np.int64((len(self.model.archit.Readout) + 1)/2)):
                         nn.init.xavier_uniform_(self.model.archit.Readout[np.int64(2*i+1)].weight)
                         nn.init.zeros_(self.model.archit.Readout[np.int64(2*i+1)].bias)
-               
+
+            self.model.loss = lossFunction()
+            self.model.optim = optim.Adam(self.model.archit.parameters(),
+                                    lr = learningRate,
+                                    betas = (beta1, beta2))                
             self.model.archit.to(self.model.device)
                 
             l = l + 1
