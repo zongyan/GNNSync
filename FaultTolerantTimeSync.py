@@ -29,7 +29,7 @@ for i in range(len(dataFolder)):
     loadSeed('./' + saveDirRoot + '/' + dataFolder[i]) # loading the states and seed
         
 # the following is for temperature use
-folderName = "TimeSync-050-20240301232924"
+folderName = "TimeSync-050-20240320204410"
 saveDir = os.path.join(saveDirRoot, folderName)
 loadSeed('./experiments' + '/' + folderName) # loading the states and seed
 #%%
@@ -76,30 +76,32 @@ Experiment 2.1 uses the adjacency matrix.
 
 modelList = []
 
-hParamsGNNThree = {}
-hParamsGNNThree['name'] = 'GNNThree'
-hParamsGNNThree['archit'] = architTime.LocalGNN_DB
-hParamsGNNThree['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-hParamsGNNThree['dimNodeSignals'] = [2, 64, 2] # features per layer
-hParamsGNNThree['nFilterTaps'] = [2, 1] # number of filter taps
-hParamsGNNThree['bias'] = True
-hParamsGNNThree['nonlinearity'] = nonlinearity
-hParamsGNNThree['dimReadout'] = [ ] 
-hParamsGNNThree['dimEdgeFeatures'] = 1 # scalar edge weights
-hParamsGNNThree['heatKernel'] = True
-modelList += [hParamsGNNThree['name']]
+# GNN using Tanh; NO readout layer and heat kernel (analysing the role of nonlinear activation function)
+hParamsGNNTwo = {}
+hParamsGNNTwo['name'] = 'GNNTwo'
+hParamsGNNTwo['archit'] = architTime.LocalGNN_DB
+hParamsGNNTwo['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsGNNTwo['dimNodeSignals'] = [2, 64, 2] # features per layer
+hParamsGNNTwo['nFilterTaps'] = [2, 1] # number of filter taps
+hParamsGNNTwo['bias'] = True
+hParamsGNNTwo['nonlinearity'] = nonlinearity
+hParamsGNNTwo['dimReadout'] = [ ] 
+hParamsGNNTwo['dimEdgeFeatures'] = 1 # scalar edge weights
+hParamsGNNTwo['useNonlinearity'] = True
+hParamsGNNTwo['heatKernel'] = False
+modelList += [hParamsGNNTwo['name']]
 
 trainingOptions = {}
 
 '''ONLY for hidden layer parameters [at the layer-wise training] '''
-paramsLayerWiseTrainGNNThree = {}
-paramsLayerWiseTrainGNNThree['name'] = 'GNNThree'
-paramsLayerWiseTrainGNNThree['dimNodeSignals'] = [ ] # features per hidden layer
-paramsLayerWiseTrainGNNThree['nFilterTaps'] = [ ] # number of filter taps for each hidden layer
-paramsLayerWiseTrainGNNThree['bias'] = True
-paramsLayerWiseTrainGNNThree['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
-paramsLayerWiseTrainGNNThree['dimReadout'] = [ ]
-paramsLayerWiseTrainGNNThree['dimEdgeFeatures'] = 1 # scalar edge weights
+paramsLayerWiseTrainGNNTwo = {}
+paramsLayerWiseTrainGNNTwo['name'] = 'GNNTwo'
+paramsLayerWiseTrainGNNTwo['dimNodeSignals'] = [64, 64] # features per hidden layer
+paramsLayerWiseTrainGNNTwo['nFilterTaps'] = [2, 2] # number of filter taps for each hidden layer
+paramsLayerWiseTrainGNNTwo['bias'] = True
+paramsLayerWiseTrainGNNTwo['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
+paramsLayerWiseTrainGNNTwo['dimReadout'] = [ ]
+paramsLayerWiseTrainGNNTwo['dimEdgeFeatures'] = 1 # scalar edge weights
 
 #%%
 if useGPU and torch.cuda.is_available():
