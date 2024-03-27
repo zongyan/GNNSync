@@ -4,6 +4,7 @@ import numpy as np
 from numpy.random import default_rng
 import matplotlib.pyplot as plt
 import scipy
+import pickle
 
 import utils.graphTools as graph
 
@@ -177,6 +178,7 @@ class AerialSwarm(_data):
         self.state = None
         
         self.useLaplacianMatrix = useLaplacianMatrix
+        self.saveDir = saveDir
         
         if savingSeeds:
             if self.doPrint:
@@ -743,7 +745,7 @@ class AerialSwarm(_data):
        
     def computeTrajectory(self, initTheta, initGamma, 
                            measureNoise, processNoise, clkNoise,
-                           graph, duration, **kwargs):
+                           graph, duration, savedTanhDir, **kwargs):
         # input: ###
         # initTheta: nSamples x 1 x nAgents
         # initGamma: nSamples x 1 x nAgents
@@ -836,10 +838,137 @@ class AerialSwarm(_data):
             thisAdjust = thisAdjust.cpu().numpy()[:,-1,:,:]
             adjust[:,t-1,:,:] = thisAdjust
             
-            # if archit.evalModel == True:
-            #     beforeAct.append(archit.beforeActivation) # values before the activation function
-            #     afterAct.append(archit.afterActivation) # values from the activation function
-            
+            if archit.evalModel == True:
+                beforeAct.append(archit.beforeActivation) # values before the activation function
+                afterAct.append(archit.afterActivation) # values from the activation function
+                
+                if t == 100: # 1 - 100
+                    saveFile = os.path.join(savedTanhDir, '1-100-')                      
+
+                    with open(saveFile + "beforeAct", "wb") as fp:   #Pickling
+                        pickle.dump(beforeAct, fp)
+
+                    with open(saveFile + "afterAct", "wb") as fp:   #Pickling
+                        pickle.dump(afterAct, fp)
+                    
+                    del beforeAct
+                    del afterAct
+                    
+                    beforeAct = []
+                    afterAct = []   
+                elif t == 200: # 101 - 200
+                    saveFile = os.path.join(savedTanhDir, '101-200-')                      
+
+                    with open(saveFile + "beforeAct", "wb") as fp:   #Pickling
+                        pickle.dump(beforeAct, fp)
+
+                    with open(saveFile + "afterAct", "wb") as fp:   #Pickling
+                        pickle.dump(afterAct, fp)
+                        
+                    del beforeAct
+                    del afterAct
+
+                    beforeAct = []
+                    afterAct = []   
+                elif t == 300: # 201 - 300
+                    saveFile = os.path.join(savedTanhDir, '201-300-')                      
+
+                    with open(saveFile + "beforeAct", "wb") as fp:   #Pickling
+                        pickle.dump(beforeAct, fp)
+
+                    with open(saveFile + "afterAct", "wb") as fp:   #Pickling
+                        pickle.dump(afterAct, fp)
+                        
+                    del beforeAct
+                    del afterAct
+
+                    beforeAct = []
+                    afterAct = []                       
+                elif t == 400: # 301 - 400
+                    saveFile = os.path.join(savedTanhDir, '301-400-')                      
+
+                    with open(saveFile + "beforeAct", "wb") as fp:   #Pickling
+                        pickle.dump(beforeAct, fp)
+
+                    with open(saveFile + "afterAct", "wb") as fp:   #Pickling
+                        pickle.dump(afterAct, fp)
+                        
+                    del beforeAct
+                    del afterAct
+                    
+                    beforeAct = []
+                    afterAct = []   
+                elif t == 500: # 401 - 500
+                    saveFile = os.path.join(savedTanhDir, '401-500-')                      
+
+                    with open(saveFile + "beforeAct", "wb") as fp:   #Pickling
+                        pickle.dump(beforeAct, fp)
+
+                    with open(saveFile + "afterAct", "wb") as fp:   #Pickling
+                        pickle.dump(afterAct, fp)
+                        
+                    del beforeAct
+                    del afterAct
+
+                    beforeAct = []
+                    afterAct = []   
+                elif t == 600: # 501 - 600
+                    saveFile = os.path.join(savedTanhDir, '501-600-')                      
+
+                    with open(saveFile + "beforeAct", "wb") as fp:   #Pickling
+                        pickle.dump(beforeAct, fp)
+
+                    with open(saveFile + "afterAct", "wb") as fp:   #Pickling
+                        pickle.dump(afterAct, fp)
+                        
+                    del beforeAct
+                    del afterAct
+
+                    beforeAct = []
+                    afterAct = []                       
+                elif t == 700: # 601 - 700
+                    saveFile = os.path.join(savedTanhDir, '601-700-')                      
+
+                    with open(saveFile + "beforeAct", "wb") as fp:   #Pickling
+                        pickle.dump(beforeAct, fp)
+
+                    with open(saveFile + "afterAct", "wb") as fp:   #Pickling
+                        pickle.dump(afterAct, fp)
+                        
+                    del beforeAct
+                    del afterAct
+
+                    beforeAct = []
+                    afterAct = []   
+                elif t == 800: # 701 - 800
+                    saveFile = os.path.join(savedTanhDir, '701-800-')                      
+
+                    with open(saveFile + "beforeAct", "wb") as fp:   #Pickling
+                        pickle.dump(beforeAct, fp)
+
+                    with open(saveFile + "afterAct", "wb") as fp:   #Pickling
+                        pickle.dump(afterAct, fp)                
+
+                    del beforeAct
+                    del afterAct
+
+                    beforeAct = []
+                    afterAct = []   
+                elif t == 900: # 801 - 900
+                    saveFile = os.path.join(savedTanhDir, '801-900-')                      
+
+                    with open(saveFile + "beforeAct", "wb") as fp:   #Pickling
+                        pickle.dump(beforeAct, fp)
+
+                    with open(saveFile + "afterAct", "wb") as fp:   #Pickling
+                        pickle.dump(afterAct, fp)
+
+                    del beforeAct
+                    del afterAct
+
+                    beforeAct = []
+                    afterAct = []                       
+                    
             if self.updateTime == self.adjustTime:                            
                 theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
                                                   + (1/nAgents) * np.expand_dims(adjust[:,t-1,0,:], 1) \
@@ -881,7 +1010,26 @@ class AerialSwarm(_data):
             thisAdjust = archit(x, S)
         thisAdjust = thisAdjust.cpu().numpy()[:,-1,:,:]
         adjust[:,-1,:,:] = thisAdjust
-                
+
+        # 901 - 1000                
+        if archit.evalModel == True:                       
+            beforeAct.append(archit.beforeActivation) # values before the activation function
+            afterAct.append(archit.afterActivation) # values from the activation function
+
+            saveFile = os.path.join(savedTanhDir, '901-1000-')                      
+    
+            with open(saveFile + "beforeAct", "wb") as fp:   #Pickling
+                pickle.dump(beforeAct, fp)
+    
+            with open(saveFile + "afterAct", "wb") as fp:   #Pickling
+                pickle.dump(afterAct, fp)
+                        
+            del beforeAct
+            del afterAct
+            
+            beforeAct = []
+            afterAct = []           
+        
         if doPrint:
             print('\b \b' * 4, end = '', flush = True)
 

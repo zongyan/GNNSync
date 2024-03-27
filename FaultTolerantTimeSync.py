@@ -46,6 +46,7 @@ initVelValue = 3. # initial velocities: [-initVelValue, initVelValue]
 initMinDist = 0.1 # initial minimum distance between any two UAVs
 accelMax = 10. # maximum acceleration value
 normalizeGraph = True # normalise wireless communication graph
+useLaplacianMatrix = False # true - using Laplacian Matrix, false - using Adjacency Matrix
 
 optimAlg = 'ADAM' 
 learningRate = 0.0005
@@ -117,7 +118,8 @@ print("...", flush = True)
 
 data = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
             nTest, 1, 1, nTest,
-            duration, updateTime, adjustTime, 0, saveDir, 
+            duration, updateTime, adjustTime, saveDir,
+            useLaplacianMatrix, 
             initVelValue, initMinDist, accelMax, True)
 
 #%%
@@ -178,7 +180,7 @@ for thisModel in modelsGNN.keys():
             thisTrainVars = modelsGNN[thisModel].configure(data, 1, 1, \
                                                         nDAggersVal, 1, 1, \
                                                             paramsLayerWiseTrain, val, \
-                                                                lossFunction, learningRate, beta1, beta2, evalModel, **trainingOptions)
+                                                                lossFunction, learningRate, beta1, beta2, evalModel, modelsGNN[thisModel].archit.useNonlinearity, **trainingOptions)
 
             trainedModelsGNN[layerWise.index(val)][nDAggersValues.index(nDAggersVal)][thisModel] = copy.deepcopy(modelsGNN[thisModel])
             
@@ -187,7 +189,8 @@ for thisModel in modelsGNN.keys():
 print("Generating testing data", end = '')
 dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
                 1, 1, 1, nTest,
-                duration, updateTime, adjustTime, attackMode, saveDir, 
+                duration, updateTime, adjustTime, saveDir, 
+                useLaplacianMatrix, 
                 initVelValue, initMinDist, accelMax, savingSeeds)
 print("...", flush = True)
 

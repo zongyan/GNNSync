@@ -121,6 +121,16 @@ def evaluate(model, trainer, data, evalModel, useNonlinearity, **kwargs):
         
         print("\tComputing learned time synchronisation for best %s model..." %(model.name), 
               flush = True)
+
+        savedTanhDir = os.path.join(model.saveDir,'savedTanh')
+        
+        savedFilePath = ''                
+        for i in range(trainedModelL+1):
+            savedFilePath = savedFilePath + str(trainedModelF[i])  + '-'        
+
+        savedTanhDir = os.path.join(savedTanhDir, savedFilePath[0:-1])
+        if not os.path.exists(savedTanhDir):
+            os.makedirs(savedTanhDir)
         
         offsetTestBest, \
         skewTestBest, \
@@ -129,7 +139,7 @@ def evaluate(model, trainer, data, evalModel, useNonlinearity, **kwargs):
         commGraphTestBest = \
             data.computeTrajectory(initPosTest, initVelTest, \
                                     measurementNoiseTest, processingNoiseTest, clockNoiseTest, 
-                                    graphTest, data.duration,
+                                    graphTest, data.duration, savedTanhDir, 
                                     archit = model.archit)
         
         offset = copy.deepcopy(offsetTestBest)
