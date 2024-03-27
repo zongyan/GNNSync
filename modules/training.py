@@ -794,9 +794,6 @@ class Trainer:
                         nn.init.xavier_uniform_(self.model.archit.Readout[np.int64(i)].weight)
                         nn.init.zeros_(self.model.archit.Readout[np.int64(i)].bias)
 
-            del thisLoss
-            del thisOptim
-
             self.model.loss = lossFunction()
             self.model.optim = optim.Adam(self.model.archit.parameters(),
                                     lr = learningRate,
