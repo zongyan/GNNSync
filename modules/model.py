@@ -34,7 +34,7 @@ class Model:
         self.config = [copy.deepcopy([copy.deepcopy(trainer) for k in range(len(nDAggersValues))]) for j in range(len(layerWise))]                    
 
         self.evalModel = False
-        self.heatKenel = False        
+        self.heatKernel = False        
         self.useNonlinearity = False
         
         self.evaluator = evaluator
@@ -64,18 +64,14 @@ class Model:
                       lossFunction, learningRate, beta1, beta2, evalModel, useNonlinearity, **kwargs):
         
         self.evalModel = evalModel
-        # self.archit.evalModel = evalModel        
+        self.archit.evalModel = evalModel        
         self.useNonlinearity = useNonlinearity
-        # self.archit.useNonlinearity = useNonlinearity
 
-        self.evalModel = evalModel
-        self.archit.evalModel = evalModel
         self.heatKernel = self.archit.heatKernel
-        self.archit.useNonlinearity = useNonlinearity
         
         assert self.archit.evalModel == self.evalModel
-        assert self.archit.heatKernel == self.heatKernel
         assert self.archit.useNonlinearity == self.useNonlinearity
+        assert self.archit.heatKernel == self.heatKernel
         
         self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)] = \
             self.config[self.layerWise.index(layerWiseTraining)][self.nDAggersValues.index(nDAggers)]\
