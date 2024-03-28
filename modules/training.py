@@ -608,28 +608,31 @@ class Trainer:
                 ), end = ' ')
             print("")        
             
-            iteration = 0 # DAgger counter
-            while iteration < nDAggers:
+            saveDir = os.path.join(self.model.saveDir, 'savedModels')
+            if (self.trainingOptions['layerWiseTraining'] == True):
+                                    
+                print("\tLoading best layer-wise training %s model parameters..." % self.model.name) 
                 
-                epoch = 0 # epoch counter
-                while epoch < nEpochs:
+                saveDir = os.path.join(saveDir, 'layerWiseTraining')
+                
+                historicalModels = sorted(Path(saveDir).iterdir(), key=os.path.getmtime)
+                                        
+                thisHistoricalModels = []
+    
+                for element in historicalModels:            
+                    if self.model.name == str(element)[70:(70+len(self.model.name))] and np.int64(str(element)[70+len(self.model.name)+len('-LayerWise-')]) == l:
+                        thisHistoricalModels.append(str(element)[70:])
 
-                    evalValid = []
-                    
-                    batch = 0 # batch counter
-                    while batch < nBatches:                     
+                for i in range(len(thisHistoricalModels)):
+                    if list(reversed(thisHistoricalModels))[i][-16:-5] == 'Archit-Best':
+                        thisBestModelArchit = list(reversed(thisHistoricalModels))[i]   
+                                                
+                        if i >= 16:                            
+                            break
+                        else:                
+                            architLoadFile = os.path.join(saveDir, thisBestModelArchit) 
+                            self.model.archit.load_state_dict(torch.load(architLoadFile))
 
-                        if (epoch * nBatches + batch) % validationInterval == 0:                    
-
-                            if (self.trainingOptions['layerWiseTraining'] == True):                            
-                                print("\tLoading best layer-wise training %s model parameters..." % self.model.name) 
-
-                                self.model.load(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')                                
-                            else:
-                                print("\tLoading best end-to-end training %s model parameters..." % self.model.name)
-
-                                self.model.load(layerWiseTraining, nDAggers, l, iteration, epoch, batch, label = 'Best')
-                            
                             initThetaValid = self.data.getData('initOffset','valid')
                             initGammaValid = self.data.getData('initSkew','valid')
                             graphValid = self.data.getData('commGraph','valid')                       
@@ -644,72 +647,71 @@ class Trainer:
                             
                             accValid = self.data.evaluate(thetaOffset=offsetTestValid, 
                                                           gammaSkew=skewTestValid)
-        
-                            evalValid += [accValid]
                             
-                            if layerWiseTraining == True:                          
-                                print("\t(LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) Valid Accuracy: %8.4f" % (
-                                        l, iteration, epoch, batch, accValid), end = ' ')
+                            thisValidScore = accValid
+                            if 'bestScore' not in globals():
+                                bestScore = thisValidScore
                             else:
-                                print("\t(EndToEnd: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d) Valid Accuracy: %8.4f" % (
-                                        l, iteration, epoch, batch, accValid), end = ' ')
-                            print("")
-        
-                            if iteration == 0 and epoch == 0 and batch == 0:
-                                bestScore = accValid
-                                bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
-                            else:
-                                thisValidScore = accValid
-                                if thisValidScore < bestScore:
-                                    bestScore = thisValidScore
-                                    bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
-                                    print("\t=> New best achieved: %.4f" % \
-                                              (bestScore))
-        
-                            del initThetaValid
-                            del initGammaValid                                                        
-                            
-                        batch += 1 # end of batch, and increase batch count
-
-                    if maximumLayerWiseNum != 0:
-                        self.accValid[l, iteration, epoch, :] = np.asarray(evalValid, dtype=np.float64)
-                    else:
-                        self.accValid[iteration, epoch, :] = np.asarray(evalValid, dtype=np.float64)                       
-                        
-                    epoch += 1 # end of epoch, increase epoch count
-        
-                if nEpochs == 0:
-                    bestL, bestIteration, bestEpoch, bestBatch = l, iteration, epoch, batch
-                    print("\nWARNING: No training. Best and Last models are the same.\n")
-                
-                if nEpochs > 0:
-                    if layerWiseTraining == True:                          
-                        print("\t=> Best validation achieved (LayerWise: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d): %.4f" % (
-                                bestL, bestIteration, bestEpoch, bestBatch, bestScore))
-                    else:
-                        print("\t=> Best validation achieved (EndToEnd: %3d, DAgger: %3d, Epoch: %2d, Batch: %3d): %.4f" % (
-                                bestL, bestIteration, bestEpoch, bestBatch, bestScore))
-
-                saveArchitDir = os.path.join(self.model.saveDir,'savedArchits')                
-
-                if layerWiseTraining == True:
-                    saveFile = os.path.join(saveArchitDir, 'LayerWiseTraining')
-                else:
-                    saveFile = os.path.join(saveArchitDir, 'endToEndTraining')                
-
-                trainingFile = np.load(saveFile + '-' + str(self.model.name) + '-nDAggers-' + str(nDAggers) + '.npz', allow_pickle=True)
+                                assert bestScore < thisValidScore
                                 
-                historicalBestL = np.int64(trainingFile['historicalBestL'])
-                historicalBestIteration = np.int64(trainingFile['historicalBestIteration'])
-                historicalBestEpoch = np.int64(trainingFile['historicalBestEpoch'])
-                historicalBestBatch = np.int64(trainingFile['historicalBestBatch'])
+                for i in range(len(thisHistoricalModels)):
+                    if list(reversed(thisHistoricalModels))[i][-9:-5] == 'Best':
+                        thisBestModelArchit = list(reversed(thisHistoricalModels))[i+1]                    
+                        break                    
                 
-                assert bestL == historicalBestL[l]
-                assert bestIteration == historicalBestIteration[l]
-                assert bestEpoch == historicalBestEpoch[l]
-                assert bestBatch == historicalBestBatch[l]
+                architLoadFile = os.path.join(saveDir, thisBestModelArchit) 
+                self.model.archit.load_state_dict(torch.load(architLoadFile))                        
+            else:
+                print("\tLoading best end-to-end training %s model parameters..." % self.model.name)
                 
-                iteration = iteration + 1 # end of DAgger, increase iteration count
+                saveDir = os.path.join(saveDir, 'endToEndTraining')                    
+
+                historicalModels = sorted(Path(saveDir).iterdir(), key=os.path.getmtime)
+                                        
+                thisHistoricalModels = []
+                
+                for element in historicalModels:                                    
+                    if self.model.name == str(element)[69:(69+len(self.model.name))] and np.int64(str(element)[69+len(self.model.name)+len('-EndToEnd-')]) == l:                        
+                        thisHistoricalModels.append(str(element)[69:])
+                
+                for i in range(len(thisHistoricalModels)):
+                    if list(reversed(thisHistoricalModels))[i][-16:-5] == 'Archit-Best':
+                        thisBestModelArchit = list(reversed(thisHistoricalModels))[i]   
+                                                
+                        if i >= 16:                            
+                            break
+                        else:                
+                            architLoadFile = os.path.join(saveDir, thisBestModelArchit) 
+                            self.model.archit.load_state_dict(torch.load(architLoadFile))
+
+                            initThetaValid = self.data.getData('initOffset','valid')
+                            initGammaValid = self.data.getData('initSkew','valid')
+                            graphValid = self.data.getData('commGraph','valid')                       
+                            clockNoiseValid = self.data.getData('clockNoise','valid')                        
+                            measurementNoiseValid = self.data.getData('packetExchangeDelay','valid')    
+                            processingNoiseValid = self.data.getData('processingDelay','valid')    
+                            
+                            offsetTestValid, skewTestValid, _, _, _ = self.data.computeTrajectory(
+                                    initThetaValid, initGammaValid, measurementNoiseValid, 
+                                    processingNoiseValid, clockNoiseValid, graphValid, self.data.duration,
+                                    archit = self.model.archit, doPrint = False)
+                            
+                            accValid = self.data.evaluate(thetaOffset=offsetTestValid, 
+                                                          gammaSkew=skewTestValid)
+                            
+                            thisValidScore = accValid
+                            if 'bestScore' not in globals():
+                                bestScore = thisValidScore
+                            else:
+                                assert bestScore < thisValidScore
+                                
+                for i in range(len(thisHistoricalModels)):
+                    if list(reversed(thisHistoricalModels))[i][-9:-5] == 'Best':
+                        thisBestModelArchit = list(reversed(thisHistoricalModels))[i+1]   
+                        break
+                
+                architLoadFile = os.path.join(saveDir, thisBestModelArchit) 
+                self.model.archit.load_state_dict(torch.load(architLoadFile))
             
             if ("GFL" in layers) and (l < layerWiseTrainL):
                 
