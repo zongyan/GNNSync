@@ -649,7 +649,7 @@ class Trainer:
                                                           gammaSkew=skewTestValid)
                             
                             thisValidScore = accValid
-                            if 'bestScore' not in globals():
+                            if i == 3:
                                 bestScore = thisValidScore
                             else:
                                 assert bestScore < thisValidScore
@@ -658,6 +658,8 @@ class Trainer:
                     if list(reversed(thisHistoricalModels))[i][-9:-5] == 'Best':
                         thisBestModelArchit = list(reversed(thisHistoricalModels))[i+1]                    
                         break                    
+                
+                del bestScore
                 
                 architLoadFile = os.path.join(saveDir, thisBestModelArchit) 
                 self.model.archit.load_state_dict(torch.load(architLoadFile))                        
@@ -700,7 +702,7 @@ class Trainer:
                                                           gammaSkew=skewTestValid)
                             
                             thisValidScore = accValid
-                            if 'bestScore' not in globals():
+                            if i == 3:
                                 bestScore = thisValidScore
                             else:
                                 assert bestScore < thisValidScore
@@ -709,6 +711,8 @@ class Trainer:
                     if list(reversed(thisHistoricalModels))[i][-9:-5] == 'Best':
                         thisBestModelArchit = list(reversed(thisHistoricalModels))[i+1]   
                         break
+
+                del bestScore
                 
                 architLoadFile = os.path.join(saveDir, thisBestModelArchit) 
                 self.model.archit.load_state_dict(torch.load(architLoadFile))
