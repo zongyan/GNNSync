@@ -13,16 +13,21 @@ zeroTolerance = 1e-9 # values below this number are zero
 
 #%%
 saveDirRoot = 'experiments'
-dataFolder = os.listdir(saveDirRoot)
-for i in range(len(dataFolder)):
-    saveDir = os.path.join(saveDirRoot, dataFolder[i])
+# dataFolder = os.listdir(saveDirRoot)
+# for i in range(len(dataFolder)):
+#     saveDir = os.path.join(saveDirRoot, dataFolder[i])
         
 # the following is for temperature use
-folderName = "TimeSync-050-20240320204410"
+folderName = "TimeSync-050-20240322083752"
 saveDir = os.path.join(saveDirRoot, folderName)
 saveDir = os.path.join(saveDir,'savedTanh')
 
 #%%
+def ReLU(x):
+    return x * (x > 0)
+
+#%%
+
 nAgents = 50
 duration = 10. # simulation duration 
 updateTime = 0.01 # clock update time
@@ -37,7 +42,7 @@ afterActivationValue = np.array(['1-100-afterAct', '101-200-afterAct', '201-300-
                             '501-600-afterAct', '601-700-afterAct', '701-800-afterAct', '801-900-afterAct', '901-1000-afterAct'])
     
 # for element in modelStructure:
-savedTanhDir = os.path.join(saveDir, '2-64-2')    
+savedTanhDir = os.path.join(saveDir, '2-64-64-2')    
 graphFile = np.load(os.path.join(savedTanhDir, 'graph.npz'), allow_pickle=True)    
 graph = graphFile['graph']
 
@@ -50,7 +55,7 @@ beforeActValues = np.zeros((graph.shape[0], tSamples, 64, nAgents), dtype = np.f
 afterActValues = np.zeros((graph.shape[0], tSamples, 64, nAgents), dtype = np.float64) # values after the activation function
 
 index = 0
-for t in range(1, tSamples):
+for t in range(1, 900):
     
     if t == savingInstant[index]:
         savedBeforeTanhDir = os.path.join(savedTanhDir, beforeActivationValue[0])
@@ -86,13 +91,15 @@ for t in range(1, tSamples):
         for j in range(thisBeforeAct.shape[1]): # in the feature dimension                    
             beforeActValues[i, t, j, :] = np.matmul(np.transpose(eigenVectors[i, t, :, :]), np.float64(thisBeforeAct[i, j, :])) # values before the activation function
             afterActValues[i, t, j, :] = np.matmul(np.transpose(eigenVectors[i, t, :, :]), np.float64(thisAfterAct[i, j, :])) # values after the activation function
+            # afterActValues[i, t, j, :] = np.matmul(np.transpose(eigenVectors[i, t, :, :]), np.float64(ReLU(thisBeforeAct[i, j, :]))) # values after the activation function
 
 #%%
-t = 500    
-cnt = 10                            
+t = 1 # 1, 10, 50, 100, 200, 500, 800
+cnt = 10
 for i in range(cnt+0, thisBeforeAct.shape[1]):
     plt.figure()
     plt.rcParams["figure.figsize"] = (6.4,4.8)
+    # for t in range(0, tSamples-1):
     plt.vlines(eigenValues[0, t, :], 0, beforeActValues[0, t, i, :], color='#D3D3D3', alpha=0.4)
     plt.scatter(eigenValues[0, t, :], beforeActValues[0, t, i, :], color='#D3D3D3', alpha=0.4)
     

@@ -29,7 +29,8 @@ for i in range(len(dataFolder)):
     loadSeed('./' + saveDirRoot + '/' + dataFolder[i]) # loading the states and seed
         
 # the following is for temperature use
-folderName = "TimeSync-050-20240320204410"
+# folderName = "TimeSync-050-20240320204410"
+folderName = "TimeSync-050-20240322083752"
 saveDir = os.path.join(saveDirRoot, folderName)
 loadSeed('./experiments' + '/' + folderName) # loading the states and seed
 #%%

@@ -820,6 +820,8 @@ class AerialSwarm(_data):
         if doPrint:
             percentageCount = int(100/tSamples)
             print("%3d%%" % percentageCount, end = '', flush = True)            
+
+        np.savez(os.path.join(savedTanhDir, 'graph.npz'), graph=graph)
         
         for t in range(1, tSamples):
             thisOffset = np.expand_dims(theta[:,t-1,:,:], 1) \
@@ -1037,8 +1039,6 @@ class AerialSwarm(_data):
             theta = torch.tensor(theta).to(device)
             gamma = torch.tensor(gamma).to(device)
             adjust = torch.tensor(adjust).to(device)
-
-        np.savez(os.path.join(savedTanhDir, 'graph.npz'), graph=graph)
         
         return theta, gamma, adjust, state, graph     
 
