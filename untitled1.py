@@ -8,6 +8,7 @@ import os
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import io
 
 zeroTolerance = 1e-9 # values below this number are zero
 
@@ -74,8 +75,8 @@ for t in range(1, 900):
         
         index = index + 1
     
-    thisBeforeAct = beforeActivation[(t-1) - preSavingInstant[index-1]][0] # values before the activation function
-    thisAfterAct = afterActivation[(t-1) - preSavingInstant[index-1]][0] # values after the activation function    
+    thisBeforeAct = beforeActivation[(t-1) - preSavingInstant[index-1]][1] # values before the activation function
+    thisAfterAct = afterActivation[(t-1) - preSavingInstant[index-1]][1] # values after the activation function    
         
     thisGraph = graph[:,t,:,:]
     thisGraph[thisGraph > zeroTolerance] = 1. # reset the normalised adjacency matrix to the normal graph matrix
@@ -92,6 +93,13 @@ for t in range(1, 900):
             beforeActValues[i, t, j, :] = np.matmul(np.transpose(eigenVectors[i, t, :, :]), np.float64(thisBeforeAct[i, j, :])) # values before the activation function
             afterActValues[i, t, j, :] = np.matmul(np.transpose(eigenVectors[i, t, :, :]), np.float64(thisAfterAct[i, j, :])) # values after the activation function
             # afterActValues[i, t, j, :] = np.matmul(np.transpose(eigenVectors[i, t, :, :]), np.float64(ReLU(thisBeforeAct[i, j, :]))) # values after the activation function
+
+mdic = {"eigenValues": eigenValues, \
+        "eigenVectors": eigenVectors, \
+        "toTanhFunc": beforeActValues, \
+        "fromTanhFunc": afterActValues}            
+# io.savemat(os.path.join(os.path.join(saveDir, '2-64-64-2'), 'first-layer')+'.mat', mdic)
+io.savemat(os.path.join(os.path.join(saveDir, '2-64-64-2'), 'second-layer')+'.mat', mdic)
 
 #%%
 t = 1 # 1, 10, 50, 100, 200, 500, 800
