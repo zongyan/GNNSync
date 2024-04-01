@@ -79,7 +79,9 @@ for t in range(1, 900):
     thisAfterAct = afterActivation[(t-1) - preSavingInstant[index-1]][1] # values after the activation function    
         
     thisGraph = graph[:,t,:,:]
-    thisGraph[thisGraph > zeroTolerance] = 1. # reset the normalised adjacency matrix to the normal graph matrix
+    thisGraph = (thisGraph != 0).astype(laplacianMatrix.dtype) # reset the normalised adjacency matrix to the normal graph matrix
+    thisGraph[:, np.arange(0,nAgents), np.arange(0,nAgents)] = 0. # reset the main diagonal values to zero
+
     thisAdjacencyMatrix = thisGraph
     thisDegreeMatrix = np.sum(thisAdjacencyMatrix, axis=2)
 
