@@ -271,8 +271,15 @@ class AerialSwarm(_data):
             print("\tComputing the communication graphs...",
                   end=' ', flush=True)
         
-        commGraphAll = self.computeCommunicationGraph(posAll, self.commRadius,
-                                                      self.normalizeGraph, useLaplacianMatrix)
+        if nTrain == 400 or nTrain == 20:          
+            commGraph = self.computeCommunicationGraph(posAll, self.commRadius, 
+                                                          self.normalizeGraph, useLaplacianMatrix)
+
+            initCommGraph = commGraph[:,0,:,:]            
+            commGraphAll = np.repeat(np.expand_dims(initCommGraph, 1), np.int64(float(duration)/updateTime), axis=1)
+        else:
+            commGraphAll = self.computeCommunicationGraph(posAll, self.commRadius, 
+                                                          self.normalizeGraph, useLaplacianMatrix)            
         
         self.commGraph = {}
         
