@@ -76,30 +76,32 @@ Experiment 2.1 uses the adjacency matrix.
 
 modelList = []
 
-hParamsGNNThree = {}
-hParamsGNNThree['name'] = 'GNNThree'
-hParamsGNNThree['archit'] = architTime.LocalGNN_DB
-hParamsGNNThree['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
-hParamsGNNThree['dimNodeSignals'] = [2, 64, 2] # features per layer
-hParamsGNNThree['nFilterTaps'] = [2, 1] # number of filter taps
-hParamsGNNThree['bias'] = True
-hParamsGNNThree['nonlinearity'] = nonlinearity
-hParamsGNNThree['dimReadout'] = [ ] 
-hParamsGNNThree['dimEdgeFeatures'] = 1 # scalar edge weights
-hParamsGNNThree['heatKernel'] = True
-modelList += [hParamsGNNThree['name']]
+# GNN, NO heat kernel, Tanh and readout layer (for comparison)
+hParamsGNNFour = {}
+hParamsGNNFour['name'] = 'GNNFour'
+hParamsGNNFour['archit'] = architTime.LocalGNN_DB
+hParamsGNNFour['device'] = 'cuda:0' if (useGPU and torch.cuda.is_available()) else 'cpu'
+hParamsGNNFour['dimNodeSignals'] = [2, 64, 64, 64, 2] # features per layer
+hParamsGNNFour['nFilterTaps'] = [2, 2, 2, 1] # number of filter taps
+hParamsGNNFour['bias'] = True
+hParamsGNNFour['nonlinearity'] = nonlinearity
+hParamsGNNFour['dimReadout'] = [ ] 
+hParamsGNNFour['dimEdgeFeatures'] = 1 # scalar edge weights
+hParamsGNNFour['useNonlinearity'] = False
+hParamsGNNFour['heatKernel'] = False
+modelList += [hParamsGNNFour['name']]
 
 trainingOptions = {}
 
 '''ONLY for hidden layer parameters [at the layer-wise training] '''
-paramsLayerWiseTrainGNNThree = {}
-paramsLayerWiseTrainGNNThree['name'] = 'GNNThree'
-paramsLayerWiseTrainGNNThree['dimNodeSignals'] = [ ] # features per hidden layer
-paramsLayerWiseTrainGNNThree['nFilterTaps'] = [ ] # number of filter taps for each hidden layer
-paramsLayerWiseTrainGNNThree['bias'] = True
-paramsLayerWiseTrainGNNThree['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
-paramsLayerWiseTrainGNNThree['dimReadout'] = [ ]
-paramsLayerWiseTrainGNNThree['dimEdgeFeatures'] = 1 # scalar edge weights
+paramsLayerWiseTrainGNNFour = {}
+paramsLayerWiseTrainGNNFour['name'] = 'GNNFour'
+paramsLayerWiseTrainGNNFour['dimNodeSignals'] = [ ] # features per hidden layer
+paramsLayerWiseTrainGNNFour['nFilterTaps'] = [ ] # number of filter taps for each hidden layer
+paramsLayerWiseTrainGNNFour['bias'] = True
+paramsLayerWiseTrainGNNFour['nonlinearity'] = nonlinearity # nonlinearity for each hidden layer
+paramsLayerWiseTrainGNNFour['dimReadout'] = [ ]
+paramsLayerWiseTrainGNNFour['dimEdgeFeatures'] = 1 # scalar edge weights
 
 #%%
 if useGPU and torch.cuda.is_available():
