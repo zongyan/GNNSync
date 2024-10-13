@@ -1033,7 +1033,7 @@ class AerialSwarm(_data):
     # quality, since this manuscript was rejected by several journals.
     def computeExpertTrajectory(self, initTheta, initGamma, 
                            measureNoise, processNoise, clkNoise,
-                           graph, duration, **kwargs):
+                           graph, duration, attackNodesIndex, **kwargs):
         # input: ###
         # initTheta: nSamples x 1 x nAgents
         # initGamma: nSamples x 1 x nAgents
@@ -1080,7 +1080,10 @@ class AerialSwarm(_data):
                     
         theta[:,0,:,:] = initTheta.copy()
         gamma[:,0,:,:] = initGamma.copy()
-            
+
+        attackNodesIndex = 0 # nSamples x tSamples x radiusRange x nAgents  
+        # 这里有点问题，我们需要找原始的数据，确定attackNodesIndex应该是如何的，然后就可以删除，
+        
         if doPrint:
             percentageCount = int(100/tSamples)
             print("%3d%%" % percentageCount, end = '', flush = True)            
@@ -1094,6 +1097,13 @@ class AerialSwarm(_data):
             ijDiffSkew, _ = self.computeDifferences(gamma[:,t-1,:,:] \
                                                     + np.expand_dims(measureNoise[:,t-1,1,:], 1))
             #   ijDiffVel: nSamples x 1 x nAgents x nAgents
+
+            for element in thisAttackNodes[]:                    
+                ijDiffOffset[:, 0, element, :] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
+                ijDiffOffset[:, 0, :, element] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
+                
+                ijDiffSkew[:, 0, element, :] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
+                ijDiffSkew[:, 0, :, element] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
 
             deltaTheta[:,t-1,:,:] = -0.5*np.sum(ijDiffOffset, axis = 3)                                
             deltaGamma[:,t-1,:,:] = -0.5*np.sum(ijDiffSkew, axis = 3)      
