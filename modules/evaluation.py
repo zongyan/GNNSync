@@ -186,6 +186,28 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         
         cost = np.mean(costPerSample) # scalar
         print("\tThe cost of time sync for best model with NO attacks: %.4f" %(cost), flush = True)
+        
+        
+        print("\tComputing learned time synchronisation for the expert model under attacks..." %(model.name), 
+              flush = True)
+        
+        for i in range(attackRadiusTest.shape[2]):
+            print("\tAttacking radius: %.1f... " %(attackRadiusTest[i,i,i,i]), flush = True)            
+
+            attackOffsetTestBest, \
+            attackSkewTestBest, \
+            attackAdjTestBest, \
+            attackStateTestBest, \
+            attackCommGraphTestBest = \
+                data.computeExpertTrajectory(initPosTest, initVelTest, \
+                                       measurementNoiseTest, processingNoiseTest, clockNoiseTest, 
+                                       attackGraphTest[:, :, i, :, :], data.duration,
+                                       archit = model.archit)    
+
+            attackOffset = copy.deepcopy(attackOffsetTestBest)
+            attackSkew = copy.deepcopy(attackSkewTestBest)
+
+        
 
         print("\tComputing learned time synchronisation for best %s model under attacks..." %(model.name), 
               flush = True)
