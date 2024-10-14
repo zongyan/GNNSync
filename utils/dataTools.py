@@ -1033,14 +1033,17 @@ class AerialSwarm(_data):
     # quality, since this manuscript was rejected by several journals.
     def computeExpertTrajectory(self, initTheta, initGamma, 
                            measureNoise, processNoise, clkNoise,
-                           graph, duration, attackNodesIndex, **kwargs):
+                           graph, duration, attackNodesIndex, numAttackedNodes, **kwargs):
         # input: ###
         # initTheta: nSamples x 1 x nAgents
         # initGamma: nSamples x 1 x nAgents
         # measureNoise: nSamples x tSamples x 2 x nAgents
         # processNoise: nSamples x tSamples x 2 x nAgents
         # clkNoise: nSamples x tSamples x 2 x nAgents
-        # graph: nSamples x tSamples x nAgents x nAgents
+        # graph: nSamples x tSamples x nAgents x nAgents        
+
+        # attackNodesIndex: nSamples x tSamples x nAgents
+        # numAttackedNodes: nSamples x tSamples
         
         # output: ###
         # theta: nSamples x tSamples x 1 x nAgents
@@ -1080,9 +1083,6 @@ class AerialSwarm(_data):
                     
         theta[:,0,:,:] = initTheta.copy()
         gamma[:,0,:,:] = initGamma.copy()
-
-        attackNodesIndex = 0 # nSamples x tSamples x radiusRange x nAgents  
-        # 这里有点问题，我们需要找原始的数据，确定attackNodesIndex应该是如何的，然后就可以删除，
         
         if doPrint:
             percentageCount = int(100/tSamples)
@@ -1098,12 +1098,17 @@ class AerialSwarm(_data):
                                                     + np.expand_dims(measureNoise[:,t-1,1,:], 1))
             #   ijDiffVel: nSamples x 1 x nAgents x nAgents
 
-            for element in thisAttackNodes[]:                    
-                ijDiffOffset[:, 0, element, :] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
-                ijDiffOffset[:, 0, :, element] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
+            for instant_p in range(attackNodesIndex.shape[0]):
                 
-                ijDiffSkew[:, 0, element, :] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
-                ijDiffSkew[:, 0, :, element] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
+                thisAttackNodes_p = np.int64(attackNodesIndex[instant_p, t, :np.int64(numAttackedNodes[instant_p,t])])
+                
+                for element_p in thisAttackNodes_p:
+                
+                    ijDiffOffset[instant_p, 0, element_p, :] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
+                    ijDiffOffset[instant_p, 0, :, element_p] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
+                    
+                    ijDiffSkew[instant_p, 0, element_p, :] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
+                    ijDiffSkew[instant_p, 0, :, element_p] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
 
             deltaTheta[:,t-1,:,:] = -0.5*np.sum(ijDiffOffset, axis = 3)                                
             deltaGamma[:,t-1,:,:] = -0.5*np.sum(ijDiffSkew, axis = 3)      

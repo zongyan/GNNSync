@@ -188,20 +188,20 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         print("\tThe cost of time sync for best model with NO attacks: %.4f" %(cost), flush = True)
         
         
-        print("\tComputing learned time synchronisation for the expert model under attacks..." %(model.name), 
-              flush = True)
+        print("\tComputing learned time synchronisation for the expert model under attacks...", flush = True)
         
         for i in range(attackRadiusTest.shape[2]):
             print("\tAttacking radius: %.1f... " %(attackRadiusTest[i,i,i,i]), flush = True)            
-
+                        
+            thisAttackNodeIndex = attackNodesIndexTest[:,:,i,:]
+            thisNumAttackedNodes = numAttackedNodesTest[:,:,i]
+            
             attackOffsetTestBest, \
             attackSkewTestBest, \
-            attackAdjTestBest, \
-            attackStateTestBest, \
-            attackCommGraphTestBest = \
+            attackAdjTestBest = \
                 data.computeExpertTrajectory(initPosTest, initVelTest, \
                                        measurementNoiseTest, processingNoiseTest, clockNoiseTest, \
-                                           attackGraphTest[:, :, i, :, :], data.duration, attackNodesIndexTest, \
+                                           attackGraphTest[:, :, i, :, :], data.duration, thisAttackNodeIndex, thisNumAttackedNodes, \
                                                archit = model.archit)    
 
             attackOffset = copy.deepcopy(attackOffsetTestBest)

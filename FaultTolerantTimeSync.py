@@ -29,7 +29,7 @@ for i in range(len(dataFolder)):
     loadSeed('./' + saveDirRoot + '/' + dataFolder[i]) # loading the states and seed
         
 # the following is for temperature use
-folderName = "TimeSync-050-20240301232924"
+folderName = "TimeSync-050-20240320204410"
 saveDir = os.path.join(saveDirRoot, folderName)
 loadSeed('./experiments' + '/' + folderName) # loading the states and seed
 #%%
@@ -87,7 +87,6 @@ hParamsGNNFour['bias'] = True
 hParamsGNNFour['nonlinearity'] = nonlinearity
 hParamsGNNFour['dimReadout'] = [ ] 
 hParamsGNNFour['dimEdgeFeatures'] = 1 # scalar edge weights
-hParamsGNNFour['useNonlinearity'] = False
 hParamsGNNFour['heatKernel'] = False
 modelList += [hParamsGNNFour['name']]
 
