@@ -26,32 +26,33 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
 
     totalAttackNodeIndex = []
     
-    for instant in range(attackRadiusTest.shape[0]):
-        eachAttackNodeIndex = []
-        for i in range(attackRadiusTest.shape[2]):
-            thisAttackNodeIndex = []
+    if data.attackMode == 1 or data.attackMode == 2: # attacking occurs
+        for instant in range(attackRadiusTest.shape[0]):
+            eachAttackNodeIndex = []
+            for i in range(attackRadiusTest.shape[2]):
+                thisAttackNodeIndex = []
+                
+                for t in range(attackRadiusTest.shape[1]):        
+                    thisAttackNodes = np.int64(attackNodesIndexTest[instant, t, i, 0:np.int64(numAttackedNodesTest[instant,t,i])])
+                    thisAttackNodeIndex.append(thisAttackNodes)
+                    for element in thisAttackNodes:                    
+                        attackGraphTest[instant, t, i, element, :] = np.zeros((50)) # we remove communication link due to attacks
+                        attackGraphTest[instant, t, i, :, element] = np.zeros((50)) # we remove communication link due to attacks                
+                
+                thisAttackNodeIdxs = thisAttackNodeIndex[0]
+                for idx in range(1, len(thisAttackNodeIndex)):    
+                    thisAttackNodeIdxs = np.concatenate([thisAttackNodeIdxs, thisAttackNodeIndex[idx]])
+                
+                dicAttackNodeIdxs = Counter(thisAttackNodeIdxs)
+                sortedAttackNodeIdxs = sorted(dicAttackNodeIdxs.items(), reverse=True)          
+                attackedNodes = []
+                for idx in range(len(sortedAttackNodeIdxs)):
+                    attackedNodes.append(sortedAttackNodeIdxs[idx][0])
+                
+                attackedNodes = np.array(attackedNodes)     
+                eachAttackNodeIndex.append(attackedNodes)
             
-            for t in range(attackRadiusTest.shape[1]):        
-                thisAttackNodes = np.int64(attackNodesIndexTest[instant, t, i, 0:np.int64(numAttackedNodesTest[instant,t,i])])
-                thisAttackNodeIndex.append(thisAttackNodes)
-                for element in thisAttackNodes:                    
-                    attackGraphTest[instant, t, i, element, :] = np.zeros((50)) # we remove communication link due to attacks
-                    attackGraphTest[instant, t, i, :, element] = np.zeros((50)) # we remove communication link due to attacks                
-            
-            thisAttackNodeIdxs = thisAttackNodeIndex[0]
-            for idx in range(1, len(thisAttackNodeIndex)):    
-                thisAttackNodeIdxs = np.concatenate([thisAttackNodeIdxs, thisAttackNodeIndex[idx]])
-            
-            dicAttackNodeIdxs = Counter(thisAttackNodeIdxs)
-            sortedAttackNodeIdxs = sorted(dicAttackNodeIdxs.items(), reverse=True)          
-            attackedNodes = []
-            for idx in range(len(sortedAttackNodeIdxs)):
-                attackedNodes.append(sortedAttackNodeIdxs[idx][0])
-            
-            attackedNodes = np.array(attackedNodes)     
-            eachAttackNodeIndex.append(attackedNodes)
-        
-        totalAttackNodeIndex.append(eachAttackNodeIndex)
+            totalAttackNodeIndex.append(eachAttackNodeIndex)
     
     paramsLayerWiseTrain = trainer.trainingOptions['paramsLayerWiseTrain']
     layerWiseTraining = trainer.trainingOptions['layerWiseTraining']
@@ -186,143 +187,144 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         
         cost = np.mean(costPerSample) # scalar
         print("\tThe cost of time sync for best model with NO attacks: %.4f" %(cost), flush = True)
-        
-        
-        print("\tComputing learned time synchronisation for the expert model under attacks...", flush = True)
-        
-        for i in range(attackRadiusTest.shape[2]):
-            print("\tAttacking radius: %.1f... " %(attackRadiusTest[i,i,i,i]), flush = True)            
+
+        if data.attackMode == 1 or data.attackMode == 2: # attacking occurs
+            
+            print("\tComputing learned time synchronisation for the expert model under attacks...", flush = True)
+            
+            for i in range(attackRadiusTest.shape[2]):
+                print("\tAttacking radius: %.1f... " %(attackRadiusTest[i,i,i,i]), flush = True)            
+                            
+                thisAttackNodeIndex = attackNodesIndexTest[:,:,i,:]
+                thisNumAttackedNodes = numAttackedNodesTest[:,:,i]
+                
+                attackOffsetTestBest, \
+                attackSkewTestBest, \
+                attackAdjTestBest = \
+                    data.computeExpertTrajectory(initPosTest, initVelTest, \
+                                           measurementNoiseTest, processingNoiseTest, clockNoiseTest, \
+                                               attackGraphTest[:, :, i, :, :], data.duration, thisAttackNodeIndex, thisNumAttackedNodes, \
+                                                   archit = model.archit)    
+    
+                attackOffset = copy.deepcopy(attackOffsetTestBest)
+                attackSkew = copy.deepcopy(attackSkewTestBest)
+    
+                attackCostsPerSample = []
+                for instant in range(attackRadiusTest.shape[0]):
+                    thisTotalAttackNodeIndex = totalAttackNodeIndex[instant][i]
+    
+                    for element in thisTotalAttackNodeIndex:
+                        attackOffset[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
+                        attackSkew[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
+    
+                    thisAttackOffset = copy.deepcopy(attackOffset[instant, :, :, :])
+                    thisAttackSkew = copy.deepcopy(attackSkew[instant, :, :, :])
                         
-            thisAttackNodeIndex = attackNodesIndexTest[:,:,i,:]
-            thisNumAttackedNodes = numAttackedNodesTest[:,:,i]
-            
-            attackOffsetTestBest, \
-            attackSkewTestBest, \
-            attackAdjTestBest = \
-                data.computeExpertTrajectory(initPosTest, initVelTest, \
-                                       measurementNoiseTest, processingNoiseTest, clockNoiseTest, \
-                                           attackGraphTest[:, :, i, :, :], data.duration, thisAttackNodeIndex, thisNumAttackedNodes, \
-                                               archit = model.archit)    
-
-            attackOffset = copy.deepcopy(attackOffsetTestBest)
-            attackSkew = copy.deepcopy(attackSkewTestBest)
-
-            attackCostsPerSample = []
-            for instant in range(attackRadiusTest.shape[0]):
-                thisTotalAttackNodeIndex = totalAttackNodeIndex[instant][i]
-
-                for element in thisTotalAttackNodeIndex:
-                    attackOffset[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
-                    attackSkew[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
-
-                thisAttackOffset = copy.deepcopy(attackOffset[instant, :, :, :])
-                thisAttackSkew = copy.deepcopy(attackSkew[instant, :, :, :])
+                    for element in thisTotalAttackNodeIndex:
+                        thisAttackOffset = np.delete(thisAttackOffset, element, axis=2)
+                        thisAttackSkew = np.delete(thisAttackSkew, element, axis=2) 
                     
-                for element in thisTotalAttackNodeIndex:
-                    thisAttackOffset = np.delete(thisAttackOffset, element, axis=2)
-                    thisAttackSkew = np.delete(thisAttackSkew, element, axis=2) 
-                
-                thisAttackAvgOffset = np.mean(thisAttackOffset, axis = 2) # nSamples x tSamples x 1
-                thisAttackAvgSkew = np.mean(thisAttackSkew/10, axis = 2) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm   
-                
-                thisAttackDiffOffset = thisAttackOffset - np.tile(np.expand_dims(thisAttackAvgOffset, 2), (1, 1, 50-np.int64(len(thisTotalAttackNodeIndex)))) # tSamples x 1 x nAgents
-                thisAttackDiffSkew = thisAttackSkew/10 - np.tile(np.expand_dims(thisAttackAvgSkew, 2), (1, 1, 50-np.int64(len(thisTotalAttackNodeIndex)))) # tSamples x 1 x nAgents                
-
-                thisAttackDiffOffset = np.sum(thisAttackDiffOffset**2, 1) # tSamples x nAgents
-                thisAttackDiffSkew = np.sum(thisAttackDiffSkew**2, 1) # tSamples x nAgents
-                
-                thisAttackDiffOffsetAvg = np.mean(thisAttackDiffOffset, axis = 1) # nSamples x tSamples
-                thisAttackDiffSkewAvg = np.mean(thisAttackDiffSkew, axis = 1) # nSamples x tSamples
-                
-                thisAttackCostPerSample = np.sum(thisAttackDiffOffsetAvg, axis = 0) + np.sum(thisAttackDiffSkewAvg, axis = 0)*(0.01**2) # nSamples
-                
-                attackCostsPerSample.append(thisAttackCostPerSample)
-                
-            attackCost = np.mean(np.array(attackCostsPerSample)) # scalar
-
-            print("\tThe cost of time sync for expert controller under attacks: %.4f" %(attackCost), flush = True)
-
-        print("\tComputing learned time synchronisation for best %s model under attacks..." %(model.name), 
-              flush = True)
-                
-        for i in range(attackRadiusTest.shape[2]):
-            print("\tAttacking radius: %.1f... " %(attackRadiusTest[i,i,i,i]), flush = True)            
-
-            attackOffsetTestBest, \
-            attackSkewTestBest, \
-            attackAdjTestBest, \
-            attackStateTestBest, \
-            attackCommGraphTestBest = \
-                data.computeTrajectory(initPosTest, initVelTest, \
-                                       measurementNoiseTest, processingNoiseTest, clockNoiseTest, 
-                                       attackGraphTest[:, :, i, :, :], data.duration,
-                                       archit = model.archit)    
-
-            attackOffset = copy.deepcopy(attackOffsetTestBest)
-            attackSkew = copy.deepcopy(attackSkewTestBest)
-
-            attackCostsPerSample = []
-            for instant in range(attackRadiusTest.shape[0]):
-                thisTotalAttackNodeIndex = totalAttackNodeIndex[instant][i]
-
-                for element in thisTotalAttackNodeIndex:
-                    attackOffset[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
-                    attackSkew[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
-
-                thisAttackOffset = copy.deepcopy(attackOffset[instant, :, :, :])
-                thisAttackSkew = copy.deepcopy(attackSkew[instant, :, :, :])
+                    thisAttackAvgOffset = np.mean(thisAttackOffset, axis = 2) # nSamples x tSamples x 1
+                    thisAttackAvgSkew = np.mean(thisAttackSkew/10, axis = 2) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm   
                     
-                for element in thisTotalAttackNodeIndex:
-                    thisAttackOffset = np.delete(thisAttackOffset, element, axis=2)
-                    thisAttackSkew = np.delete(thisAttackSkew, element, axis=2) 
+                    thisAttackDiffOffset = thisAttackOffset - np.tile(np.expand_dims(thisAttackAvgOffset, 2), (1, 1, 50-np.int64(len(thisTotalAttackNodeIndex)))) # tSamples x 1 x nAgents
+                    thisAttackDiffSkew = thisAttackSkew/10 - np.tile(np.expand_dims(thisAttackAvgSkew, 2), (1, 1, 50-np.int64(len(thisTotalAttackNodeIndex)))) # tSamples x 1 x nAgents                
+    
+                    thisAttackDiffOffset = np.sum(thisAttackDiffOffset**2, 1) # tSamples x nAgents
+                    thisAttackDiffSkew = np.sum(thisAttackDiffSkew**2, 1) # tSamples x nAgents
+                    
+                    thisAttackDiffOffsetAvg = np.mean(thisAttackDiffOffset, axis = 1) # nSamples x tSamples
+                    thisAttackDiffSkewAvg = np.mean(thisAttackDiffSkew, axis = 1) # nSamples x tSamples
+                    
+                    thisAttackCostPerSample = np.sum(thisAttackDiffOffsetAvg, axis = 0) + np.sum(thisAttackDiffSkewAvg, axis = 0)*(0.01**2) # nSamples
+                    
+                    attackCostsPerSample.append(thisAttackCostPerSample)
+                    
+                attackCost = np.mean(np.array(attackCostsPerSample)) # scalar
+    
+                print("\tThe cost of time sync for expert controller under attacks: %.4f" %(attackCost), flush = True)
+    
+            print("\tComputing learned time synchronisation for best %s model under attacks..." %(model.name), 
+                  flush = True)
+                    
+            for i in range(attackRadiusTest.shape[2]):
+                print("\tAttacking radius: %.1f... " %(attackRadiusTest[i,i,i,i]), flush = True)            
+    
+                attackOffsetTestBest, \
+                attackSkewTestBest, \
+                attackAdjTestBest, \
+                attackStateTestBest, \
+                attackCommGraphTestBest = \
+                    data.computeTrajectory(initPosTest, initVelTest, \
+                                           measurementNoiseTest, processingNoiseTest, clockNoiseTest, 
+                                           attackGraphTest[:, :, i, :, :], data.duration,
+                                           archit = model.archit)    
+    
+                attackOffset = copy.deepcopy(attackOffsetTestBest)
+                attackSkew = copy.deepcopy(attackSkewTestBest)
+    
+                attackCostsPerSample = []
+                for instant in range(attackRadiusTest.shape[0]):
+                    thisTotalAttackNodeIndex = totalAttackNodeIndex[instant][i]
+    
+                    for element in thisTotalAttackNodeIndex:
+                        attackOffset[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
+                        attackSkew[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
+    
+                    thisAttackOffset = copy.deepcopy(attackOffset[instant, :, :, :])
+                    thisAttackSkew = copy.deepcopy(attackSkew[instant, :, :, :])
+                        
+                    for element in thisTotalAttackNodeIndex:
+                        thisAttackOffset = np.delete(thisAttackOffset, element, axis=2)
+                        thisAttackSkew = np.delete(thisAttackSkew, element, axis=2) 
+                    
+                    thisAttackAvgOffset = np.mean(thisAttackOffset, axis = 2) # nSamples x tSamples x 1
+                    thisAttackAvgSkew = np.mean(thisAttackSkew/10, axis = 2) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm   
+                    
+                    thisAttackDiffOffset = thisAttackOffset - np.tile(np.expand_dims(thisAttackAvgOffset, 2), (1, 1, 50-np.int64(len(thisTotalAttackNodeIndex)))) # tSamples x 1 x nAgents
+                    thisAttackDiffSkew = thisAttackSkew/10 - np.tile(np.expand_dims(thisAttackAvgSkew, 2), (1, 1, 50-np.int64(len(thisTotalAttackNodeIndex)))) # tSamples x 1 x nAgents                
+    
+                    thisAttackDiffOffset = np.sum(thisAttackDiffOffset**2, 1) # tSamples x nAgents
+                    thisAttackDiffSkew = np.sum(thisAttackDiffSkew**2, 1) # tSamples x nAgents
+                    
+                    thisAttackDiffOffsetAvg = np.mean(thisAttackDiffOffset, axis = 1) # nSamples x tSamples
+                    thisAttackDiffSkewAvg = np.mean(thisAttackDiffSkew, axis = 1) # nSamples x tSamples
+                    
+                    thisAttackCostPerSample = np.sum(thisAttackDiffOffsetAvg, axis = 0) + np.sum(thisAttackDiffSkewAvg, axis = 0)*(0.01**2) # nSamples
+                    
+                    attackCostsPerSample.append(thisAttackCostPerSample)
+                    
+                attackCost = np.mean(np.array(attackCostsPerSample)) # scalar
+    
+                print("\tThe cost of time sync for best model under attacks: %.4f" %(attackCost), flush = True)   
                 
-                thisAttackAvgOffset = np.mean(thisAttackOffset, axis = 2) # nSamples x tSamples x 1
-                thisAttackAvgSkew = np.mean(thisAttackSkew/10, axis = 2) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm   
+                saveAttackDir = os.path.join(model.saveDir,'savedAttacks')
+                if not os.path.exists(saveAttackDir):
+                    os.makedirs(saveAttackDir)
+    
+                saveFile = os.path.join(saveAttackDir, 'AttackMode-' + str(data.attackMode) + '-Radius-' + str(attackRadiusTest[i,i,i,i]) + '-GNN-Results')
                 
-                thisAttackDiffOffset = thisAttackOffset - np.tile(np.expand_dims(thisAttackAvgOffset, 2), (1, 1, 50-np.int64(len(thisTotalAttackNodeIndex)))) # tSamples x 1 x nAgents
-                thisAttackDiffSkew = thisAttackSkew/10 - np.tile(np.expand_dims(thisAttackAvgSkew, 2), (1, 1, 50-np.int64(len(thisTotalAttackNodeIndex)))) # tSamples x 1 x nAgents                
-
-                thisAttackDiffOffset = np.sum(thisAttackDiffOffset**2, 1) # tSamples x nAgents
-                thisAttackDiffSkew = np.sum(thisAttackDiffSkew**2, 1) # tSamples x nAgents
-                
-                thisAttackDiffOffsetAvg = np.mean(thisAttackDiffOffset, axis = 1) # nSamples x tSamples
-                thisAttackDiffSkewAvg = np.mean(thisAttackDiffSkew, axis = 1) # nSamples x tSamples
-                
-                thisAttackCostPerSample = np.sum(thisAttackDiffOffsetAvg, axis = 0) + np.sum(thisAttackDiffSkewAvg, axis = 0)*(0.01**2) # nSamples
-                
-                attackCostsPerSample.append(thisAttackCostPerSample)
-                
-            attackCost = np.mean(np.array(attackCostsPerSample)) # scalar
-
-            print("\tThe cost of time sync for best model under attacks: %.4f" %(attackCost), flush = True)   
-            
-            saveAttackDir = os.path.join(model.saveDir,'savedAttacks')
-            if not os.path.exists(saveAttackDir):
-                os.makedirs(saveAttackDir)
-
-            saveFile = os.path.join(saveAttackDir, 'AttackMode-' + str(data.attackMode) + '-Radius-' + str(attackRadiusTest[i,i,i,i]) + '-GNN-Results')
-            
-            np.savez(saveFile+'.npz', processedAttackOffset=attackOffset, processedAttackSkew=attackSkew, \
-                     attackOffsetTestBest=attackOffsetTestBest, attackSkewTestBest=attackSkewTestBest, \
-                      attackAdjTestBest=attackAdjTestBest, attackStateTestBest=attackStateTestBest, \
-                          attackCommGraphTestBest=attackCommGraphTestBest, \
-                              attackCenterTest=attackCenterTest, attackRadiusTest=attackRadiusTest, \
-                                  numAttackedNodesTest=numAttackedNodesTest, attackNodesIndexTest=attackNodesIndexTest, \
-                                      attackGraphTest=attackGraphTest)
-
-            mdic = {"processedAttackOffset": attackOffset, \
-                    "processedAttackSkew": attackSkew, \
-                    "attackOffsetTestBest": attackOffsetTestBest, \
-                    "attackSkewTestBest": attackSkewTestBest, \
-                    "attackAdjTestBest": attackAdjTestBest, \
-                    "attackStateTestBest": attackStateTestBest, \
-                    "attackCommGraphTestBest": attackCommGraphTestBest, \
-                    "attackCenterTest": attackCenterTest, \
-                    "attackRadiusTest": attackRadiusTest, \
-                    "numAttackedNodesTest": numAttackedNodesTest, \
-                    "attackNodesIndexTest": attackNodesIndexTest, \
-                    "attackGraphTest": attackGraphTest}            
-            io.savemat(saveFile+'.mat', mdic)
+                np.savez(saveFile+'.npz', processedAttackOffset=attackOffset, processedAttackSkew=attackSkew, \
+                         attackOffsetTestBest=attackOffsetTestBest, attackSkewTestBest=attackSkewTestBest, \
+                          attackAdjTestBest=attackAdjTestBest, attackStateTestBest=attackStateTestBest, \
+                              attackCommGraphTestBest=attackCommGraphTestBest, \
+                                  attackCenterTest=attackCenterTest, attackRadiusTest=attackRadiusTest, \
+                                      numAttackedNodesTest=numAttackedNodesTest, attackNodesIndexTest=attackNodesIndexTest, \
+                                          attackGraphTest=attackGraphTest)
+    
+                mdic = {"processedAttackOffset": attackOffset, \
+                        "processedAttackSkew": attackSkew, \
+                        "attackOffsetTestBest": attackOffsetTestBest, \
+                        "attackSkewTestBest": attackSkewTestBest, \
+                        "attackAdjTestBest": attackAdjTestBest, \
+                        "attackStateTestBest": attackStateTestBest, \
+                        "attackCommGraphTestBest": attackCommGraphTestBest, \
+                        "attackCenterTest": attackCenterTest, \
+                        "attackRadiusTest": attackRadiusTest, \
+                        "numAttackedNodesTest": numAttackedNodesTest, \
+                        "attackNodesIndexTest": attackNodesIndexTest, \
+                        "attackGraphTest": attackGraphTest}            
+                io.savemat(saveFile+'.mat', mdic)
         
         if (evalModel == False):
             saveDataDir = os.path.join(model.saveDir,'savedData')
