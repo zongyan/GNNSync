@@ -174,8 +174,8 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         avgOffset = np.mean(offset, axis = 3) # nSamples x tSamples x 1
         avgSkew = np.mean(skew/10, axis = 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
         
-        diffOffset = offset - np.tile(np.expand_dims(avgOffset, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
-        diffSkew = skew/10 - np.tile(np.expand_dims(avgSkew, 3), (1, 1, 1, 50)) # nSamples x tSamples x 1 x nAgents
+        diffOffset = offset - np.tile(np.expand_dims(avgOffset, 3), (1, 1, 1, data.nAgents)) # nSamples x tSamples x 1 x nAgents
+        diffSkew = skew/10 - np.tile(np.expand_dims(avgSkew, 3), (1, 1, 1, data.nAgents)) # nSamples x tSamples x 1 x nAgents
         
         diffOffset = np.sum(diffOffset**2, 2) # nSamples x tSamples x nAgents
         diffSkew = np.sum(diffSkew**2, 2) # nSamples x tSamples x nAgents

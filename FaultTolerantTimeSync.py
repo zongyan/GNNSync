@@ -184,8 +184,9 @@ for thisModel in modelsGNN.keys():
     print(" ")
 
 print("Generating testing data", end = '')
-dataTest = dataTools.AerialSwarm(100, commRadius, repelDist,
-                1, 1, 1, nTest,
+savingSeeds = True
+dataTest = dataTools.AerialSwarm(75, commRadius, repelDist,
+                20, 1, 1, nTest,
                 duration, updateTime, adjustTime, attackMode, saveDir, 
                 initVelValue, initMinDist, accelMax, savingSeeds)
 print("...", flush = True)
