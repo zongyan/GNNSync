@@ -326,7 +326,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                         "attackGraphTest": attackGraphTest}            
                 io.savemat(saveFile+'.mat', mdic)
         
-        if (evalModel == False):
+        if (evalModel == False) or (data.attackMode == 0):
             saveDataDir = os.path.join(model.saveDir,'savedData')
             if not os.path.exists(saveDataDir):
                 os.makedirs(saveDataDir)
@@ -339,16 +339,15 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                 os.makedirs(saveDataDir)        
         
             if layerWiseTraining == True:
-                saveFile = os.path.join(saveDataDir, model.name + '-LayerWise-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+                saveFile = os.path.join(saveDataDir, model.name + '-nUAVs-' + str(data.nAgents) + '-LayerWise-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
             else:
-                saveFile = os.path.join(saveDataDir, model.name + '-EndToEnd-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+                saveFile = os.path.join(saveDataDir, model.name + '-nUAVs-' + str(data.nAgents) + '-EndToEnd-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
             
             saveFile = saveFile + '.npz'
             np.savez(saveFile, offsetTestBest=offsetTestBest, skewTestBest=skewTestBest, \
                       adjTestBest=adjTestBest, stateTestBest=stateTestBest, \
                           commGraphTestBest=commGraphTestBest, \
-                              bestL = historicalBestL[l], bestIteration = historicalBestIteration[l], bestEpoch = historicalBestEpoch[l], bestBatch = historicalBestBatch[l], \
-                                  lossTrain = trainer.lossTrain, accValid = trainer.accValid)
+                              bestL = historicalBestL[l], bestIteration = historicalBestIteration[l], bestEpoch = historicalBestEpoch[l], bestBatch = historicalBestBatch[l])
                 
         l = l + 1
     
