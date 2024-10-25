@@ -337,11 +337,19 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                 saveDataDir = os.path.join(saveDataDir,'endToEndTraining')        
             if not os.path.exists(saveDataDir):
                 os.makedirs(saveDataDir)        
-        
-            if layerWiseTraining == True:
-                saveFile = os.path.join(saveDataDir, model.name + '-nUAVs-' + str(data.nAgents) + '-LayerWise-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+            
+            if (data.attackMode == 0):            
+                if layerWiseTraining == True:
+                    saveFile = os.path.join(saveDataDir, model.name + '-nUAVs-' + str(data.nAgents) + '-LayerWise-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+                else:
+                    saveFile = os.path.join(saveDataDir, model.name + '-nUAVs-' + str(data.nAgents) + '-EndToEnd-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+            elif (data.attackMode == 1) or (data.attackMode == 2):
+                if layerWiseTraining == True:
+                    saveFile = os.path.join(saveDataDir, model.name + '-LayerWise-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+                else:
+                    saveFile = os.path.join(saveDataDir, model.name + '-EndToEnd-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
             else:
-                saveFile = os.path.join(saveDataDir, model.name + '-nUAVs-' + str(data.nAgents) + '-EndToEnd-' + str(historicalBestL[l]) + '-DAgger-' + str(historicalBestIteration[l]) + '-' + str(nDAggers) + '-Epoch-' + str(historicalBestEpoch[l]) + '-Batch-' + str(historicalBestBatch[l]))
+                raise Exception("unknown attack mode is found!")                                    
             
             saveFile = saveFile + '.npz'
             np.savez(saveFile, offsetTestBest=offsetTestBest, skewTestBest=skewTestBest, \

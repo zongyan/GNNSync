@@ -184,11 +184,20 @@ for thisModel in modelsGNN.keys():
     print(" ")
 
 print("Generating testing data", end = '')
-savingSeeds = True
-dataTest = dataTools.AerialSwarm(75, commRadius, repelDist,
-                20, 1, 1, nTest,
-                duration, updateTime, adjustTime, attackMode, saveDir, 
-                initVelValue, initMinDist, accelMax, savingSeeds)
+
+if (attackMode == 1) or (attackMode == 2):
+    dataTest = dataTools.AerialSwarm(100, commRadius, repelDist,
+                    1, 1, 1, nTest,
+                    duration, updateTime, adjustTime, attackMode, saveDir, 
+                    initVelValue, initMinDist, accelMax, savingSeeds)
+elif (attackMode == 0):  
+    savingSeeds = True
+    dataTest = dataTools.AerialSwarm(75, commRadius, repelDist,
+                    20, 1, 1, nTest,
+                    duration, updateTime, adjustTime, attackMode, saveDir, 
+                    initVelValue, initMinDist, accelMax, savingSeeds)
+else:
+    raise Exception("unknown attack mode is found!")
 print("...", flush = True)
 
 for thisModel in list(modelsGNN.keys()):
