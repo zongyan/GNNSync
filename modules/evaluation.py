@@ -306,8 +306,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                 
                 np.savez(saveFile+'.npz', processedAttackOffset=attackOffset, processedAttackSkew=attackSkew, \
                          attackOffsetTestBest=attackOffsetTestBest, attackSkewTestBest=attackSkewTestBest, \
-                          attackAdjTestBest=attackAdjTestBest, attackStateTestBest=attackStateTestBest, \
-                              attackCommGraphTestBest=attackCommGraphTestBest, \
+                          attackAdjTestBest=attackAdjTestBest, \
                                   attackCenterTest=attackCenterTest, attackRadiusTest=attackRadiusTest, \
                                       numAttackedNodesTest=numAttackedNodesTest, attackNodesIndexTest=attackNodesIndexTest, \
                                           attackGraphTest=attackGraphTest)
@@ -317,8 +316,6 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                         "attackOffsetTestBest": attackOffsetTestBest, \
                         "attackSkewTestBest": attackSkewTestBest, \
                         "attackAdjTestBest": attackAdjTestBest, \
-                        "attackStateTestBest": attackStateTestBest, \
-                        "attackCommGraphTestBest": attackCommGraphTestBest, \
                         "attackCenterTest": attackCenterTest, \
                         "attackRadiusTest": attackRadiusTest, \
                         "numAttackedNodesTest": numAttackedNodesTest, \

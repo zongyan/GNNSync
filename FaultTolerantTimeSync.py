@@ -64,7 +64,7 @@ endToEndTraining = not layerWiseTraining
 layerWise = [endToEndTraining]
 
 savingSeeds = False
-attackMode = 0 # 1 -- attacking mode 1; 2 -- attacking mode 2; 0 -- no attacking
+attackMode = 1 # 1 -- attacking mode 1; 2 -- attacking mode 2; 0 -- no attacking
 evalModel = True
 #%%
 '''
@@ -186,7 +186,7 @@ for thisModel in modelsGNN.keys():
 print("Generating testing data", end = '')
 
 if (attackMode == 1) or (attackMode == 2):
-    dataTest = dataTools.AerialSwarm(100, commRadius, repelDist,
+    dataTest = dataTools.AerialSwarm(nAgents, commRadius, repelDist,
                     1, 1, 1, nTest,
                     duration, updateTime, adjustTime, attackMode, saveDir, 
                     initVelValue, initMinDist, accelMax, savingSeeds)
