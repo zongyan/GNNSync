@@ -64,7 +64,7 @@ endToEndTraining = not layerWiseTraining
 layerWise = [endToEndTraining]
 
 savingSeeds = False
-attackMode = 1 # 1 -- attacking mode 1; 2 -- attacking mode 2; 0 -- no attacking
+attackMode = 0 # 1 -- attacking mode 1; 2 -- attacking mode 2; 0 -- no attacking
 evalModel = True
 #%%
 '''
@@ -87,7 +87,6 @@ hParamsGNNThree['bias'] = True
 hParamsGNNThree['nonlinearity'] = nonlinearity
 hParamsGNNThree['dimReadout'] = [ ] 
 hParamsGNNThree['dimEdgeFeatures'] = 1 # scalar edge weights
-hParamsGNNThree['useNonlinearity'] = False
 hParamsGNNThree['heatKernel'] = True
 modelList += [hParamsGNNThree['name']]
 trainingOptions = {}

@@ -155,7 +155,32 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         
         model.load(layerWiseTraining, \
                nDAggers, historicalBestL[l], historicalBestIteration[l], historicalBestEpoch[l], historicalBestBatch[l], label = 'Best')        
+
+        print("\tComputing learned time synchronisation for the expert model with NO attacks...", 
+              flush = True)
         
+        offsetExpertTest = data.getData('offset', 'test')
+        skewExpertTest = data.getData('skew', 'test')
+        
+        offset = copy.deepcopy(offsetExpertTest)
+        skew = copy.deepcopy(skewExpertTest)
+        avgOffset = np.mean(offset, axis = 3) # nSamples x tSamples x 1
+        avgSkew = np.mean(skew/10, axis = 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
+        
+        diffOffset = offset - np.tile(np.expand_dims(avgOffset, 3), (1, 1, 1, data.nAgents)) # nSamples x tSamples x 1 x nAgents
+        diffSkew = skew/10 - np.tile(np.expand_dims(avgSkew, 3), (1, 1, 1, data.nAgents)) # nSamples x tSamples x 1 x nAgents
+        
+        diffOffset = np.sum(diffOffset**2, 2) # nSamples x tSamples x nAgents
+        diffSkew = np.sum(diffSkew**2, 2) # nSamples x tSamples x nAgents
+        
+        diffOffsetAvg = np.mean(diffOffset, axis = 2) # nSamples x tSamples
+        diffSkewAvg = np.mean(diffSkew, axis = 2) # nSamples x tSamples
+        
+        costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*(0.01**2) # nSamples
+        
+        cost = np.mean(costPerSample) # scalar
+        print("\tThe cost of time sync for the expert model with NO attacks: %.4f" %(cost), flush = True)            
+            
         print("\tComputing learned time synchronisation for best %s model with NO attacks..." %(model.name), 
               flush = True)
         
