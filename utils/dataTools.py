@@ -700,6 +700,11 @@ class AerialSwarm(_data):
 
             radiusRange = np.arange(start=1, stop=((sortedRadius[0][0]/2)+0.5), step=0.5)
             attackRadius = np.zeros((pos.shape[0], pos.shape[1], radiusRange.shape[0], pos.shape[3]))
+            
+            # Ellipse
+            attackOnes = np.ones((pos.shape[0], pos.shape[1], radiusRange.shape[0], pos.shape[3]))
+            attackRadiusEllipseMajor = ((sortedRadius[0][0]/2)+2.0) * np.ones((pos.shape[0], pos.shape[1], pos.shape[3])) # semi-major axis, the longer radius of the ellipse
+            attackRadiusEllipseMinor = attackRadiusEllipseMajor * 0.1 # semi-minor axis, the shorter radius
     
             for index in range(len(radiusRange)):
                 thisAttackRadius = np.reshape(np.repeat(radiusRange[index], pos.shape[0] * pos.shape[1] * pos.shape[3]), (pos.shape[0], pos.shape[1], pos.shape[3]))            
@@ -727,7 +732,11 @@ class AerialSwarm(_data):
             
             distanceAttacker = (pos - attackCenter)**2        
             for index in range(len(radiusRange)):
-                thisIsAttack = distanceAttacker[:, :, 0, :] + distanceAttacker[:, :, 1, :] <= attackRadius[:, :, index, :] ** 2        
+                # for the circle
+                thisIsAttack = distanceAttacker[:, :, 0, :] + distanceAttacker[:, :, 1, :] <= attackRadius[:, :, index, :] ** 2
+                # for the Ellipse
+                thisIsAttack = distanceAttacker[:, :, 0, :]/(attackRadiusEllipseMajor**2) + distanceAttacker[:, :, 1, :]/(attackRadiusEllipseMinor**2) <= attackOnes[:, :, index, :]
+                
                 thisNumAttackedNodes = np.sum(thisIsAttack, axis=2)    
     
                 thisAttackNodesIndex = np.zeros((pos.shape[0], pos.shape[1], pos.shape[3]), dtype=np.int8)
