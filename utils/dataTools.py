@@ -733,7 +733,7 @@ class AerialSwarm(_data):
             distanceAttacker = (pos - attackCenter)**2        
             for index in range(len(radiusRange)):
                 # for the circle
-                thisIsAttack = distanceAttacker[:, :, 0, :] + distanceAttacker[:, :, 1, :] <= attackRadius[:, :, index, :] ** 2
+                # thisIsAttack = distanceAttacker[:, :, 0, :] + distanceAttacker[:, :, 1, :] <= attackRadius[:, :, index, :] ** 2
                 # for the Ellipse
                 thisIsAttack = distanceAttacker[:, :, 0, :]/(attackRadiusEllipseMajor**2) + distanceAttacker[:, :, 1, :]/(attackRadiusEllipseMinor**2) <= attackOnes[:, :, index, :]
                 
