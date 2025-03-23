@@ -64,7 +64,7 @@ endToEndTraining = not layerWiseTraining
 layerWise = [endToEndTraining]
 
 savingSeeds = False
-attackMode = 2 # 1 -- attacking mode 1; 2 -- attacking mode 2; 0 -- no attacking
+attackMode = 1 # 1 -- attacking mode 1; 2 -- attacking mode 2; 0 -- no attacking
 evalModel = True
 #%%
 '''

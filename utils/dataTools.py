@@ -362,7 +362,7 @@ class AerialSwarm(_data):
         saveFile = os.path.join(saveAttackDir, 'AttackMode-' + str(self.attackMode))       
         
         if (self.attackMode==1 or self.attackMode==2):
-            np.savez(saveFile+'.npz', posTest=posAll[startSample:endSample], velTest=velAll[startSample:endSample], accelTest=accelAll[startSample:endSample], \
+            np.savez(saveFile+'a.npz', posTest=posAll[startSample:endSample], velTest=velAll[startSample:endSample], accelTest=accelAll[startSample:endSample], \
                      commGraphTest=commGraphAll[startSample:endSample], attackCenterTest=attackCenterAll[startSample:endSample], \
                          attackRadiusTest=attackRadiusAll[startSample:endSample], numAttackedNodesTest=numAttackedNodesAll[startSample:endSample], \
                              attackNodesIndexTest=attackNodesIndexAll[startSample:endSample])        
@@ -375,7 +375,7 @@ class AerialSwarm(_data):
                     "attackRadiusTest": attackRadiusAll[startSample:endSample], \
                     "numAttackedNodesTest": numAttackedNodesAll[startSample:endSample], \
                     "attackNodesIndexTest": attackNodesIndexAll[startSample:endSample]}            
-            io.savemat(saveFile+'.mat', mdic)
+            io.savemat(saveFile+'a.mat', mdic)
                 
             print("\tAttacking data (attack mode %s) is saved to the 'savedAttacks' folder!" % (self.attackMode), flush = True)
         
@@ -704,7 +704,7 @@ class AerialSwarm(_data):
             # Ellipse
             attackOnes = np.ones((pos.shape[0], pos.shape[1], radiusRange.shape[0], pos.shape[3]))
             attackRadiusEllipseMajor = ((sortedRadius[0][0]/2)+2.0) * np.ones((pos.shape[0], pos.shape[1], pos.shape[3])) # semi-major axis, the longer radius of the ellipse
-            attackRadiusEllipseMinor = attackRadiusEllipseMajor * 0.1 # semi-minor axis, the shorter radius
+            attackRadiusEllipseMinor = attackRadiusEllipseMajor * 0.2 # semi-minor axis, the shorter radius
     
             for index in range(len(radiusRange)):
                 thisAttackRadius = np.reshape(np.repeat(radiusRange[index], pos.shape[0] * pos.shape[1] * pos.shape[3]), (pos.shape[0], pos.shape[1], pos.shape[3]))            
