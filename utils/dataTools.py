@@ -1146,6 +1146,124 @@ class AerialSwarm(_data):
                         
         return theta, gamma, adjust
 
+    # this function is only used for tesing the expert control strategy performance
+    # under attacks. This function is added to improve the submitted manuscript
+    # quality, since this manuscript was rejected by several journals.
+    def computeDistributedCtrlTrajectory(self, initTheta, initGamma, 
+                           measureNoise, processNoise, clkNoise,
+                           graph, duration, attackNodesIndex, numAttackedNodes, **kwargs):
+        # input: ###
+        # initTheta: nSamples x 1 x nAgents
+        # initGamma: nSamples x 1 x nAgents
+        # measureNoise: nSamples x tSamples x 2 x nAgents
+        # processNoise: nSamples x tSamples x 2 x nAgents
+        # clkNoise: nSamples x tSamples x 2 x nAgents
+        # graph: nSamples x tSamples x nAgents x nAgents        
+
+        # attackNodesIndex: nSamples x tSamples x nAgents
+        # numAttackedNodes: nSamples x tSamples
+        
+        # output: ###
+        # theta: nSamples x tSamples x 1 x nAgents
+        # gamma： nSamples x tSamples x 1 x nAgents
+        # adjust： nSamples x tSamples x 2 x nAgents
+        # state： nSamples x tSamples x 2 x nAgents
+        # graph： nSamples x tSamples x nAgents x nAgents
+        
+        assert len(initTheta.shape) == 3
+        batchSize = initTheta.shape[0]
+        assert initTheta.shape[1] == 1
+        nAgents = initTheta.shape[2]
+        
+        assert len(initGamma.shape) == 3
+        assert initGamma.shape[0] == batchSize
+        assert initGamma.shape[1] == 1
+        assert initGamma.shape[2] == nAgents
+        
+        assert len(graph.shape) == 4
+        assert graph.shape[0] == batchSize
+        assert graph.shape[1] == int(duration/self.updateTime)
+        assert graph.shape[2] == nAgents
+        assert graph.shape[3] == nAgents
+        
+        time = np.arange(0, duration, self.updateTime)
+        tSamples = len(time)
+                   
+        if 'doPrint' in kwargs.keys():
+            doPrint = kwargs['doPrint']
+        else:
+            doPrint = self.doPrint # Use default      
+            
+        theta = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float64)
+        gamma = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float64)
+        deltaTheta = np.zeros((batchSize, tSamples, 1, nAgents)) # offset adjustment        
+        deltaGamma = np.zeros((batchSize, tSamples, 1, nAgents)) # skew adjustment
+                    
+        theta[:,0,:,:] = initTheta.copy()
+        gamma[:,0,:,:] = initGamma.copy()
+        
+        if doPrint:
+            percentageCount = int(100/tSamples)
+            print("%3d%%" % percentageCount, end = '', flush = True)            
+
+        for t in range(1, tSamples):
+            ### Compute the optimal clock offset and skew correction values ###
+            ijDiffOffset, _ = self.computeDifferences(theta[:,t-1,:,:] \
+                                                      + np.expand_dims(measureNoise[:,t-1,0,:], 1))
+            #   ijDiffOffset: nSamples x 1 x nAgents x nAgents
+
+            ijDiffSkew, _ = self.computeDifferences(gamma[:,t-1,:,:] \
+                                                    + np.expand_dims(measureNoise[:,t-1,1,:], 1))
+            #   ijDiffVel: nSamples x 1 x nAgents x nAgents
+
+            for instant_p in range(attackNodesIndex.shape[0]):
+                
+                thisAttackNodes_p = np.int64(attackNodesIndex[instant_p, t, :np.int64(numAttackedNodes[instant_p,t])])
+                
+                for element_p in thisAttackNodes_p:
+                
+                    ijDiffOffset[instant_p, 0, element_p, :] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
+                    ijDiffOffset[instant_p, 0, :, element_p] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
+                    
+                    ijDiffSkew[instant_p, 0, element_p, :] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
+                    ijDiffSkew[instant_p, 0, :, element_p] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
+
+            deltaTheta[:,t-1,:,:] = -0.5*np.sum(ijDiffOffset, axis = 3)                                
+            deltaGamma[:,t-1,:,:] = -0.5*np.sum(ijDiffSkew, axis = 3)      
+
+            if self.updateTime == self.adjustTime:                            
+                theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
+                                                  + (1/self.nAgents) * deltaTheta[:,t-1,:,:] \
+                                                  + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                  - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:] \
+                                                  + np.expand_dims(clkNoise[:,t-1,1,:], 1)
+            else:                                
+                if int(t % (self.adjustTime/self.updateTime)) == 0:
+                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
+                                                      + (1/self.nAgents) * deltaTheta[:,t-1,:,:] \
+                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:] \
+                                                      + np.expand_dims(clkNoise[:,t-1,1,:], 1)                                    
+                else: 
+                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
+                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + np.expand_dims(clkNoise[:,t-1,1,:], 1)
+                                                                                          
+            if doPrint:
+                percentageCount = int(100*(t+1)/tSamples)
+                print('\b \b' * 4 + "%3d%%" % percentageCount,
+                      end = '', flush = True)
+
+        adjust = np.concatenate((deltaTheta,deltaGamma),axis=2)
+                
+        if doPrint:
+            print('\b \b' * 4, end = '', flush = True)
+                        
+        return theta, gamma, adjust
+
     def computeSingleStepTrajectory(self, theta, gamma, adjust, state,
                                 measureNoise, processNoise, clkNoise,
                            graph, step, duration, **kwargs):
