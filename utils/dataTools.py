@@ -1241,9 +1241,16 @@ class AerialSwarm(_data):
                     
                     ijDiffSkew[instant_p, 0, element_p, :] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
                     ijDiffSkew[instant_p, 0, :, element_p] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
-
+                    
             deltaTheta[:,t-1,:,:] = -0.5*np.sum(ijDiffOffset, axis = 3)                                
             deltaGamma[:,t-1,:,:] = -0.5*np.sum(ijDiffSkew, axis = 3)      
+            
+            # check are there noises in the simulation?
+            # check matmul again 
+            deltaTheta[:,t-1,:,:] = -0.5*np.matmul(laplacianMatrixRecovered[:, t-1, :, :], theta[:, t-1, :, :])
+            deltaTheta[:,t-1,:,:] = -0.5*np.matmul(laplacianMatrixRecovered[:, t-1, :, :], gamma[:, t-1, :, :])
+            
+
 
             if self.updateTime == self.adjustTime:                            
                 theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
