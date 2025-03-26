@@ -1146,9 +1146,9 @@ class AerialSwarm(_data):
                         
         return theta, gamma, adjust
 
-    # this function is only used for tesing the expert control strategy performance
+    # this function is only used for tesing the distributed control strategy performance
     # under attacks. This function is added to improve the submitted manuscript
-    # quality, since this manuscript was rejected by several journals.
+    # quality, since this manuscript is under the review of IEEE TNSE.
     def computeDistributedCtrlTrajectory(self, initTheta, initGamma, 
                            measureNoise, processNoise, clkNoise,
                            graph, duration, attackNodesIndex, numAttackedNodes, **kwargs):
@@ -1185,6 +1185,20 @@ class AerialSwarm(_data):
         assert graph.shape[1] == int(duration/self.updateTime)
         assert graph.shape[2] == nAgents
         assert graph.shape[3] == nAgents
+
+        graphRecovered = np.zeros_like(graph)
+        adjacencyMatrixRecovered = np.zeros_like(graph)
+        laplacianMatrixRecovered = np.zeros_like(graph)
+        
+        for i in range(graph.shape[0]):
+            for j in range(graph.shape[1]):
+                graphRecovered[i, j, :, :] = np.fill_diagonal(graph[i, j, :, :], 0)  # Works on each (nAgents x nAgents) matrix
+                adjacencyMatrixRecovered[i, j, :, :] = (np.abs(graphRecovered[i, j, :, :]) > 1e-6).astype(int)
+
+        for t in range(graph.shape[1]):
+            degreeMatrixTime = np.sum(adjacencyMatrixRecovered[:, t, :, :], axis=2)
+            for i in range(graph.shape[0]):                
+                laplacianMatrixRecovered[i, t, :, :] = np.diag(degreeMatrixTime[i, :]) - adjacencyMatrixRecovered[i, t, :, :]  # Non-Normalized laplacian matrix
         
         time = np.arange(0, duration, self.updateTime)
         tSamples = len(time)
