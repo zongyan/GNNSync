@@ -181,23 +181,18 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         cost = np.mean(costPerSample) # scalar
         print("\tThe cost of time sync for the expert model with NO attacks: %.4f" %(cost), flush = True)            
 
-###############
-
         print("\tComputing learned time synchronisation for distributed controller with NO attacks..." %(model.name), 
               flush = True)
         
-        offsetTestBest, \
-        skewTestBest, \
-        adjTestBest, \
-        stateTestBest, \
-        commGraphTestBest = \
-            data.computeTrajectory(initPosTest, initVelTest, \
-                                    measurementNoiseTest, processingNoiseTest, clockNoiseTest, 
-                                    graphTest, data.duration,
-                                    archit = model.archit)
-        
-        offset = copy.deepcopy(offsetTestBest)
-        skew = copy.deepcopy(skewTestBest)
+        offsetTestBestDistributed, \
+            skewTestBestDistributed, \
+                adjTestBestDistributed = \
+                    data.computeDistributedCtrlTrajectory(initPosTest, initVelTest, \
+                                                          measurementNoiseTest, processingNoiseTest, clockNoiseTest, \
+                                                              graphTest, data.duration)
+
+        offset = copy.deepcopy(offsetTestBestDistributed)
+        skew = copy.deepcopy(skewTestBestDistributed)
         avgOffset = np.mean(offset, axis = 3) # nSamples x tSamples x 1
         avgSkew = np.mean(skew/10, axis = 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
         
@@ -214,13 +209,6 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         
         cost = np.mean(costPerSample) # scalar
         print("\tThe cost of time sync for distributed controller with NO attacks: %.4f" %(cost), flush = True)
-
-
-
-###############
-
-
-
             
         print("\tComputing learned time synchronisation for best %s model with NO attacks..." %(model.name), 
               flush = True)
@@ -310,8 +298,6 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
     
                 print("\tThe cost of time sync for expert controller under attacks: %.4f" %(attackCost), flush = True)
 
-##########################
-
             print("\tComputing learned time synchronisation for the distributed controller under attacks...", flush = True)
             
             for i in range(attackRadiusTest.shape[2]):
@@ -320,27 +306,26 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                 thisAttackNodeIndex = attackNodesIndexTest[:,:,i,:]
                 thisNumAttackedNodes = numAttackedNodesTest[:,:,i]
                 
-                attackOffsetTestBest, \
-                attackSkewTestBest, \
-                attackAdjTestBest = \
-                    data.computeExpertTrajectory(initPosTest, initVelTest, \
-                                           measurementNoiseTest, processingNoiseTest, clockNoiseTest, \
-                                               attackGraphTest[:, :, i, :, :], data.duration, thisAttackNodeIndex, thisNumAttackedNodes, \
-                                                   archit = model.archit)    
-    
-                attackOffset = copy.deepcopy(attackOffsetTestBest)
-                attackSkew = copy.deepcopy(attackSkewTestBest)
+                attackOffsetTestBestDistributed, \
+                    attackSkewTestBestDistributed, \
+                        attackAdjTestBestDistributed = \
+                            data.computeDistributedCtrlTrajectory(initPosTest, initVelTest, \
+                                                                  measurementNoiseTest, processingNoiseTest, clockNoiseTest, \
+                                                                      attackGraphTest[:, :, i, :, :], data.duration)
+
+                attackOffsetDistributed = copy.deepcopy(attackOffsetTestBestDistributed)
+                attackSkewDistributed = copy.deepcopy(attackSkewTestBestDistributed)
     
                 attackCostsPerSample = []
                 for instant in range(attackRadiusTest.shape[0]):
                     thisTotalAttackNodeIndex = totalAttackNodeIndex[instant][i]
     
                     for element in thisTotalAttackNodeIndex:
-                        attackOffset[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
-                        attackSkew[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
+                        attackOffsetDistributed[instant, :, :, element] = np.zeros((attackOffsetDistributed.shape[1], attackOffsetDistributed.shape[2]))
+                        attackSkewDistributed[instant, :, :, element] = np.zeros((attackOffsetDistributed.shape[1], attackOffsetDistributed.shape[2]))
     
-                    thisAttackOffset = copy.deepcopy(attackOffset[instant, :, :, :])
-                    thisAttackSkew = copy.deepcopy(attackSkew[instant, :, :, :])
+                    thisAttackOffset = copy.deepcopy(attackOffsetDistributed[instant, :, :, :])
+                    thisAttackSkew = copy.deepcopy(attackSkewDistributed[instant, :, :, :])
                         
                     for element in thisTotalAttackNodeIndex:
                         thisAttackOffset = np.delete(thisAttackOffset, element, axis=2)
@@ -365,10 +350,6 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                 attackCost = np.mean(np.array(attackCostsPerSample)) # scalar
     
                 print("\tThe cost of time sync for distributed controller under attacks: %.4f" %(attackCost), flush = True)
-
-###########################
-
-
     
             print("\tComputing learned time synchronisation for best %s model under attacks..." %(model.name), 
                   flush = True)
@@ -431,14 +412,17 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                 saveFile = os.path.join(saveAttackDir, 'AttackMode-' + str(data.attackMode) + '-Radius-' + str(attackRadiusTest[i,i,i,i]) + '-GNN-Results')
                 
                 np.savez(saveFile+'.npz', processedAttackOffset=attackOffset, processedAttackSkew=attackSkew, \
-                         attackOffsetTestBest=attackOffsetTestBest, attackSkewTestBest=attackSkewTestBest, \
-                          attackAdjTestBest=attackAdjTestBest, \
-                                  attackCenterTest=attackCenterTest, attackRadiusTest=attackRadiusTest, \
-                                      numAttackedNodesTest=numAttackedNodesTest, attackNodesIndexTest=attackNodesIndexTest, \
-                                          attackGraphTest=attackGraphTest)
+                         attackOffsetDistributed=attackOffsetDistributed, attackSkewDistributed=attackSkewDistributed, \
+                             attackOffsetTestBest=attackOffsetTestBest, attackSkewTestBest=attackSkewTestBest, \
+                                 attackAdjTestBest=attackAdjTestBest, \
+                                     attackCenterTest=attackCenterTest, attackRadiusTest=attackRadiusTest, \
+                                         numAttackedNodesTest=numAttackedNodesTest, attackNodesIndexTest=attackNodesIndexTest, \
+                                             attackGraphTest=attackGraphTest)
     
                 mdic = {"processedAttackOffset": attackOffset, \
                         "processedAttackSkew": attackSkew, \
+                        "attackOffsetDistributed": attackOffsetDistributed, \
+                        "attackSkewDistributed": attackSkewDistributed, \
                         "attackOffsetTestBest": attackOffsetTestBest, \
                         "attackSkewTestBest": attackSkewTestBest, \
                         "attackAdjTestBest": attackAdjTestBest, \
