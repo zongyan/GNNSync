@@ -1151,7 +1151,7 @@ class AerialSwarm(_data):
     # quality, since this manuscript is under the review of IEEE TNSE.
     def computeDistributedCtrlTrajectory(self, initTheta, initGamma, 
                            measureNoise, processNoise, clkNoise,
-                           graph, duration, attackNodesIndex, numAttackedNodes, **kwargs):
+                           graph, duration, **kwargs):
         # input: ###
         # initTheta: nSamples x 1 x nAgents
         # initGamma: nSamples x 1 x nAgents
@@ -1222,35 +1222,10 @@ class AerialSwarm(_data):
 
         for t in range(1, tSamples):
             ### Compute the optimal clock offset and skew correction values ###
-            ijDiffOffset, _ = self.computeDifferences(theta[:,t-1,:,:] \
-                                                      + np.expand_dims(measureNoise[:,t-1,0,:], 1))
-            #   ijDiffOffset: nSamples x 1 x nAgents x nAgents
-
-            ijDiffSkew, _ = self.computeDifferences(gamma[:,t-1,:,:] \
-                                                    + np.expand_dims(measureNoise[:,t-1,1,:], 1))
-            #   ijDiffVel: nSamples x 1 x nAgents x nAgents
-
-            for instant_p in range(attackNodesIndex.shape[0]):
-                
-                thisAttackNodes_p = np.int64(attackNodesIndex[instant_p, t, :np.int64(numAttackedNodes[instant_p,t])])
-                
-                for element_p in thisAttackNodes_p:
-                
-                    ijDiffOffset[instant_p, 0, element_p, :] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
-                    ijDiffOffset[instant_p, 0, :, element_p] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
-                    
-                    ijDiffSkew[instant_p, 0, element_p, :] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
-                    ijDiffSkew[instant_p, 0, :, element_p] = np.zeros((50)) # we remove the uav value differences due to the attacked UAVs
-                    
-            deltaTheta[:,t-1,:,:] = -0.5*np.sum(ijDiffOffset, axis = 3)                                
-            deltaGamma[:,t-1,:,:] = -0.5*np.sum(ijDiffSkew, axis = 3)      
             
             # check are there noises in the simulation?
-            # check matmul again 
-            deltaTheta[:,t-1,:,:] = -0.5*np.matmul(laplacianMatrixRecovered[:, t-1, :, :], theta[:, t-1, :, :])
-            deltaTheta[:,t-1,:,:] = -0.5*np.matmul(laplacianMatrixRecovered[:, t-1, :, :], gamma[:, t-1, :, :])
-            
-
+            deltaTheta[:,t-1,:,:] = -0.5*np.matmul(laplacianMatrixRecovered[:, t-1, :, :], theta[:, t-1, :, :].reshape((theta.shape[0], nAgents, 1))).reshape((theta.shape[0], 1, nAgents))
+            deltaTheta[:,t-1,:,:] = -0.5*np.matmul(laplacianMatrixRecovered[:, t-1, :, :], gamma[:, t-1, :, :].reshape((theta.shape[0], nAgents, 1))).reshape((theta.shape[0], 1, nAgents))
 
             if self.updateTime == self.adjustTime:                            
                 theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
