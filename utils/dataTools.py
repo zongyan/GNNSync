@@ -1221,11 +1221,9 @@ class AerialSwarm(_data):
             print("%3d%%" % percentageCount, end = '', flush = True)            
 
         for t in range(1, tSamples):
-            ### Compute the optimal clock offset and skew correction values ###
-            
             # check are there noises in the simulation?
-            deltaTheta[:,t-1,:,:] = -0.5*np.matmul(laplacianMatrixRecovered[:, t-1, :, :], theta[:, t-1, :, :].reshape((theta.shape[0], nAgents, 1))).reshape((theta.shape[0], 1, nAgents))
-            deltaTheta[:,t-1,:,:] = -0.5*np.matmul(laplacianMatrixRecovered[:, t-1, :, :], gamma[:, t-1, :, :].reshape((theta.shape[0], nAgents, 1))).reshape((theta.shape[0], 1, nAgents))
+            deltaTheta[:,t-1,:,:] = -0.5*np.transpose(np.matmul(laplacianMatrixRecovered[:, t-1, :, :], np.transpose(theta[:, t-1, :, :], axes=[0,2,1])), axes=[0,2,1])
+            deltaGamma[:,t-1,:,:] = -0.5*np.transpose(np.matmul(laplacianMatrixRecovered[:, t-1, :, :], np.transpose(gamma[:, t-1, :, :], axes=[0,2,1])), axes=[0,2,1])
 
             if self.updateTime == self.adjustTime:                            
                 theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
