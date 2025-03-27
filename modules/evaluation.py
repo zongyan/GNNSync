@@ -180,6 +180,47 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         
         cost = np.mean(costPerSample) # scalar
         print("\tThe cost of time sync for the expert model with NO attacks: %.4f" %(cost), flush = True)            
+
+###############
+
+        print("\tComputing learned time synchronisation for distributed controller with NO attacks..." %(model.name), 
+              flush = True)
+        
+        offsetTestBest, \
+        skewTestBest, \
+        adjTestBest, \
+        stateTestBest, \
+        commGraphTestBest = \
+            data.computeTrajectory(initPosTest, initVelTest, \
+                                    measurementNoiseTest, processingNoiseTest, clockNoiseTest, 
+                                    graphTest, data.duration,
+                                    archit = model.archit)
+        
+        offset = copy.deepcopy(offsetTestBest)
+        skew = copy.deepcopy(skewTestBest)
+        avgOffset = np.mean(offset, axis = 3) # nSamples x tSamples x 1
+        avgSkew = np.mean(skew/10, axis = 3) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm               
+        
+        diffOffset = offset - np.tile(np.expand_dims(avgOffset, 3), (1, 1, 1, data.nAgents)) # nSamples x tSamples x 1 x nAgents
+        diffSkew = skew/10 - np.tile(np.expand_dims(avgSkew, 3), (1, 1, 1, data.nAgents)) # nSamples x tSamples x 1 x nAgents
+        
+        diffOffset = np.sum(diffOffset**2, 2) # nSamples x tSamples x nAgents
+        diffSkew = np.sum(diffSkew**2, 2) # nSamples x tSamples x nAgents
+        
+        diffOffsetAvg = np.mean(diffOffset, axis = 2) # nSamples x tSamples
+        diffSkewAvg = np.mean(diffSkew, axis = 2) # nSamples x tSamples
+        
+        costPerSample = np.sum(diffOffsetAvg, axis = 1) + np.sum(diffSkewAvg, axis = 1)*(0.01**2) # nSamples
+        
+        cost = np.mean(costPerSample) # scalar
+        print("\tThe cost of time sync for distributed controller with NO attacks: %.4f" %(cost), flush = True)
+
+
+
+###############
+
+
+
             
         print("\tComputing learned time synchronisation for best %s model with NO attacks..." %(model.name), 
               flush = True)
@@ -268,6 +309,66 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                 attackCost = np.mean(np.array(attackCostsPerSample)) # scalar
     
                 print("\tThe cost of time sync for expert controller under attacks: %.4f" %(attackCost), flush = True)
+
+##########################
+
+            print("\tComputing learned time synchronisation for the distributed controller under attacks...", flush = True)
+            
+            for i in range(attackRadiusTest.shape[2]):
+                print("\tAttacking radius: %.1f... " %(attackRadiusTest[i,i,i,i]), flush = True)            
+                            
+                thisAttackNodeIndex = attackNodesIndexTest[:,:,i,:]
+                thisNumAttackedNodes = numAttackedNodesTest[:,:,i]
+                
+                attackOffsetTestBest, \
+                attackSkewTestBest, \
+                attackAdjTestBest = \
+                    data.computeExpertTrajectory(initPosTest, initVelTest, \
+                                           measurementNoiseTest, processingNoiseTest, clockNoiseTest, \
+                                               attackGraphTest[:, :, i, :, :], data.duration, thisAttackNodeIndex, thisNumAttackedNodes, \
+                                                   archit = model.archit)    
+    
+                attackOffset = copy.deepcopy(attackOffsetTestBest)
+                attackSkew = copy.deepcopy(attackSkewTestBest)
+    
+                attackCostsPerSample = []
+                for instant in range(attackRadiusTest.shape[0]):
+                    thisTotalAttackNodeIndex = totalAttackNodeIndex[instant][i]
+    
+                    for element in thisTotalAttackNodeIndex:
+                        attackOffset[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
+                        attackSkew[instant, :, :, element] = np.zeros((attackOffset.shape[1], attackOffset.shape[2]))
+    
+                    thisAttackOffset = copy.deepcopy(attackOffset[instant, :, :, :])
+                    thisAttackSkew = copy.deepcopy(attackSkew[instant, :, :, :])
+                        
+                    for element in thisTotalAttackNodeIndex:
+                        thisAttackOffset = np.delete(thisAttackOffset, element, axis=2)
+                        thisAttackSkew = np.delete(thisAttackSkew, element, axis=2) 
+                    
+                    thisAttackAvgOffset = np.mean(thisAttackOffset, axis = 2) # nSamples x tSamples x 1
+                    thisAttackAvgSkew = np.mean(thisAttackSkew/10, axis = 2) # nSamples x tSamples x 1, change unit from 10ppm to 100ppm   
+                    
+                    thisAttackDiffOffset = thisAttackOffset - np.tile(np.expand_dims(thisAttackAvgOffset, 2), (1, 1, 50-np.int64(len(thisTotalAttackNodeIndex)))) # tSamples x 1 x nAgents
+                    thisAttackDiffSkew = thisAttackSkew/10 - np.tile(np.expand_dims(thisAttackAvgSkew, 2), (1, 1, 50-np.int64(len(thisTotalAttackNodeIndex)))) # tSamples x 1 x nAgents                
+    
+                    thisAttackDiffOffset = np.sum(thisAttackDiffOffset**2, 1) # tSamples x nAgents
+                    thisAttackDiffSkew = np.sum(thisAttackDiffSkew**2, 1) # tSamples x nAgents
+                    
+                    thisAttackDiffOffsetAvg = np.mean(thisAttackDiffOffset, axis = 1) # nSamples x tSamples
+                    thisAttackDiffSkewAvg = np.mean(thisAttackDiffSkew, axis = 1) # nSamples x tSamples
+                    
+                    thisAttackCostPerSample = np.sum(thisAttackDiffOffsetAvg, axis = 0) + np.sum(thisAttackDiffSkewAvg, axis = 0)*(0.01**2) # nSamples
+                    
+                    attackCostsPerSample.append(thisAttackCostPerSample)
+                    
+                attackCost = np.mean(np.array(attackCostsPerSample)) # scalar
+    
+                print("\tThe cost of time sync for distributed controller under attacks: %.4f" %(attackCost), flush = True)
+
+###########################
+
+
     
             print("\tComputing learned time synchronisation for best %s model under attacks..." %(model.name), 
                   flush = True)
