@@ -1189,11 +1189,11 @@ class AerialSwarm(_data):
         graphRecovered = np.zeros_like(graph)
         adjacencyMatrixRecovered = np.zeros_like(graph)
         laplacianMatrixRecovered = np.zeros_like(graph)
-        
+
         for i in range(graph.shape[0]):
             for j in range(graph.shape[1]):
-                graphRecovered[i, j, :, :] = np.fill_diagonal(graph[i, j, :, :], 0)  # Works on each (nAgents x nAgents) matrix
-                adjacencyMatrixRecovered[i, j, :, :] = (np.abs(graphRecovered[i, j, :, :]) > 1e-6).astype(int)
+                np.fill_diagonal(graph[i, j, :, :], 0)  # Works on each (nAgents x nAgents) matrix
+                adjacencyMatrixRecovered[i, j, :, :] = (np.abs(graph[i, j, :, :]) > 1e-6).astype(int)
 
         for t in range(graph.shape[1]):
             degreeMatrixTime = np.sum(adjacencyMatrixRecovered[:, t, :, :], axis=2)
