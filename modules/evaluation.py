@@ -181,8 +181,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
         cost = np.mean(costPerSample) # scalar
         print("\tThe cost of time sync for the expert model with NO attacks: %.4f" %(cost), flush = True)            
 
-        print("\tComputing learned time synchronisation for distributed controller with NO attacks..." %(model.name), 
-              flush = True)
+        print("\tComputing learned time synchronisation for distributed controller with NO attacks...", flush = True)
         
         offsetTestBestDistributed, \
             skewTestBestDistributed, \
