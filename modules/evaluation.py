@@ -285,7 +285,7 @@ def evaluate(model, trainer, data, evalModel, **kwargs):
                 raise Exception("unknown attack mode is found!")                                    
             
             saveFile = saveFile + '.npz'
-            np.savez(saveFile, offsetTestBestDistributed=offsetTestBestDistributed, offsetTestBestDistributed=offsetTestBestDistributed, \
+            np.savez(saveFile, offsetTestBestDistributed=offsetTestBestDistributed, skewTestBestDistributed=skewTestBestDistributed, \
                               bestL = historicalBestL[l], bestIteration = historicalBestIteration[l], bestEpoch = historicalBestEpoch[l], bestBatch = historicalBestBatch[l])
                 
         l = l + 1
