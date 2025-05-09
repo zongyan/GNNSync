@@ -1155,6 +1155,118 @@ class AerialSwarm(_data):
                         
         return theta, gamma, adjust
 
+    # this function is only used for tesing the distributed control strategy performance
+    # under attacks. This function is added to improve the submitted manuscript
+    # quality, since this manuscript is under the review of IEEE TNSE.
+    def computeDistributedCtrlTrajectory(self, initTheta, initGamma, 
+                           measureNoise, processNoise, clkNoise,
+                           graph, duration, **kwargs):
+        # input: ###
+        # initTheta: nSamples x 1 x nAgents
+        # initGamma: nSamples x 1 x nAgents
+        # measureNoise: nSamples x tSamples x 2 x nAgents
+        # processNoise: nSamples x tSamples x 2 x nAgents
+        # clkNoise: nSamples x tSamples x 2 x nAgents
+        # graph: nSamples x tSamples x nAgents x nAgents        
+
+        # attackNodesIndex: nSamples x tSamples x nAgents
+        # numAttackedNodes: nSamples x tSamples
+        
+        # output: ###
+        # theta: nSamples x tSamples x 1 x nAgents
+        # gamma： nSamples x tSamples x 1 x nAgents
+        # adjust： nSamples x tSamples x 2 x nAgents
+        # state： nSamples x tSamples x 2 x nAgents
+        # graph： nSamples x tSamples x nAgents x nAgents
+        
+        assert len(initTheta.shape) == 3
+        batchSize = initTheta.shape[0]
+        assert initTheta.shape[1] == 1
+        nAgents = initTheta.shape[2]
+        
+        assert len(initGamma.shape) == 3
+        assert initGamma.shape[0] == batchSize
+        assert initGamma.shape[1] == 1
+        assert initGamma.shape[2] == nAgents
+        
+        assert len(graph.shape) == 4
+        assert graph.shape[0] == batchSize
+        assert graph.shape[1] == int(duration/self.updateTime)
+        assert graph.shape[2] == nAgents
+        assert graph.shape[3] == nAgents
+
+        graphRecovered = np.zeros_like(graph)
+        adjacencyMatrixRecovered = np.zeros_like(graph)
+        laplacianMatrixRecovered = np.zeros_like(graph)
+
+        for i in range(graph.shape[0]):
+            for j in range(graph.shape[1]):
+                np.fill_diagonal(graph[i, j, :, :], 0)  # Works on each (nAgents x nAgents) matrix
+                adjacencyMatrixRecovered[i, j, :, :] = (np.abs(graph[i, j, :, :]) > 1e-6).astype(int)
+
+        for t in range(graph.shape[1]):
+            degreeMatrixTime = np.sum(adjacencyMatrixRecovered[:, t, :, :], axis=2)
+            for i in range(graph.shape[0]):                
+                laplacianMatrixRecovered[i, t, :, :] = np.diag(degreeMatrixTime[i, :]) - adjacencyMatrixRecovered[i, t, :, :]  # Non-Normalized laplacian matrix
+        
+        time = np.arange(0, duration, self.updateTime)
+        tSamples = len(time)
+                   
+        if 'doPrint' in kwargs.keys():
+            doPrint = kwargs['doPrint']
+        else:
+            doPrint = self.doPrint # Use default      
+            
+        theta = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float64)
+        gamma = np.zeros((batchSize, tSamples, 1, nAgents), dtype = np.float64)
+        deltaTheta = np.zeros((batchSize, tSamples, 1, nAgents)) # offset adjustment        
+        deltaGamma = np.zeros((batchSize, tSamples, 1, nAgents)) # skew adjustment
+                    
+        theta[:,0,:,:] = initTheta.copy()
+        gamma[:,0,:,:] = initGamma.copy()
+        
+        if doPrint:
+            percentageCount = int(100/tSamples)
+            print("%3d%%" % percentageCount, end = '', flush = True)            
+
+        for t in range(1, tSamples):
+            # check are there noises in the simulation?
+            deltaTheta[:,t-1,:,:] = -0.5*np.transpose(np.matmul(laplacianMatrixRecovered[:, t-1, :, :], np.transpose(theta[:, t-1, :, :], axes=[0,2,1])), axes=[0,2,1])
+            deltaGamma[:,t-1,:,:] = -0.5*np.transpose(np.matmul(laplacianMatrixRecovered[:, t-1, :, :], np.transpose(gamma[:, t-1, :, :], axes=[0,2,1])), axes=[0,2,1])
+
+            if self.updateTime == self.adjustTime:                            
+                theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
+                                                  + (1/self.nAgents) * deltaTheta[:,t-1,:,:] \
+                                                  + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                  - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:] \
+                                                  + np.expand_dims(clkNoise[:,t-1,1,:], 1)
+            else:                                
+                if int(t % (self.adjustTime/self.updateTime)) == 0:
+                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
+                                                      + (1/self.nAgents) * deltaTheta[:,t-1,:,:] \
+                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + (1/self.nAgents) * deltaGamma[:,t-1,:,:] \
+                                                      + np.expand_dims(clkNoise[:,t-1,1,:], 1)                                    
+                else: 
+                    theta[:,t,:,:] = theta[:,t-1,:,:] + gamma[:,t-1,:,:] * self.updateTime \
+                                                      + np.expand_dims(clkNoise[:,t-1,0,:], 1) \
+                                                      - np.expand_dims(processNoise[:,t-1,0,:], 1)
+                    gamma[:,t,:,:] = gamma[:,t-1,:,:] + np.expand_dims(clkNoise[:,t-1,1,:], 1)
+                                                                                          
+            if doPrint:
+                percentageCount = int(100*(t+1)/tSamples)
+                print('\b \b' * 4 + "%3d%%" % percentageCount,
+                      end = '', flush = True)
+
+        adjust = np.concatenate((deltaTheta,deltaGamma),axis=2)
+                
+        if doPrint:
+            print('\b \b' * 4, end = '', flush = True)
+                        
+        return theta, gamma, adjust
+
     def computeSingleStepTrajectory(self, theta, gamma, adjust, state,
                                 measureNoise, processNoise, clkNoise,
                            graph, step, duration, **kwargs):
